@@ -1,0 +1,2722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OttoLog — Session Templator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
+  <style>
+:root {
+  --bg: #0c0a0e;
+  --bg-elevated: #161218;
+  --bg-panel: #1a151c;
+  --bg-inset: #100e12;
+  --border: rgba(255, 180, 120, 0.12);
+  --border-strong: rgba(255, 160, 100, 0.22);
+  --text: #f3ebe3;
+  --text-muted: #9a8b80;
+  --text-dim: #6b5f57;
+
+  --sunrise: #ff9a5a;
+  --sunset: #e85d4c;
+  --dusk: #c96b8a;
+  --gold: #e8b86d;
+  --amber-glow: rgba(255, 154, 90, 0.15);
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --font: "DM Sans", system-ui, sans-serif;
+  --display: "Fraunces", Georgia, serif;
+
+  --shadow: 0 1px 0 rgba(255, 180, 120, 0.04), 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+.ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 15% -10%, rgba(255, 120, 70, 0.18), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 5%, rgba(200, 80, 100, 0.12), transparent 50%),
+    radial-gradient(ellipse 50% 30% at 50% 100%, rgba(232, 184, 109, 0.06), transparent 60%);
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+/* Header */
+
+.app-header {
+  margin-bottom: 2rem;
+}
+
+.brand {
+  display: inline-block;
+  margin: 0 0 0.35rem;
+  font-family: var(--display);
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  background: linear-gradient(120deg, var(--sunrise) 0%, var(--sunset) 55%, var(--dusk) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  cursor: pointer;
+  transition: filter 0.15s, opacity 0.15s;
+}
+
+.brand:hover {
+  filter: brightness(1.12);
+  opacity: 0.95;
+}
+
+.page-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+
+.page-sub {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  max-width: 36em;
+}
+
+/* Panels */
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem 1.1rem;
+}
+
+.session-meta {
+  margin-bottom: 1.25rem;
+}
+
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.field.grow {
+  flex: 1 1 180px;
+}
+
+.label,
+.label-inline {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.label-inline {
+  margin-right: 0.35rem;
+}
+
+input[type="text"],
+input[type="date"],
+input[type="number"],
+select,
+textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.65rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--sunrise);
+  box-shadow: 0 0 0 3px var(--amber-glow);
+}
+
+textarea {
+  resize: vertical;
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%239a8b80' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  padding-right: 1.75rem;
+}
+
+input[type="date"] {
+  min-width: 9.5rem;
+}
+
+.notes-slot {
+  margin-top: 0.75rem;
+  animation: fadeIn 0.18s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Buttons */
+
+.btn {
+  font: inherit;
+  font-weight: 500;
+  font-size: 0.9rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-sm {
+  font-size: 0.82rem;
+  padding: 0.4rem 0.75rem;
+}
+
+.btn-primary {
+  color: #1a0e0a;
+  background: linear-gradient(135deg, var(--sunrise), var(--sunset));
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.btn-ghost {
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: rgba(255, 154, 90, 0.06);
+}
+
+.btn-icon {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btn-icon:hover {
+  color: var(--sunrise);
+  background: rgba(255, 154, 90, 0.08);
+}
+
+.btn-remove:hover {
+  color: var(--sunset);
+  background: rgba(232, 93, 76, 0.12);
+}
+
+.chevron-btn {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0;
+}
+
+.chevron-btn:hover {
+  color: var(--sunrise);
+}
+
+.chevron {
+  display: inline-block;
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.collapsed .chevron {
+  transform: rotate(-90deg);
+}
+
+.collapsed .item-body,
+.collapsed > .notes-slot,
+.collapsed > .more-panel {
+  display: none;
+}
+
+/* Session actions */
+
+.session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.25rem;
+}
+
+/* Blocks */
+
+.blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.block {
+  padding: 0;
+  overflow: visible;
+}
+
+.block > .item-header,
+.block > .coord-row,
+.block > .notes-slot,
+.block > .more-panel,
+.block > .item-body {
+  padding-left: 1.1rem;
+  padding-right: 1.1rem;
+}
+
+.block > .item-header {
+  padding-top: 0.35rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid transparent;
+}
+
+.coord-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  margin: 0;
+  padding-top: 0.75rem;
+}
+
+.cluster > .coord-row,
+.exercise > .coord-row {
+  padding: 0.15rem 0 0.35rem;
+}
+
+.coord-meta {
+  margin: 0;
+}
+
+.coord-chip {
+  margin: 0;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-inset);
+  color: var(--sunrise);
+  font-family: var(--font);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.coord-chip:hover,
+.coord-chip[aria-expanded="true"] {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 2px var(--amber-glow);
+}
+
+.coord-compass {
+  position: fixed;
+  z-index: 40;
+  min-width: 11.5rem;
+  padding: 0.75rem 0.7rem 0.65rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow);
+}
+
+.compass-dials {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.45rem;
+}
+
+.compass-dial {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.25rem 0.2rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 154, 90, 0.04);
+}
+
+.compass-dial.is-locked {
+  opacity: 0.38;
+}
+
+.compass-dial-label {
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.compass-dial-key {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--sunrise);
+  letter-spacing: 0.06em;
+}
+
+.compass-btn {
+  width: 1.7rem;
+  height: 1.45rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.55rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.compass-btn:hover:not(:disabled) {
+  color: var(--sunrise);
+  background: rgba(255, 154, 90, 0.1);
+  border-color: var(--border);
+}
+
+.compass-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.compass-preview {
+  margin: 0.55rem 0 0;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.compass-preview strong {
+  color: var(--sunrise);
+  font-weight: 700;
+}
+
+.block:not(.collapsed) > .item-header {
+  border-bottom-color: var(--border);
+}
+
+.block > .notes-slot,
+.block > .more-panel {
+  padding-bottom: 0.75rem;
+}
+
+.block > .item-body {
+  padding-top: 0.85rem;
+  padding-bottom: 1rem;
+}
+
+/* Shared item header */
+
+.item-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.collapse-target {
+  cursor: pointer;
+  user-select: none;
+}
+
+.collapse-target .name-input,
+.collapse-target select,
+.collapse-target .btn-icon,
+.collapse-target .chevron-btn {
+  cursor: auto;
+}
+
+.collapse-target .btn-icon,
+.collapse-target .chevron-btn {
+  cursor: pointer;
+}
+
+.block > .item-body > .items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-height: 0.5rem;
+}
+
+.block > .item-body > .items > .exercise,
+.block > .item-body > .items > .cluster {
+  margin-bottom: 0;
+}
+
+.name-input {
+  flex: 1 1 140px;
+  min-width: 0;
+  font-weight: 500;
+  background: transparent;
+  border-color: transparent;
+  padding-left: 0.35rem;
+}
+
+.name-input:hover {
+  border-color: var(--border);
+  background: var(--bg-inset);
+}
+
+.name-input:focus {
+  background: var(--bg-inset);
+}
+
+.tool-select {
+  flex: 0 1 auto;
+  max-width: 9.5rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--sunrise);
+  background-color: rgba(255, 154, 90, 0.08);
+  border-color: var(--border-strong);
+  padding: 0.45rem 1.6rem 0.45rem 0.5rem;
+}
+
+.type-select,
+.category-select {
+  flex: 0 1 auto;
+  max-width: 10rem;
+  font-size: 0.85rem;
+}
+
+.sets-field {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sets-input {
+  width: 3.25rem;
+  text-align: center;
+  padding: 0.4rem 0.35rem;
+}
+
+/* Cluster */
+
+.cluster {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--dusk);
+  margin-bottom: 0.65rem;
+  padding: 0.65rem 0.75rem;
+}
+
+.cluster .item-header {
+  margin-bottom: 0.15rem;
+}
+
+.cluster .item-body {
+  margin-top: 0.5rem;
+}
+
+.cluster .items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Exercise */
+
+.exercise {
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--gold);
+  padding: 0.65rem 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.cluster .exercise {
+  margin-bottom: 0;
+  border-left-color: var(--sunrise);
+}
+
+.exercise .item-header {
+  margin-bottom: 0.5rem;
+}
+
+.exercise > .more-panel {
+  margin-bottom: 1.15rem;
+}
+
+/* Sets table */
+
+.sets-table-wrap {
+  overflow-x: auto;
+  margin: 0 -0.15rem;
+}
+
+.sets-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.sets-table th {
+  text-align: left;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 0.25rem 0.35rem 0.4rem;
+  white-space: nowrap;
+}
+
+.sets-table td {
+  padding: 0.2rem 0.35rem;
+}
+
+.sets-table .set-num {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  width: 1.5rem;
+  text-align: center;
+}
+
+.sets-table input,
+.sets-table select {
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.sets-table input.metric-input {
+  width: 4.5rem;
+  min-width: 0;
+  padding: 0.35rem 0.45rem;
+}
+
+.sets-table input:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: var(--bg-elevated);
+}
+
+.reps-cell,
+.distance-cell,
+.load-cell,
+.time-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: nowrap;
+}
+
+.btn-danger-ghost {
+  color: var(--sunset);
+  background: transparent;
+  border: 1px solid rgba(232, 93, 76, 0.35);
+  align-self: flex-start;
+}
+
+.btn-danger-ghost:hover {
+  color: #fff;
+  background: rgba(232, 93, 76, 0.18);
+  border-color: var(--sunset);
+}
+
+.more-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.15rem;
+  animation: fadeIn 0.18s ease;
+}
+
+.more-panel[hidden] {
+  display: none !important;
+}
+
+.more-duration-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.time-picker .time-part {
+  width: 2.6rem;
+  min-width: 2.6rem;
+  padding: 0.4rem 0.35rem;
+  text-align: center;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.time-picker .time-part::-webkit-outer-spin-button,
+.time-picker .time-part::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+.duration-toggle {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.duration-toggle:hover {
+  color: var(--sunrise);
+  border-color: var(--border-strong);
+  background: rgba(255, 154, 90, 0.08);
+}
+
+.duration-toggle.is-on {
+  color: #1a0e0a;
+  background: linear-gradient(135deg, var(--sunrise), var(--gold));
+  border-color: transparent;
+}
+
+.more-analytics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.analytics-toggle {
+  flex-shrink: 0;
+  align-self: flex-start;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.analytics-toggle:hover {
+  color: var(--sunrise);
+  border-color: var(--border-strong);
+  background: rgba(255, 154, 90, 0.08);
+}
+
+.analytics-toggle.is-on {
+  color: #1a0e0a;
+  background: linear-gradient(135deg, var(--sunrise), var(--gold));
+  border-color: transparent;
+}
+
+.analytics-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 154, 90, 0.04);
+}
+
+.analytics-fields[hidden] {
+  display: none !important;
+}
+
+.analytics-col {
+  width: 3.25rem;
+  text-align: center;
+}
+
+.set-analytics {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.set-analytics input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--sunrise);
+  cursor: pointer;
+}
+
+.sets-table tr.analytics-excluded {
+  opacity: 0.45;
+}
+
+.time-picker[hidden] {
+  display: none !important;
+}
+
+.time-sep {
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 0.85rem;
+  user-select: none;
+}
+
+.toggle-per-side {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.toggle-per-side:hover {
+  color: var(--sunrise);
+  border-color: var(--border-strong);
+}
+
+.toggle-per-side.is-per-side {
+  color: #1a0e0a;
+  background: linear-gradient(135deg, var(--sunrise), var(--gold));
+  border-color: transparent;
+}
+
+.unit-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.load-cell .load-value {
+  width: 4.25rem;
+}
+
+.load-cell .load-unit {
+  width: auto;
+  min-width: 4.75rem;
+  padding: 0.35rem 1.6rem 0.35rem 0.45rem;
+  font-size: 0.8rem;
+}
+
+.item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.block > .item-body > .items:empty + .item-actions {
+  margin-top: 0;
+}
+
+/* Preview */
+
+.preview-panel {
+  margin-top: 2rem;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.preview-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-right: 0.65rem;
+}
+
+.preview-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}
+
+.preview-toggle:hover {
+  color: var(--sunrise);
+}
+
+#copy-json {
+  flex-shrink: 0;
+}
+
+#copy-json.is-copied {
+  color: var(--sunrise);
+  border-color: var(--border-strong);
+}
+
+.preview-panel.collapsed .chevron {
+  transform: rotate(-90deg);
+}
+
+.preview-panel.collapsed .json-preview {
+  display: none;
+}
+
+.json-preview {
+  margin: 0;
+  padding: 0 1rem 1rem;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.75rem;
+  line-height: 1.55;
+  color: var(--gold);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* Responsive */
+
+@media (max-width: 560px) {
+  .app {
+    padding: 1.75rem 1rem 3rem;
+  }
+
+  .field-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .field-row .btn-icon {
+    align-self: flex-end;
+  }
+
+  .session-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .item-header {
+    gap: 0.4rem;
+  }
+
+  .type-select,
+  .category-select,
+  .tool-select {
+    max-width: none;
+    flex: 1 1 100%;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+
+  <main class="app">
+    <header class="app-header">
+      <a class="brand" href="/webhook/ottolog">OttoLog</a>
+      <h1 class="page-title">Session Templator</h1>
+      <p class="page-sub">Design the blueprint — structure, prescriptions, and coaching cues. Click a coordinate to open the address compass and reorder blocks, clusters, and exercises.</p>
+    </header>
+
+    <form id="session-form" class="session-form" autocomplete="off">
+      <section class="session-meta panel">
+        <div class="field-row">
+          <label class="field grow">
+            <span class="label">Template name</span>
+            <input type="text" id="session-name" name="name" placeholder="e.g. Lower A — Strength" required />
+          </label>
+          <label class="field">
+            <span class="label">Category</span>
+            <select id="session-category" name="category">
+              <option value="Strength">Strength</option>
+              <option value="Cardio">Cardio</option>
+              <option value="Hybrid">Hybrid</option>
+              <option value="Mobility">Mobility</option>
+              <option value="Recovery">Recovery</option>
+            </select>
+          </label>
+          <button type="button" class="btn-icon notes-toggle" data-notes-for="session" aria-label="More options" title="More options">⋯</button>
+        </div>
+        <div class="more-panel notes-slot" id="session-notes-slot" data-notes-slot hidden>
+          <div class="more-duration-row">
+            <button type="button" class="duration-toggle" data-duration-toggle aria-pressed="false">
+              Track duration
+            </button>
+            <div class="time-picker" data-duration-picker hidden title="Use ↑↓ to adjust">
+              <input type="number" class="time-part" data-dur-key="time_h" value="00" placeholder="00" aria-label="Hours" />
+              <span class="time-sep">:</span>
+              <input type="number" class="time-part" data-dur-key="time_m" value="00" placeholder="00" aria-label="Minutes" />
+              <span class="time-sep">:</span>
+              <input type="number" class="time-part" data-dur-key="time_s" value="00" placeholder="00" aria-label="Seconds" />
+            </div>
+          </div>
+          <label class="field">
+            <span class="label">Template notes</span>
+            <textarea id="session-notes" name="notes" rows="2" placeholder="Optional coaching / programming notes…"></textarea>
+          </label>
+        </div>
+      </section>
+
+      <div id="blocks" class="blocks"></div>
+
+      <div class="session-actions">
+        <button type="button" id="add-block" class="btn btn-ghost">+ Add block</button>
+        <button type="submit" class="btn btn-primary">Save template</button>
+      </div>
+    </form>
+
+    <section class="preview-panel collapsed" id="preview-panel">
+      <div class="preview-bar">
+        <button type="button" class="preview-toggle" id="preview-toggle" aria-expanded="false">
+          <span class="chevron" aria-hidden="true">▾</span>
+          <span>JSON output</span>
+        </button>
+        <button type="button" class="btn btn-ghost btn-sm" id="copy-json" title="Copy JSON to clipboard">Copy</button>
+      </div>
+      <pre id="json-preview" class="json-preview"></pre>
+    </section>
+  </main>
+
+  <div id="coord-compass" class="coord-compass" hidden role="dialog" aria-label="Address compass">
+    <div class="compass-dials">
+      <div class="compass-dial" data-dial="x">
+        <button type="button" class="compass-btn" data-dir="-1" aria-label="Block earlier">▲</button>
+        <span class="compass-dial-label">Block</span>
+        <span class="compass-dial-key">X</span>
+        <button type="button" class="compass-btn" data-dir="1" aria-label="Block later">▼</button>
+      </div>
+      <div class="compass-dial" data-dial="y">
+        <button type="button" class="compass-btn" data-dir="-1" aria-label="Item earlier">▲</button>
+        <span class="compass-dial-label">Item</span>
+        <span class="compass-dial-key">Y</span>
+        <button type="button" class="compass-btn" data-dir="1" aria-label="Item later">▼</button>
+      </div>
+      <div class="compass-dial" data-dial="z">
+        <button type="button" class="compass-btn" data-dir="-1" aria-label="In-cluster earlier">▲</button>
+        <span class="compass-dial-label">In cluster</span>
+        <span class="compass-dial-key">Z</span>
+        <button type="button" class="compass-btn" data-dir="1" aria-label="In-cluster later">▼</button>
+      </div>
+    </div>
+    <p class="compass-preview" data-compass-preview></p>
+  </div>
+
+  <template id="tpl-block">
+    <article class="block panel" data-kind="block">
+      <div class="coord-row">
+        <span class="coord-meta label" data-coord-meta></span>
+        <button type="button" class="coord-chip" data-coord-open aria-haspopup="dialog" aria-label="Open address compass"></button>
+      </div>
+      <header class="item-header collapse-target">
+        <button type="button" class="chevron-btn" aria-label="Collapse block" data-collapse>
+          <span class="chevron">▾</span>
+        </button>
+        <input type="text" class="name-input" data-field="name" placeholder="Block name (e.g. Warmup)" />
+        <button type="button" class="btn-icon notes-toggle" data-notes aria-label="More options" title="More options">⋯</button>
+      </header>
+      <div class="more-panel notes-slot" data-notes-slot hidden>
+        <div class="more-duration-row">
+          <button type="button" class="duration-toggle" data-duration-toggle aria-pressed="false">
+            Track duration
+          </button>
+          <div class="time-picker" data-duration-picker hidden title="Use ↑↓ to adjust">
+            <input type="number" class="time-part" data-dur-key="time_h" value="00" placeholder="00" aria-label="Hours" />
+            <span class="time-sep">:</span>
+            <input type="number" class="time-part" data-dur-key="time_m" value="00" placeholder="00" aria-label="Minutes" />
+            <span class="time-sep">:</span>
+            <input type="number" class="time-part" data-dur-key="time_s" value="00" placeholder="00" aria-label="Seconds" />
+          </div>
+        </div>
+        <label class="field">
+          <span class="label">Block notes</span>
+          <textarea data-field="notes" rows="2" placeholder="Optional notes…"></textarea>
+        </label>
+        <button type="button" class="btn btn-danger-ghost btn-sm" data-remove>Delete block</button>
+      </div>
+      <div class="item-body" data-body>
+        <div class="items" data-items></div>
+        <div class="item-actions">
+          <button type="button" class="btn btn-ghost btn-sm" data-add-exercise>+ Add exercise</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-add-cluster>+ Add cluster</button>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <template id="tpl-cluster">
+    <article class="cluster" data-kind="cluster">
+      <div class="coord-row">
+        <span class="coord-meta label" data-coord-meta></span>
+        <button type="button" class="coord-chip" data-coord-open aria-haspopup="dialog" aria-label="Open address compass"></button>
+      </div>
+      <header class="item-header collapse-target">
+        <button type="button" class="chevron-btn" aria-label="Collapse cluster" data-collapse>
+          <span class="chevron">▾</span>
+        </button>
+        <input type="text" class="name-input" data-field="name" placeholder="Cluster name (optional)" />
+        <select class="type-select" data-field="type" aria-label="Cluster type">
+          <option value="standard">Standard</option>
+          <option value="sequence">Sequence</option>
+          <option value="circuit">Circuit</option>
+        </select>
+        <button type="button" class="btn-icon notes-toggle" data-notes aria-label="More options" title="More options">⋯</button>
+      </header>
+      <div class="more-panel notes-slot" data-notes-slot hidden>
+        <div class="more-duration-row">
+          <button type="button" class="duration-toggle" data-duration-toggle aria-pressed="false">
+            Track duration
+          </button>
+          <div class="time-picker" data-duration-picker hidden title="Use ↑↓ to adjust">
+            <input type="number" class="time-part" data-dur-key="time_h" value="00" placeholder="00" aria-label="Hours" />
+            <span class="time-sep">:</span>
+            <input type="number" class="time-part" data-dur-key="time_m" value="00" placeholder="00" aria-label="Minutes" />
+            <span class="time-sep">:</span>
+            <input type="number" class="time-part" data-dur-key="time_s" value="00" placeholder="00" aria-label="Seconds" />
+          </div>
+        </div>
+        <label class="field">
+          <span class="label">Cluster notes</span>
+          <textarea data-field="notes" rows="2" placeholder="Optional notes…"></textarea>
+        </label>
+        <button type="button" class="btn btn-danger-ghost btn-sm" data-remove>Delete cluster</button>
+      </div>
+      <div class="item-body" data-body>
+        <div class="items" data-items></div>
+        <div class="item-actions">
+          <button type="button" class="btn btn-ghost btn-sm" data-add-exercise>+ Add exercise</button>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <template id="tpl-exercise">
+    <article class="exercise" data-kind="exercise">
+      <div class="coord-row">
+        <span class="coord-meta label" data-coord-meta></span>
+        <button type="button" class="coord-chip" data-coord-open aria-haspopup="dialog" aria-label="Open address compass"></button>
+      </div>
+      <header class="item-header">
+        <select class="tool-select" data-field="tool" aria-label="Tool">
+          <option value="">None</option>
+          <option value="Kettlebell(s)">Kettlebell(s)</option>
+          <option value="Barbell">Barbell</option>
+          <option value="Dumbbell(s)">Dumbbell(s)</option>
+          <option value="Straight Bar">Straight Bar</option>
+          <option value="Parallel Bars">Parallel Bars</option>
+          <option value="Mace">Mace</option>
+          <option value="Club(s)">Club(s)</option>
+          <option value="Vest">Vest</option>
+          <option value="Backpack">Backpack</option>
+          <option value="Weight-Belt">Weight-Belt</option>
+        </select>
+        <input type="text" class="name-input" data-field="name" placeholder="Exercise name (e.g. Halo reverse lunges)" />
+        <select class="category-select" data-field="comp_category_id" aria-label="Composition category">
+          <option value="Reps">Reps</option>
+          <option value="Time">Time</option>
+          <option value="Time & Distance">Time & Distance</option>
+          <option value="Time & Reps">Time & Reps</option>
+          <option value="Distance">Distance</option>
+        </select>
+        <label class="sets-field">
+          <span class="label-inline">Sets</span>
+          <input type="number" class="sets-input" data-field="prescribed_sets" min="1" max="50" value="3" />
+        </label>
+        <button type="button" class="btn-icon notes-toggle" data-notes aria-label="More options" title="More options">⋯</button>
+      </header>
+      <div class="more-panel notes-slot" data-notes-slot hidden>
+        <div class="more-duration-row">
+          <button type="button" class="duration-toggle" data-duration-toggle aria-pressed="false">
+            Track duration
+          </button>
+          <div class="time-picker" data-duration-picker hidden title="Use ↑↓ to adjust">
+            <input type="number" class="time-part" data-dur-key="time_h" value="00" placeholder="00" aria-label="Hours" />
+            <span class="time-sep">:</span>
+            <input type="number" class="time-part" data-dur-key="time_m" value="00" placeholder="00" aria-label="Minutes" />
+            <span class="time-sep">:</span>
+            <input type="number" class="time-part" data-dur-key="time_s" value="00" placeholder="00" aria-label="Seconds" />
+          </div>
+        </div>
+        <div class="more-analytics">
+          <button type="button" class="analytics-toggle" data-analytics-toggle aria-pressed="false">
+            Track analytics
+          </button>
+          <div class="analytics-fields" data-analytics-fields hidden>
+            <label class="field">
+              <span class="label">Master exercise name</span>
+              <input type="text" data-field="master_exercise_name" placeholder="e.g. Pullup, Squat" required />
+            </label>
+            <label class="field">
+              <span class="label">Group tags</span>
+              <input type="text" data-field="group_tags" placeholder="e.g. Calisthenics, Pull, Upper Body" />
+            </label>
+          </div>
+        </div>
+        <label class="field">
+          <span class="label">Coaching notes</span>
+          <textarea data-field="coaching_notes" rows="2" placeholder="e.g., Focus on explosive hip drive. Keep pace steady…"></textarea>
+        </label>
+        <button type="button" class="btn btn-danger-ghost btn-sm" data-remove>Delete exercise</button>
+      </div>
+      <div class="sets-table-wrap">
+        <table class="sets-table">
+          <thead data-targets-head></thead>
+          <tbody data-targets-body></tbody>
+        </table>
+      </div>
+    </article>
+  </template>
+
+  <script>
+(() => {
+  "use strict";
+
+  const LOAD_UNITS = ["lbs", "kg", "% 1RM", "BW"];
+
+  const $ = (sel, root = document) => root.querySelector(sel);
+
+  function uid() {
+    return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  function pad2(n) {
+    return String(Math.max(0, Math.min(99, parseInt(n, 10) || 0))).padStart(2, "0");
+  }
+
+  function categoryFlags(cat) {
+    return {
+      hasReps: cat === "Reps" || cat === "Time & Reps",
+      hasTime: cat === "Time" || cat === "Time & Distance" || cat === "Time & Reps",
+      hasDistance: cat === "Distance" || cat === "Time & Distance",
+    };
+  }
+
+  function emptyTarget() {
+    return {
+      reps: null,
+      is_per_side: false,
+      time_h: 0,
+      time_m: 0,
+      time_s: 0,
+      distance_mi: null,
+      load_value: null,
+      load_unit: "lbs",
+      track_analytics: true,
+    };
+  }
+
+  function makeTargets(count, previous = []) {
+    const next = [];
+    for (let i = 0; i < count; i++) {
+      const prev = previous[i];
+      const base = emptyTarget();
+      if (prev) {
+        Object.assign(base, {
+          reps: prev.reps ?? null,
+          is_per_side: Boolean(prev.is_per_side),
+          time_h: prev.time_h ?? 0,
+          time_m: prev.time_m ?? 0,
+          time_s: prev.time_s ?? 0,
+          distance_mi: prev.distance_mi ?? null,
+          load_value: prev.load_value ?? null,
+          load_unit: prev.load_unit || "lbs",
+          track_analytics: prev.track_analytics !== false,
+        });
+      }
+      next.push(base);
+    }
+    return next;
+  }
+
+  function parseGroupTags(raw) {
+    if (Array.isArray(raw)) {
+      return raw.map((t) => String(t).trim()).filter(Boolean);
+    }
+    return String(raw || "")
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+  }
+
+  function formatGroupTags(tags) {
+    return (tags || []).join(", ");
+  }
+
+  function parseNullableNumber(raw) {
+    if (raw === "" || raw === null || raw === undefined) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function formatDuration(t) {
+    return `${pad2(t.time_h)}:${pad2(t.time_m)}:${pad2(t.time_s)}`;
+  }
+
+  function emptyDuration() {
+    return { time_h: 0, time_m: 0, time_s: 0 };
+  }
+
+  function durationFields(model) {
+    return {
+      track_duration: Boolean(model.track_duration),
+      duration: model.track_duration ? formatDuration(model.duration || emptyDuration()) : null,
+    };
+  }
+
+  // ── State ──────────────────────────────────────────────
+
+  const state = {
+    name: "",
+    category: "Strength",
+    notes: "",
+    track_duration: false,
+    duration: emptyDuration(),
+    blocks: [],
+  };
+
+  const blocksEl = $("#blocks");
+  const form = $("#session-form");
+  const previewPanel = $("#preview-panel");
+  const jsonPreview = $("#json-preview");
+
+  // ── Factories ──────────────────────────────────────────
+
+  function createExercise() {
+    return {
+      kind: "exercise",
+      id: uid(),
+      name: "",
+      tool: "",
+      comp_category_id: "Reps",
+      prescribed_sets: 3,
+      coaching_notes: "",
+      notesOpen: false,
+      track_duration: false,
+      duration: emptyDuration(),
+      track_analytics: false,
+      master_exercise_name: "",
+      group_tags: [],
+      targets: makeTargets(3),
+    };
+  }
+
+  function createCluster() {
+    return {
+      kind: "cluster",
+      id: uid(),
+      name: "",
+      type: "standard",
+      notes: "",
+      notesOpen: false,
+      collapsed: false,
+      track_duration: false,
+      duration: emptyDuration(),
+      items: [createExercise()],
+    };
+  }
+
+  function createBlock(name = "") {
+    return {
+      id: uid(),
+      name,
+      notes: "",
+      notesOpen: false,
+      collapsed: false,
+      track_duration: false,
+      duration: emptyDuration(),
+      items: [],
+    };
+  }
+
+  // ── Serialize ──────────────────────────────────────────
+
+  function serializeTarget(t, index, cat, parentTracksAnalytics) {
+    const { hasReps, hasTime, hasDistance } = categoryFlags(cat);
+    const isBw = t.load_unit === "BW";
+    return {
+      set: index + 1,
+      reps: hasReps ? (t.reps ?? null) : null,
+      is_per_side: hasReps ? Boolean(t.is_per_side) : false,
+      time_duration: hasTime ? formatDuration(t) : null,
+      distance_mi: hasDistance ? (t.distance_mi ?? null) : null,
+      load_value: isBw ? null : (t.load_value ?? null),
+      load_unit: t.load_unit || "lbs",
+      track_analytics: parentTracksAnalytics ? t.track_analytics !== false : null,
+    };
+  }
+
+  function formatCoordinate(blockOrder, itemOrder = null, subItemOrder = null) {
+    if (itemOrder == null || itemOrder === 0) return String(blockOrder);
+    if (subItemOrder == null || subItemOrder === 0) {
+      return `${blockOrder}.${itemOrder}`;
+    }
+    return `${blockOrder}.${itemOrder}.${subItemOrder}`;
+  }
+
+  /** 0 → A, 1 → B, … 25 → Z, 26 → AA */
+  function clusterLetter(index0) {
+    let n = index0;
+    let out = "";
+    do {
+      out = String.fromCharCode(65 + (n % 26)) + out;
+      n = Math.floor(n / 26) - 1;
+    } while (n >= 0);
+    return out;
+  }
+
+
+  function serializeExercise(ex, blockOrder, itemOrder, subItemOrder, opts = {}) {
+    const tracking = Boolean(ex.track_analytics);
+    const hasSub = subItemOrder != null && subItemOrder > 0;
+    const payload = {
+      kind: "exercise",
+      item_order: itemOrder,
+      coordinate: formatCoordinate(blockOrder, itemOrder, hasSub ? subItemOrder : null),
+      name: ex.name,
+      tool: ex.tool || "",
+      comp_category_id: ex.comp_category_id,
+      prescribed_sets: ex.prescribed_sets,
+      coaching_notes: ex.coaching_notes || "",
+      ...durationFields(ex),
+      track_analytics: tracking,
+      master_exercise_name: tracking ? (ex.master_exercise_name || "") : null,
+      group_tags: tracking ? parseGroupTags(ex.group_tags) : [],
+      targets: ex.targets.map((t, i) =>
+        serializeTarget(t, i, ex.comp_category_id, tracking)
+      ),
+    };
+    if (hasSub) {
+      payload.sub_item_order = subItemOrder;
+      if (opts.clusterKey) payload.sub_item_key = `${opts.clusterKey}${subItemOrder}`;
+    }
+    return payload;
+  }
+
+  function serializeCluster(cluster, blockOrder, itemOrder, clusterKey) {
+    return {
+      kind: "cluster",
+      item_order: itemOrder,
+      cluster_key: clusterKey,
+      coordinate: formatCoordinate(blockOrder, itemOrder),
+      name: cluster.name,
+      type: cluster.type,
+      notes: cluster.notes || "",
+      ...durationFields(cluster),
+      items: cluster.items.map((ex, si) =>
+        serializeExercise(ex, blockOrder, itemOrder, si + 1, { clusterKey })
+      ),
+    };
+  }
+
+  function serializeTemplate() {
+    return {
+      template_name: state.name,
+      category: state.category,
+      notes: state.notes || "",
+      ...durationFields(state),
+      blocks: state.blocks.map((block, bi) => {
+        const blockOrder = bi + 1;
+        let clusterCount = 0;
+        return {
+          block_order: blockOrder,
+          block_name: block.name,
+          notes: block.notes || "",
+          ...durationFields(block),
+          items: block.items.map((item, ii) => {
+            const itemOrder = ii + 1;
+            if (item.kind === "cluster") {
+              const key = clusterLetter(clusterCount);
+              clusterCount += 1;
+              return serializeCluster(item, blockOrder, itemOrder, key);
+            }
+            return serializeExercise(item, blockOrder, itemOrder, null);
+          }),
+        };
+      }),
+    };
+  }
+
+  /** Live labels: Block | 1 · Cluster A — | 1.2 · Exercise 3 — | 1.2.3 */
+  function paintCoord(el, meta, coord) {
+    const row = el?.querySelector(":scope > .coord-row");
+    if (!row) return;
+    const metaEl = $("[data-coord-meta]", row);
+    const chip = $("[data-coord-open]", row);
+    if (metaEl) metaEl.textContent = meta;
+    if (chip) chip.textContent = coord;
+  }
+
+  function updateSequenceLabels() {
+    state.blocks.forEach((block, bi) => {
+      const blockOrder = bi + 1;
+      const blockEl = document.querySelector(`[data-kind=block][data-id="${block.id}"]`);
+      paintCoord(blockEl, "Block", String(blockOrder));
+
+      let exerciseCount = 0;
+      let clusterCount = 0;
+
+      block.items.forEach((item, ii) => {
+        const itemOrder = ii + 1;
+        const itemEl = document.querySelector(`[data-id="${item.id}"]`);
+        const itemCoord = formatCoordinate(blockOrder, itemOrder);
+
+        if (item.kind === "cluster") {
+          const key = clusterLetter(clusterCount);
+          clusterCount += 1;
+          paintCoord(itemEl, `Cluster ${key} —`, itemCoord);
+          item.items.forEach((ex, si) => {
+            const subItemOrder = si + 1;
+            const exEl = document.querySelector(`[data-id="${ex.id}"]`);
+            const coord = formatCoordinate(blockOrder, itemOrder, subItemOrder);
+            paintCoord(exEl, `Exercise ${subItemOrder} —`, coord);
+          });
+        } else {
+          exerciseCount += 1;
+          paintCoord(itemEl, `Exercise ${exerciseCount} —`, itemCoord);
+        }
+      });
+    });
+  }
+
+  // ── Locate / address compass ───────────────────────────
+
+  function locate(id) {
+    for (let bi = 0; bi < state.blocks.length; bi++) {
+      const block = state.blocks[bi];
+      if (block.id === id) {
+        return {
+          model: block,
+          kind: "block",
+          nested: false,
+          block,
+          blockIndex: bi,
+          parentItems: state.blocks,
+          index: bi,
+          parent: null,
+          cluster: null,
+          clusterIndex: -1,
+        };
+      }
+      for (let i = 0; i < block.items.length; i++) {
+        const item = block.items[i];
+        if (item.id === id) {
+          return {
+            model: item,
+            kind: item.kind,
+            nested: false,
+            block,
+            blockIndex: bi,
+            parentItems: block.items,
+            index: i,
+            parent: block,
+            cluster: null,
+            clusterIndex: -1,
+          };
+        }
+        if (item.kind === "cluster") {
+          for (let j = 0; j < item.items.length; j++) {
+            if (item.items[j].id === id) {
+              return {
+                model: item.items[j],
+                kind: "exercise",
+                nested: true,
+                block,
+                blockIndex: bi,
+                parentItems: item.items,
+                index: j,
+                parent: item,
+                cluster: item,
+                clusterIndex: i,
+              };
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /** Derive display address from array indices (source of truth). */
+  function formatAddress(loc) {
+    if (!loc) return "";
+    if (loc.kind === "block") return String(loc.blockIndex + 1);
+    if (!loc.nested) return `${loc.blockIndex + 1}.${loc.index + 1}`;
+    return `${loc.blockIndex + 1}.${loc.clusterIndex + 1}.${loc.index + 1}`;
+  }
+
+  function pruneEmptyClusters(block) {
+    if (!block?.items) return;
+    for (let i = block.items.length - 1; i >= 0; i--) {
+      const it = block.items[i];
+      if (it.kind === "cluster" && (!it.items || it.items.length === 0)) {
+        block.items.splice(i, 1);
+      }
+    }
+  }
+
+  function swapAdjacent(arr, index, dir) {
+    const j = index + dir;
+    if (j < 0 || j >= arr.length) return false;
+    const tmp = arr[index];
+    arr[index] = arr[j];
+    arr[j] = tmp;
+    return true;
+  }
+
+  function hasClusterInDirection(block, fromIndex, dir) {
+    let i = fromIndex + dir;
+    while (i >= 0 && i < block.items.length) {
+      if (block.items[i].kind === "cluster") return true;
+      i += dir;
+    }
+    return false;
+  }
+
+  /**
+   * ▲ (dir -1) = earlier / toward top of list
+   * ▼ (dir +1) = later / toward bottom of list
+   */
+  function moveX(id, dir) {
+    const loc = locate(id);
+    if (!loc) return false;
+
+    if (loc.kind === "block") {
+      return swapAdjacent(state.blocks, loc.index, dir);
+    }
+
+    const targetBi = loc.blockIndex + dir;
+    if (targetBi < 0 || targetBi >= state.blocks.length) return false;
+
+    loc.parentItems.splice(loc.index, 1);
+    if (loc.nested) pruneEmptyClusters(loc.block);
+    state.blocks[targetBi].items.push(loc.model);
+    return true;
+  }
+
+  function moveY(id, dir) {
+    const loc = locate(id);
+    if (!loc || loc.kind === "block") return false;
+
+    if (loc.nested) {
+      let i = loc.clusterIndex + dir;
+      while (i >= 0 && i < loc.block.items.length) {
+        const candidate = loc.block.items[i];
+        if (candidate.kind === "cluster") {
+          loc.parentItems.splice(loc.index, 1);
+          candidate.items.push(loc.model);
+          pruneEmptyClusters(loc.block);
+          return true;
+        }
+        i += dir;
+      }
+      return false;
+    }
+
+    return swapAdjacent(loc.parentItems, loc.index, dir);
+  }
+
+  function moveZ(id, dir) {
+    const loc = locate(id);
+    if (!loc || loc.kind !== "exercise") return false;
+
+    if (loc.nested) {
+      const next = loc.index + dir;
+      if (next >= 0 && next < loc.parentItems.length) {
+        return swapAdjacent(loc.parentItems, loc.index, dir);
+      }
+      if (dir < 0 && loc.index === 0) {
+        loc.parentItems.splice(loc.index, 1);
+        const ci = loc.block.items.indexOf(loc.cluster);
+        loc.block.items.splice(ci, 0, loc.model);
+        pruneEmptyClusters(loc.block);
+        return true;
+      }
+      if (dir > 0 && loc.index === loc.parentItems.length - 1) {
+        loc.parentItems.splice(loc.index, 1);
+        const ci = loc.block.items.indexOf(loc.cluster);
+        loc.block.items.splice(ci + 1, 0, loc.model);
+        pruneEmptyClusters(loc.block);
+        return true;
+      }
+      return false;
+    }
+
+    const items = loc.block.items;
+    const i = loc.index;
+    if (dir > 0 && items[i + 1]?.kind === "cluster") {
+      const cluster = items[i + 1];
+      items.splice(i, 1);
+      cluster.items.unshift(loc.model);
+      return true;
+    }
+    if (dir < 0 && items[i - 1]?.kind === "cluster") {
+      const cluster = items[i - 1];
+      items.splice(i, 1);
+      cluster.items.push(loc.model);
+      return true;
+    }
+    return false;
+  }
+
+  function dialEnablement(id) {
+    const loc = locate(id);
+    if (!loc) return null;
+
+    const x = { earlier: false, later: false, locked: false };
+    const y = { earlier: false, later: false, locked: true };
+    const z = { earlier: false, later: false, locked: true };
+
+    if (loc.kind === "block") {
+      x.earlier = loc.index > 0;
+      x.later = loc.index < state.blocks.length - 1;
+      return { x, y, z };
+    }
+
+    x.earlier = loc.blockIndex > 0;
+    x.later = loc.blockIndex < state.blocks.length - 1;
+    y.locked = false;
+
+    if (loc.kind === "cluster") {
+      y.earlier = loc.index > 0;
+      y.later = loc.index < loc.block.items.length - 1;
+      return { x, y, z };
+    }
+
+    if (loc.nested) {
+      y.earlier = hasClusterInDirection(loc.block, loc.clusterIndex, -1);
+      y.later = hasClusterInDirection(loc.block, loc.clusterIndex, 1);
+      z.locked = false;
+      z.earlier = true;
+      z.later = true;
+      return { x, y, z };
+    }
+
+    y.earlier = loc.index > 0;
+    y.later = loc.index < loc.block.items.length - 1;
+    const prev = loc.block.items[loc.index - 1];
+    const next = loc.block.items[loc.index + 1];
+    z.earlier = prev?.kind === "cluster";
+    z.later = next?.kind === "cluster";
+    z.locked = !z.earlier && !z.later;
+    return { x, y, z };
+  }
+
+  const compassEl = $("#coord-compass");
+  const compassPreview = $("[data-compass-preview]", compassEl);
+  const compassState = { id: null, lastFrom: "", lastTo: "" };
+
+  function positionCompass(anchor) {
+    const rect = anchor.getBoundingClientRect();
+    const pad = 8;
+    compassEl.hidden = false;
+    const panel = compassEl.getBoundingClientRect();
+    let top = rect.bottom + pad;
+    let left = rect.left;
+    if (top + panel.height > window.innerHeight - pad) {
+      top = Math.max(pad, rect.top - panel.height - pad);
+    }
+    if (left + panel.width > window.innerWidth - pad) {
+      left = Math.max(pad, window.innerWidth - panel.width - pad);
+    }
+    compassEl.style.top = `${Math.round(top)}px`;
+    compassEl.style.left = `${Math.round(left)}px`;
+  }
+
+  function paintCompassDials() {
+    const flags = dialEnablement(compassState.id);
+    if (!flags) return;
+    ["x", "y", "z"].forEach((key) => {
+      const dial = $(`.compass-dial[data-dial="${key}"]`, compassEl);
+      const f = flags[key];
+      dial.classList.toggle("is-locked", Boolean(f.locked));
+      const earlierBtn = $(`.compass-btn[data-dir="-1"]`, dial);
+      const laterBtn = $(`.compass-btn[data-dir="1"]`, dial);
+      earlierBtn.disabled = Boolean(f.locked) || !f.earlier;
+      laterBtn.disabled = Boolean(f.locked) || !f.later;
+    });
+  }
+
+  function syncCompassPreview() {
+    if (!compassState.id) {
+      compassPreview.innerHTML = "";
+      return;
+    }
+    const loc = locate(compassState.id);
+    const now = formatAddress(loc);
+    if (compassState.lastFrom && compassState.lastTo && compassState.lastFrom !== compassState.lastTo) {
+      compassPreview.innerHTML = `<strong>${compassState.lastFrom}</strong> ➔ <strong>${compassState.lastTo}</strong>`;
+    } else {
+      compassPreview.innerHTML = `<strong>${now}</strong>`;
+    }
+  }
+
+  function closeCompass() {
+    compassState.id = null;
+    compassState.lastFrom = "";
+    compassState.lastTo = "";
+    compassEl.hidden = true;
+    document.querySelectorAll("[data-coord-open][aria-expanded='true']").forEach((el) => {
+      el.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  function openCompass(id, anchor) {
+    compassState.id = id;
+    compassState.lastFrom = "";
+    compassState.lastTo = "";
+    document.querySelectorAll("[data-coord-open][aria-expanded='true']").forEach((el) => {
+      el.setAttribute("aria-expanded", "false");
+    });
+    anchor.setAttribute("aria-expanded", "true");
+    positionCompass(anchor);
+    paintCompassDials();
+    syncCompassPreview();
+  }
+
+  function afterCompassTick(id, fromAddr) {
+    const stillThere = locate(id);
+    if (!stillThere) {
+      closeCompass();
+      rerender();
+      refreshPreview();
+      return;
+    }
+    const toAddr = formatAddress(stillThere);
+    compassState.lastFrom = fromAddr;
+    compassState.lastTo = toAddr;
+    rerender();
+    refreshPreview();
+    requestAnimationFrame(() => {
+      const chip = document.querySelector(`[data-id="${CSS.escape(id)}"] [data-coord-open]`);
+      if (!chip) {
+        closeCompass();
+        return;
+      }
+      compassState.id = id;
+      chip.setAttribute("aria-expanded", "true");
+      positionCompass(chip);
+      paintCompassDials();
+      syncCompassPreview();
+    });
+  }
+
+  function tickCompass(dial, dir) {
+    const id = compassState.id;
+    if (!id) return;
+    const loc = locate(id);
+    if (!loc) {
+      closeCompass();
+      return;
+    }
+    const fromAddr = formatAddress(loc);
+    let ok = false;
+    if (dial === "x") ok = moveX(id, dir);
+    else if (dial === "y") ok = moveY(id, dir);
+    else if (dial === "z") ok = moveZ(id, dir);
+    if (!ok) return;
+    afterCompassTick(id, fromAddr);
+  }
+
+  function bindCoordControls(node) {
+    const id = node.dataset.id;
+    const chip = $(":scope > .coord-row [data-coord-open]", node);
+    if (!chip || !id) return;
+    chip.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (compassState.id === id && !compassEl.hidden) closeCompass();
+      else openCompass(id, chip);
+    });
+  }
+
+  compassEl.addEventListener("click", (e) => {
+    const btn = e.target.closest(".compass-btn");
+    if (!btn || btn.disabled) return;
+    e.stopPropagation();
+    const dial = btn.closest(".compass-dial")?.dataset?.dial;
+    const dir = Number(btn.dataset.dir);
+    if (!dial || !Number.isFinite(dir) || dir === 0) return;
+    tickCompass(dial, dir);
+  });
+
+  document.addEventListener("click", (e) => {
+    if (compassEl.hidden) return;
+    if (e.target.closest("#coord-compass")) return;
+    if (e.target.closest("[data-coord-open]")) return;
+    closeCompass();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !compassEl.hidden) {
+      e.preventDefault();
+      closeCompass();
+    }
+  });
+
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (compassEl.hidden || !compassState.id) return;
+      const chip = document.querySelector(
+        `[data-id="${CSS.escape(compassState.id)}"] [data-coord-open]`
+      );
+      if (chip) positionCompass(chip);
+      else closeCompass();
+    },
+    true
+  );
+
+  // ── Table render ───────────────────────────────────────
+
+  function escapeAttr(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;");
+  }
+
+  function loadUnitOptions(selected) {
+    return LOAD_UNITS.map(
+      (u) =>
+        `<option value="${escapeAttr(u)}"${u === selected ? " selected" : ""}>${escapeAttr(u)}</option>`
+    ).join("");
+  }
+
+  function volumeHeaders(cat) {
+    const { hasReps, hasTime, hasDistance } = categoryFlags(cat);
+    const cols = [];
+    if (hasTime) cols.push("<th>Duration</th>");
+    if (hasReps) cols.push("<th>Reps</th>");
+    if (hasDistance) cols.push("<th>Distance</th>");
+    return cols.join("");
+  }
+
+  function volumeCells(t, i, cat) {
+    const { hasReps, hasTime, hasDistance } = categoryFlags(cat);
+    const cells = [];
+
+    if (hasTime) {
+      cells.push(`
+        <td>
+          <div class="time-picker" data-set="${i}">
+            <input type="number" class="time-part" data-set="${i}" data-key="time_h" value="${pad2(t.time_h)}" placeholder="00" aria-label="Hours" />
+            <span class="time-sep">:</span>
+            <input type="number" class="time-part" data-set="${i}" data-key="time_m" value="${pad2(t.time_m)}" placeholder="00" aria-label="Minutes" />
+            <span class="time-sep">:</span>
+            <input type="number" class="time-part" data-set="${i}" data-key="time_s" value="${pad2(t.time_s)}" placeholder="00" aria-label="Seconds" />
+          </div>
+        </td>
+      `);
+    }
+
+    if (hasReps) {
+      const perSide = Boolean(t.is_per_side);
+      cells.push(`
+        <td>
+          <div class="reps-cell">
+            <input type="number" class="metric-input" data-set="${i}" data-key="reps" min="0" step="1"
+              value="${t.reps ?? ""}" placeholder="0" aria-label="Reps" />
+            <button type="button" class="toggle-per-side${perSide ? " is-per-side" : ""}"
+              data-set="${i}" data-per-side="${perSide}"
+              aria-pressed="${perSide}" title="Toggle reps vs reps per side">
+              ${perSide ? "Reps/Side" : "Reps"}
+            </button>
+          </div>
+        </td>
+      `);
+    }
+
+    if (hasDistance) {
+      cells.push(`
+        <td>
+          <div class="distance-cell">
+            <input type="number" class="metric-input" data-set="${i}" data-key="distance_mi"
+              min="0" step="0.01" value="${t.distance_mi ?? ""}" placeholder="0.00" aria-label="Distance miles" />
+            <span class="unit-label">mi</span>
+          </div>
+        </td>
+      `);
+    }
+
+    return cells.join("");
+  }
+
+  function loadCell(t, i) {
+    const isBw = t.load_unit === "BW";
+    return `
+      <td>
+        <div class="load-cell">
+          <input type="number" class="metric-input load-value" data-set="${i}" data-key="load_value"
+            min="0" step="0.1" value="${t.load_value ?? ""}" placeholder="Load"
+            ${isBw ? "disabled" : ""} aria-label="Load value" />
+          <select class="load-unit" data-set="${i}" data-key="load_unit" aria-label="Load unit">
+            ${loadUnitOptions(t.load_unit)}
+          </select>
+        </div>
+      </td>
+    `;
+  }
+
+  /** Wipe head + body; spawn structured metric rows for the category. */
+  function renderTargetsTable(exerciseEl, exercise) {
+    const thead = $("[data-targets-head]", exerciseEl);
+    const tbody = $("[data-targets-body]", exerciseEl);
+    const cat = exercise.comp_category_id;
+    const showAnalytics = Boolean(exercise.track_analytics);
+
+    thead.innerHTML = `
+      <tr>
+        <th>Set</th>
+        ${volumeHeaders(cat)}
+        <th>Load</th>
+        ${showAnalytics ? `<th class="analytics-col" title="Include set in analytics">Analytics</th>` : ""}
+      </tr>
+    `;
+
+    tbody.innerHTML = "";
+    exercise.targets.forEach((t, i) => {
+      const tr = document.createElement("tr");
+      tr.dataset.set = String(i);
+      tr.dataset.perSide = String(Boolean(t.is_per_side));
+      const tracked = t.track_analytics !== false;
+      if (showAnalytics && !tracked) tr.classList.add("analytics-excluded");
+      tr.innerHTML = `
+        <td class="set-num">${i + 1}</td>
+        ${volumeCells(t, i, cat)}
+        ${loadCell(t, i)}
+        ${
+          showAnalytics
+            ? `<td class="analytics-col">
+                <label class="set-analytics" title="Include this set in analytics">
+                  <input type="checkbox" data-set="${i}" data-key="track_analytics"
+                    ${tracked ? "checked" : ""} aria-label="Track set ${i + 1} in analytics" />
+                </label>
+              </td>`
+            : ""
+        }
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function syncPrescribedSets(exercise, exerciseEl, rawValue) {
+    let n = parseInt(rawValue, 10);
+    if (Number.isNaN(n) || n < 1) n = 1;
+    if (n > 50) n = 50;
+    exercise.prescribed_sets = n;
+    exercise.targets = makeTargets(n, exercise.targets);
+    const input = $("[data-field=prescribed_sets]", exerciseEl);
+    if (input) input.value = n;
+    renderTargetsTable(exerciseEl, exercise);
+  }
+
+  function focusName(el) {
+    requestAnimationFrame(() => {
+      const input = el?.querySelector?.(".name-input");
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
+  }
+
+  function wrapTimePart(key, n) {
+    if (!Number.isFinite(n)) n = 0;
+    n = Math.trunc(n);
+    if (key === "time_h") return ((n % 100) + 100) % 100; // 00–99
+    return ((n % 60) + 60) % 60; // mm / ss: 00–59
+  }
+
+  /** Optional duration toggle + hh:mm:ss picker (lives inside the ⋯ more panel). */
+  function bindDurationControls(root, model) {
+    const btn = root.querySelector("[data-duration-toggle]");
+    const picker = root.querySelector("[data-duration-picker]");
+    if (!btn || !picker) return;
+
+    if (!model.duration) model.duration = emptyDuration();
+
+    function syncUI() {
+      btn.classList.toggle("is-on", model.track_duration);
+      btn.setAttribute("aria-pressed", String(model.track_duration));
+      btn.textContent = model.track_duration ? "Duration on" : "Track duration";
+      picker.hidden = !model.track_duration;
+      const d = model.duration;
+      picker.querySelectorAll("[data-dur-key]").forEach((input) => {
+        const key = input.dataset.durKey;
+        input.value = pad2(d[key] ?? 0);
+      });
+    }
+
+    syncUI();
+
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      model.track_duration = !model.track_duration;
+      syncUI();
+      refreshPreview();
+      if (model.track_duration) {
+        picker.querySelector("[data-dur-key=time_m]")?.focus();
+      }
+    });
+
+    picker.addEventListener("input", (e) => {
+      const el = e.target.closest("[data-dur-key]");
+      if (!el) return;
+      const key = el.dataset.durKey;
+      let n = parseInt(el.value, 10);
+      if (Number.isNaN(n)) n = 0;
+      n = wrapTimePart(key, n);
+      model.duration[key] = n;
+      el.value = pad2(n);
+      refreshPreview();
+    });
+
+    picker.addEventListener("keydown", (e) => {
+      const el = e.target.closest("[data-dur-key]");
+      if (!el) return;
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      e.preventDefault();
+      const key = el.dataset.durKey;
+      let n = parseInt(el.value, 10);
+      if (Number.isNaN(n)) n = model.duration[key] || 0;
+      n += e.key === "ArrowUp" ? 1 : -1;
+      n = wrapTimePart(key, n);
+      model.duration[key] = n;
+      el.value = pad2(n);
+      refreshPreview();
+    });
+
+    picker.addEventListener("change", (e) => {
+      const el = e.target.closest("[data-dur-key]");
+      if (!el) return;
+      const key = el.dataset.durKey;
+      let n = parseInt(el.value, 10);
+      if (Number.isNaN(n)) n = 0;
+      n = wrapTimePart(key, n);
+      model.duration[key] = n;
+      el.value = pad2(n);
+      refreshPreview();
+    });
+  }
+
+  /** Exercise analytics mapping — master name + tags + per-set include flags. */
+  function bindAnalyticsControls(exerciseEl, exercise) {
+    const btn = exerciseEl.querySelector("[data-analytics-toggle]");
+    const fields = exerciseEl.querySelector("[data-analytics-fields]");
+    if (!btn || !fields) return;
+
+    const masterInput = fields.querySelector("[data-field=master_exercise_name]");
+    const tagsInput = fields.querySelector("[data-field=group_tags]");
+
+    function syncUI() {
+      const on = Boolean(exercise.track_analytics);
+      btn.classList.toggle("is-on", on);
+      btn.setAttribute("aria-pressed", String(on));
+      btn.textContent = on ? "Analytics on" : "Track analytics";
+      fields.hidden = !on;
+      if (masterInput) masterInput.value = exercise.master_exercise_name || "";
+      if (tagsInput) tagsInput.value = formatGroupTags(exercise.group_tags);
+      exerciseEl.classList.toggle("has-analytics", on);
+    }
+
+    syncUI();
+
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      exercise.track_analytics = !exercise.track_analytics;
+      if (exercise.track_analytics) {
+        // Turning parent on defaults every set to included
+        exercise.targets.forEach((t) => {
+          t.track_analytics = true;
+        });
+      }
+      syncUI();
+      renderTargetsTable(exerciseEl, exercise);
+      refreshPreview();
+      if (exercise.track_analytics) masterInput?.focus();
+    });
+
+    masterInput?.addEventListener("input", (e) => {
+      exercise.master_exercise_name = e.target.value;
+      refreshPreview();
+    });
+
+    tagsInput?.addEventListener("input", (e) => {
+      exercise.group_tags = parseGroupTags(e.target.value);
+      refreshPreview();
+    });
+  }
+
+  function applyTargetField(target, key, value, { padTime = false, inputEl = null } = {}) {
+    switch (key) {
+      case "reps":
+        target.reps = parseNullableNumber(value);
+        if (target.reps !== null) target.reps = Math.round(target.reps);
+        break;
+      case "distance_mi":
+        target.distance_mi = parseNullableNumber(value);
+        break;
+      case "load_value":
+        target.load_value = parseNullableNumber(value);
+        break;
+      case "load_unit":
+        target.load_unit = value;
+        break;
+      case "time_h":
+      case "time_m":
+      case "time_s": {
+        let n = parseInt(value, 10);
+        if (Number.isNaN(n)) n = 0;
+        n = wrapTimePart(key, n);
+        target[key] = n;
+        if (padTime && inputEl) inputEl.value = pad2(n);
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  function bindTargetsBody(exerciseEl, exercise) {
+    const tbody = $("[data-targets-body]", exerciseEl);
+
+    tbody.addEventListener("input", (e) => {
+      const el = e.target.closest("[data-set][data-key]");
+      if (!el || el.tagName === "SELECT" || el.tagName === "BUTTON") return;
+      if (el.type === "checkbox") return;
+      const idx = parseInt(el.dataset.set, 10);
+      const key = el.dataset.key;
+      const target = exercise.targets[idx];
+      if (!target) return;
+
+      if (key === "time_h" || key === "time_m" || key === "time_s") {
+        applyTargetField(target, key, el.value, { padTime: true, inputEl: el });
+        refreshPreview();
+        return;
+      }
+
+      applyTargetField(target, key, el.value);
+      refreshPreview();
+    });
+
+    tbody.addEventListener("keydown", (e) => {
+      const el = e.target.closest(".time-part[data-set][data-key]");
+      if (!el) return;
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+
+      e.preventDefault();
+      const idx = parseInt(el.dataset.set, 10);
+      const key = el.dataset.key;
+      const target = exercise.targets[idx];
+      if (!target) return;
+
+      let n = parseInt(el.value, 10);
+      if (Number.isNaN(n)) n = target[key] || 0;
+      n += e.key === "ArrowUp" ? 1 : -1;
+      n = wrapTimePart(key, n);
+      target[key] = n;
+      el.value = pad2(n);
+      refreshPreview();
+    });
+
+    tbody.addEventListener("change", (e) => {
+      const el = e.target.closest("[data-set][data-key]");
+      if (!el) return;
+      const idx = parseInt(el.dataset.set, 10);
+      const key = el.dataset.key;
+      const target = exercise.targets[idx];
+      if (!target) return;
+
+      if (key === "track_analytics") {
+        target.track_analytics = Boolean(el.checked);
+        const row = el.closest("tr");
+        row?.classList.toggle("analytics-excluded", !el.checked);
+        refreshPreview();
+        return;
+      }
+
+      if (key === "load_unit") {
+        target.load_unit = el.value;
+        const row = el.closest("tr");
+        const loadInput = row?.querySelector("[data-key=load_value]");
+        if (loadInput) {
+          const isBw = el.value === "BW";
+          loadInput.disabled = isBw;
+          if (isBw) {
+            target.load_value = null;
+            loadInput.value = "";
+          }
+        }
+        refreshPreview();
+        return;
+      }
+
+      applyTargetField(target, key, el.value, {
+        padTime: key.startsWith("time_"),
+        inputEl: el,
+      });
+      refreshPreview();
+    });
+
+    tbody.addEventListener("click", (e) => {
+      const btn = e.target.closest(".toggle-per-side");
+      if (!btn) return;
+      const idx = parseInt(btn.dataset.set, 10);
+      const target = exercise.targets[idx];
+      if (!target) return;
+
+      target.is_per_side = !target.is_per_side;
+      btn.dataset.perSide = String(target.is_per_side);
+      btn.setAttribute("aria-pressed", String(target.is_per_side));
+      btn.classList.toggle("is-per-side", target.is_per_side);
+      btn.textContent = target.is_per_side ? "Reps/Side" : "Reps";
+
+      const row = btn.closest("tr");
+      if (row) row.dataset.perSide = String(target.is_per_side);
+      refreshPreview();
+    });
+  }
+
+  // ── Render tree ────────────────────────────────────────
+
+  function renderExercise(exercise, parentEl) {
+    const tpl = $("#tpl-exercise");
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    node.dataset.id = exercise.id;
+
+    $("[data-field=tool]", node).value = exercise.tool;
+    $("[data-field=name]", node).value = exercise.name;
+    $("[data-field=comp_category_id]", node).value = exercise.comp_category_id;
+    $("[data-field=prescribed_sets]", node).value = exercise.prescribed_sets;
+    $("[data-field=coaching_notes]", node).value = exercise.coaching_notes;
+
+    const notesSlot = $("[data-notes-slot]", node);
+    notesSlot.hidden = !exercise.notesOpen;
+
+    renderTargetsTable(node, exercise);
+    bindTargetsBody(node, exercise);
+    bindAnalyticsControls(node, exercise);
+
+    $("[data-field=tool]", node).addEventListener("change", (e) => {
+      exercise.tool = e.target.value;
+      refreshPreview();
+    });
+    $("[data-field=name]", node).addEventListener("input", (e) => {
+      exercise.name = e.target.value;
+      refreshPreview();
+    });
+    $("[data-field=comp_category_id]", node).addEventListener("change", (e) => {
+      exercise.comp_category_id = e.target.value;
+      renderTargetsTable(node, exercise);
+      refreshPreview();
+    });
+
+    const setsInput = $("[data-field=prescribed_sets]", node);
+    setsInput.addEventListener("input", (e) => {
+      syncPrescribedSets(exercise, node, e.target.value);
+      refreshPreview();
+    });
+    setsInput.addEventListener("change", (e) => {
+      syncPrescribedSets(exercise, node, e.target.value);
+      refreshPreview();
+    });
+
+    $("[data-field=coaching_notes]", node).addEventListener("input", (e) => {
+      exercise.coaching_notes = e.target.value;
+      refreshPreview();
+    });
+    $("[data-notes]", node).addEventListener("click", () => {
+      exercise.notesOpen = !exercise.notesOpen;
+      notesSlot.hidden = !exercise.notesOpen;
+      if (exercise.notesOpen) $("[data-field=coaching_notes]", node).focus();
+    });
+    $("[data-remove]", node).addEventListener("click", () => {
+      removeFromParent(exercise.id);
+      refreshPreview();
+    });
+
+    bindDurationControls(node, exercise);
+    bindCoordControls(node);
+    parentEl.appendChild(node);
+    return node;
+  }
+
+  function renderCluster(cluster, parentEl) {
+    const tpl = $("#tpl-cluster");
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    node.dataset.id = cluster.id;
+    if (cluster.collapsed) node.classList.add("collapsed");
+
+    $("[data-field=name]", node).value = cluster.name;
+    $("[data-field=type]", node).value = cluster.type;
+    $("[data-field=notes]", node).value = cluster.notes;
+
+    const notesSlot = $("[data-notes-slot]", node);
+    notesSlot.hidden = !cluster.notesOpen;
+
+    const itemsEl = $("[data-items]", node);
+    cluster.items.forEach((ex) => renderExercise(ex, itemsEl));
+
+    $("[data-field=name]", node).addEventListener("input", (e) => {
+      cluster.name = e.target.value;
+      refreshPreview();
+    });
+    $("[data-field=type]", node).addEventListener("change", (e) => {
+      cluster.type = e.target.value;
+      refreshPreview();
+    });
+    $("[data-field=notes]", node).addEventListener("input", (e) => {
+      cluster.notes = e.target.value;
+      refreshPreview();
+    });
+    $("[data-notes]", node).addEventListener("click", (e) => {
+      e.stopPropagation();
+      cluster.notesOpen = !cluster.notesOpen;
+      notesSlot.hidden = !cluster.notesOpen;
+      if (cluster.notesOpen) $("[data-field=notes]", node).focus();
+    });
+    $("[data-remove]", node).addEventListener("click", (e) => {
+      e.stopPropagation();
+      removeFromParent(cluster.id);
+      refreshPreview();
+    });
+    $("[data-collapse]", node).addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleCollapse(cluster, node);
+    });
+    $("[data-add-exercise]", node).addEventListener("click", () => {
+      const ex = createExercise();
+      cluster.items.push(ex);
+      focusName(renderExercise(ex, itemsEl));
+      refreshPreview();
+    });
+
+    setupCollapseHeader(node, cluster);
+    bindDurationControls(node, cluster);
+    bindCoordControls(node);
+    parentEl.appendChild(node);
+    return node;
+  }
+
+  function renderBlock(block) {
+    const tpl = $("#tpl-block");
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    node.dataset.id = block.id;
+    if (block.collapsed) node.classList.add("collapsed");
+
+    $("[data-field=name]", node).value = block.name;
+    $("[data-field=notes]", node).value = block.notes;
+
+    const notesSlot = $("[data-notes-slot]", node);
+    notesSlot.hidden = !block.notesOpen;
+
+    const itemsEl = $("[data-items]", node);
+    block.items.forEach((item) => {
+      if (item.kind === "cluster") renderCluster(item, itemsEl);
+      else renderExercise(item, itemsEl);
+    });
+
+    $("[data-field=name]", node).addEventListener("input", (e) => {
+      block.name = e.target.value;
+      refreshPreview();
+    });
+    $("[data-field=notes]", node).addEventListener("input", (e) => {
+      block.notes = e.target.value;
+      refreshPreview();
+    });
+    $("[data-notes]", node).addEventListener("click", (e) => {
+      e.stopPropagation();
+      block.notesOpen = !block.notesOpen;
+      notesSlot.hidden = !block.notesOpen;
+      if (block.notesOpen) $("[data-field=notes]", node).focus();
+    });
+    $("[data-remove]", node).addEventListener("click", (e) => {
+      e.stopPropagation();
+      const idx = state.blocks.findIndex((b) => b.id === block.id);
+      if (idx >= 0) {
+        state.blocks.splice(idx, 1);
+        node.remove();
+        refreshPreview();
+      }
+    });
+    $("[data-collapse]", node).addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleCollapse(block, node);
+    });
+    $("[data-add-exercise]", node).addEventListener("click", () => {
+      const ex = createExercise();
+      block.items.push(ex);
+      focusName(renderExercise(ex, itemsEl));
+      refreshPreview();
+    });
+    $("[data-add-cluster]", node).addEventListener("click", () => {
+      const cluster = createCluster();
+      block.items.push(cluster);
+      focusName(renderCluster(cluster, itemsEl));
+      refreshPreview();
+    });
+
+    setupCollapseHeader(node, block);
+    bindDurationControls(node, block);
+    bindCoordControls(node);
+    blocksEl.appendChild(node);
+    return node;
+  }
+
+  function toggleCollapse(model, node) {
+    model.collapsed = !model.collapsed;
+    node.classList.toggle("collapsed", model.collapsed);
+  }
+
+  function setupCollapseHeader(node, model) {
+    const header = $(":scope > .item-header.collapse-target", node);
+    if (!header) return;
+    header.addEventListener("click", (e) => {
+      if (e.target.closest("input, select, textarea, button, a")) return;
+      toggleCollapse(model, node);
+    });
+  }
+
+  function removeFromParent(id) {
+    const loc = locate(id);
+    if (!loc || loc.kind === "block") return;
+    const block = loc.block;
+    loc.parentItems.splice(loc.index, 1);
+    if (loc.nested) pruneEmptyClusters(block);
+    document.querySelector(`[data-id="${id}"]`)?.remove();
+  }
+
+  function rerender() {
+    blocksEl.innerHTML = "";
+    state.blocks.forEach(renderBlock);
+  }
+
+  // ── Live JSON preview ──────────────────────────────────
+
+  let previewRaf = 0;
+  function refreshPreview() {
+    cancelAnimationFrame(previewRaf);
+    previewRaf = requestAnimationFrame(() => {
+      updateSequenceLabels();
+      jsonPreview.textContent = JSON.stringify(serializeTemplate(), null, 2);
+    });
+  }
+
+  // ── Session-level ──────────────────────────────────────
+
+  $("#session-name").addEventListener("input", (e) => {
+    state.name = e.target.value;
+    refreshPreview();
+  });
+  $("#session-category").addEventListener("change", (e) => {
+    state.category = e.target.value;
+    refreshPreview();
+  });
+  $("#session-notes").addEventListener("input", (e) => {
+    state.notes = e.target.value;
+    refreshPreview();
+  });
+  $('[data-notes-for="session"]').addEventListener("click", () => {
+    const slot = $("#session-notes-slot");
+    slot.hidden = !slot.hidden;
+    if (!slot.hidden) $("#session-notes").focus();
+  });
+
+  bindDurationControls($(".session-meta"), state);
+
+  $("#add-block").addEventListener("click", () => {
+    const block = createBlock();
+    state.blocks.push(block);
+    focusName(renderBlock(block));
+    refreshPreview();
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const json = serializeTemplate();
+    console.log("OttoLog template:", json);
+    refreshPreview();
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const prevLabel = submitBtn?.textContent;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Saving…";
+    }
+
+    try {
+      const res = await fetch(
+        "https://n8n.srv1013371.hstgr.cloud/webhook/create-template",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(json),
+        }
+      );
+      if (!res.ok) {
+        throw new Error(`Webhook responded ${res.status}`);
+      }
+      console.log("Template posted successfully:", res.status);
+      if (submitBtn) submitBtn.textContent = "Saved";
+    } catch (err) {
+      console.error("Failed to post template:", err);
+      alert(`Could not save template: ${err.message || err}`);
+      if (submitBtn) submitBtn.textContent = prevLabel || "Save template";
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        setTimeout(() => {
+          if (submitBtn.textContent === "Saved") {
+            submitBtn.textContent = prevLabel || "Save template";
+          }
+        }, 1500);
+      }
+    }
+  });
+
+  $("#preview-toggle").addEventListener("click", () => {
+    const collapsed = previewPanel.classList.toggle("collapsed");
+    $("#preview-toggle").setAttribute("aria-expanded", String(!collapsed));
+  });
+
+  $("#copy-json").addEventListener("click", async () => {
+    const text = jsonPreview.textContent || JSON.stringify(serializeTemplate(), null, 2);
+    const btn = $("#copy-json");
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = "Copied";
+      btn.classList.add("is-copied");
+      setTimeout(() => {
+        btn.textContent = "Copy";
+        btn.classList.remove("is-copied");
+      }, 1400);
+    } catch (err) {
+      console.error("Clipboard copy failed:", err);
+      alert("Could not copy to clipboard.");
+    }
+  });
+
+  const starter = createBlock("Warmup");
+  starter.items.push(createExercise());
+  state.blocks.push(starter);
+  state.blocks.push(createBlock("Workout"));
+  rerender();
+  refreshPreview();
+})();
+
+  </script>
+</body>
+</html>
