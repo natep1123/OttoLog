@@ -13,6 +13,7 @@ type Props = {
 /** Placeholder post-auth home — greeting + log out only (no tabs yet). */
 export function HomeScreen({ onBrandPress }: Props) {
   const { profile, user, signOut } = useAuth();
+  // Username is the normal path; email / "there" are fallbacks (missing profile, guest, etc.)
   const name = profile?.username ?? user?.email ?? 'there';
 
   return (

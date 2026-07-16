@@ -50,6 +50,7 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  /** True until session restore + profile fetch (when logged in) finish */
   const [loading, setLoading] = useState(true);
 
   const refreshProfile = useCallback(async () => {
@@ -64,24 +65,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session);
-      if (data.session?.user) {
-        fetchProfile(data.session.user.id).then((p) => {
-          if (mounted) setProfile(p);
-        });
-      }
-      setLoading(false);
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+    const applySession = async (next: Session | null) => {
       setSession(next);
       if (next?.user) {
-        fetchProfile(next.user.id).then(setProfile);
-      } else {
+        const p = await fetchProfile(next.user.id);
+        if (mounted) setProfile(p);
+      } else if (mounted) {
         setProfile(null);
       }
+    };
+
+    // Hold the blank shell until profile is loaded so Home never flashes email first
+    supabase.auth.getSession().then(async ({ data }) => {
+      await applySession(data.session);
+      if (mounted) setLoading(false);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
+      // getSession already handled the cold start
+      if (event === 'INITIAL_SESSION') return;
+
+      (async () => {
+        if (mounted) setLoading(true);
+        await applySession(next);
+        if (mounted) setLoading(false);
+      })();
     });
 
     return () => {
