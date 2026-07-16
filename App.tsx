@@ -15,6 +15,7 @@ import { SignInScreen } from './src/screens/SignInScreen';
 import { SignUpScreen } from './src/screens/SignUpScreen';
 import { WelcomeScreen } from './src/screens/WelcomeScreen';
 import { colors } from './src/theme/tokens';
+import { MainTab } from './src/navigation/tabs';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -23,10 +24,14 @@ type AuthRoute = 'welcome' | 'signIn' | 'signUp';
 function RootNavigator() {
   const { session, loading } = useAuth();
   const [authRoute, setAuthRoute] = useState<AuthRoute>('welcome');
+  const [activeTab, setActiveTab] = useState<MainTab>('home');
 
   // Reset to welcome when logged out
   useEffect(() => {
-    if (!session) setAuthRoute('welcome');
+    if (!session) {
+      setAuthRoute('welcome');
+      setActiveTab('home');
+    }
   }, [session]);
 
   if (loading) {
@@ -34,8 +39,13 @@ function RootNavigator() {
   }
 
   if (session) {
-    // Logged in: brand → Home (no-op while Home is the only app screen)
-    return <HomeScreen onBrandPress={() => {}} />;
+    return (
+      <HomeScreen
+        activeTab={activeTab}
+        onChangeTab={setActiveTab}
+        onBrandPress={() => setActiveTab('home')}
+      />
+    );
   }
 
   if (authRoute === 'signIn') {

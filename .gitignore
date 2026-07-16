@@ -40,3 +40,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# docs
+
+docs/Sample_Roadmap.md
