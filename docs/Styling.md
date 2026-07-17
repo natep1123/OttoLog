@@ -342,32 +342,32 @@ Home now uses a dashboard layout. Create, Library, and Account use hub / list / 
 
 ### Home
 
-Home is top-aligned and uses live app data where available:
+Top-aligned dashboard using live data where it exists:
 
-- Warm greeting / hero panel driven by the device local clock (`dayjs`)
-- Quick actions for Build exercise, Browse exercise library, and Manage taxonomy
-- Recent exercise templates (up to four) from Supabase
-- Live **This week** preview with today's local date highlighted and a **Soon** badge for future session logging
+- Greeting from local device time (`dayjs`)
+- Quick actions: Build exercise, Browse exercise library, Manage taxonomy
+- Up to four recent exercise templates from Supabase
+- **This week** strip with today highlighted; **Soon** badge until session logging ships
 
-Greeting bands (local hour): morning 5–11, afternoon 12–17, evening 18–21, late night **Hey** (22–4) so midnight is never “Good morning.”
+Greeting by local hour: morning 5–11, afternoon 12–17, evening 18–21, late night **Hey** (22–4).
 
-The week preview is intentionally not a fake session calendar yet. It is a visual placeholder for the future log-driven Home screen.
+The week strip is a placeholder layout, not a session calendar yet.
 
 ### Account
 
-Account hub shows profile (username / email), then:
+Account hub: profile (username, email), then:
 
-- **Taxonomy** — Tools, Primary groups, Analytics tags (create / rename / archive / hard-delete when unused). **Show archived** toggle; pickers stay active-only. Global **None** (No Tool) is System-locked. Session categories ship later.
-- **Settings** — Profile / Preferences (**Soon**), **Danger zone** (live)
+- **Taxonomy**: Tools, Primary groups, Analytics tags. Create, rename, archive, hard-delete when unused. **Show archived** toggle. Pickers elsewhere stay active-only. Global **None** (No Tool) is system-locked. Session categories come later.
+- **Settings**: Profile and Preferences (**Soon**), **Danger zone** (live)
 
-Danger zone holds **Delete account** with confirmation. **Log out** stays on the Account hub footer.
+Danger zone has **Delete account** with confirmation. **Log out** is on the Account hub footer.
 
-### Create & Library
+### Create and Library
 
-Both use the same hub pattern: `ScreenHeader` + stacked `HubAction` rows.
+Same hub pattern: `ScreenHeader` plus stacked `HubAction` rows.
 
-- **Create:** Build templates (live) · Log a session (Soon) → Templates hub → Exercise (live) · Session / Block / Cluster (Soon)
-- **Library:** Templates (live) · Logs (Soon) → Templates hub → Exercise list with name search (live) · other layers (Soon)
+- **Create**: Build templates (live), Log a session (Soon) → Templates hub → Exercise (live), Session / Block / Cluster (Soon)
+- **Library**: Templates (live), Logs (Soon) → Templates hub → Exercise list with name search (live), other layers (Soon)
 
 Exercise builder hides bottom nav. Library exercise list is top-aligned with `ListSearchBar`.
 

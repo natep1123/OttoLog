@@ -28,14 +28,14 @@ When outline, concept docs, and live SQL disagree, use this order:
 
 **App slice live**
 
-- **Home** — dashboard with quick actions, recent exercise templates, live local week preview
-- **Create** → Template hub → Exercise builder (nestable `ExerciseEditor`); save to Supabase
-- **Library** → Templates → Exercises — browse, search, edit, delete exercise templates
-- Searchable create-comboboxes for tools, primary groups, and tags (in exercise builder)
-- **Account** → Taxonomy — tools, primary groups, tags (create / rename / archive / hard-delete when unused)
-- **Account** → Settings → Danger zone — delete account
-- Exercise name search can **copy** an existing template's state into the current draft (does not switch editor target)
-- Active exercise template names are unique per user (case-insensitive; `sql/007`)
+- **Home**: dashboard with quick actions, recent exercise templates, local week preview
+- **Create** → Template hub → Exercise builder (`ExerciseEditor`); save to Supabase
+- **Library** → Templates → Exercises: browse, search, edit, delete
+- Searchable create-comboboxes for tools, primary groups, and tags in the exercise builder
+- **Account** → Taxonomy: tools, primary groups, tags (create, rename, archive, hard-delete when unused)
+- **Account** → Settings → Danger zone: delete account
+- Name search in the exercise builder can copy another template's fields into the current draft without switching which template you are editing
+- Active exercise template names are unique per user, case-insensitive (`sql/007`)
 
 **Not live yet**
 
@@ -66,8 +66,8 @@ OttoLog is an infinite workout canvas:
 
 **Structural defaults are global sentinels, not per-user copies:**
 
-1. **No Tool** — one global row in `tools`
-2. **Uncategorized** — one global row in `session_categories`
+1. **No Tool**: one global row in `tools`
+2. **Uncategorized**: one global row in `session_categories`
 
 They are null-buckets (so FKs never need to be null), immutable, and shared by every account. They are **not** seeded on signup.
 
@@ -77,7 +77,7 @@ Array order in the editor is the source of truth. Persisted `*_order` / `set_num
 
 ---
 
-## Design Decision — Global Sentinels (locked)
+## Design Decision: Global Sentinels (locked)
 
 **Decision:** **No Tool** and **Uncategorized** are single global rows with **known fixed UUID primary keys** and **`user_id IS NULL`**.
 
@@ -129,7 +129,7 @@ session_categories
   archived_at     timestamptz NULL
 ```
 
-Fixed UUIDs (locked — match `sql/003_locked_atoms.sql` / `sql/004_taxonomy.sql` and `src/constants/`):
+Fixed UUIDs (locked; must match `sql/003_locked_atoms.sql`, `sql/004_taxonomy.sql`, and `src/constants/`):
 
 | Constant | UUID | Row |
 |----------|------|-----|
@@ -144,7 +144,7 @@ Locked-atom IDs are listed at the top of `sql/003_locked_atoms.sql` and in `src/
 SELECT:  user_id = auth.uid()  OR  is_system_default = true
 INSERT:  user_id = auth.uid()  AND  is_system_default = false
 UPDATE:  user_id = auth.uid()  AND  is_system_default = false
-DELETE / archive: same as update — never on system defaults
+DELETE / archive: same as update; never on system defaults
 ```
 
 Policies must use explicit `is_system_default` / `user_id IS NULL` checks. Do not rely on `user_id = auth.uid()` alone for SELECT, or globals vanish (NULL never equals `auth.uid()`).
@@ -179,8 +179,8 @@ Use these names consistently in SQL, app code, and docs. Do not invent synonyms.
 
 **Groups vs tags**
 
-- **Group** = `analytics_primary_groups` / `primary_group_id` — singular aggregation identity.
-- **Tag** = `analytics_tags` / `analytics_tag_links` — plural free-form labels.
+- **Group** = `analytics_primary_groups` / `primary_group_id`: singular aggregation identity.
+- **Tag** = `analytics_tags` / `analytics_tag_links`: plural free-form labels.
 - Editor JSON may carry `analytics_tag_ids: uuid[]`; that array is expanded into `analytics_tag_links` rows for templates, not stored as a column named `analytics_tag_ids` on the template table.
 - Legacy prototype names `master_exercise_name` / `group_tags` are **not** used.
 
@@ -245,7 +245,7 @@ On signup (intended full flow):
 1. Create `auth.users`
 2. Insert / trigger-create `public.users`
 
-No Tool and Uncategorized are **not** created here — they are global sentinels (see Design Decision).
+No Tool and Uncategorized are **not** created here. They are global sentinels (see Design Decision).
 
 ---
 
@@ -261,7 +261,7 @@ Shared by all users. No `user_id`. Seeded once for the project.
 
 ### `target_shapes` in plain language
 
-OttoLog’s smallest nest unit (above sets) is an **exercise**. Each exercise picks one **target shape** so the editor knows which fields to show per set — for example Reps vs Time & Distance.
+OttoLog’s smallest nest unit (above sets) is an **exercise**. Each exercise picks one **target shape** so the editor knows which fields to show per set (for example Reps vs Time & Distance).
 
 ```
 Exercise "Pull-Ups"
@@ -341,8 +341,8 @@ Personal library objects for Create → Build templates.
 
 **Naming + copy-from-template**
 
-- Active template names are unique per user, per layer (case-insensitive). Archived rows free the name. Logs, by contrast, may repeat names.
-- In the exercise builder, picking a match from the name search **copies that template's editable state into the current draft** — it does not navigate to or switch the template being saved. The user must give the copy a new name before saving (duplicate names are rejected).
+- Active template names are unique per user, per layer (case-insensitive). Archiving frees the name. Log session names may repeat later.
+- In the exercise builder, picking a name from search copies that template's editable fields into the current draft. It does not open that template for editing. Save under a new name if you are creating a copy.
 
 ---
 
@@ -461,7 +461,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 - Extra load units (`% 1RM`, etc.) or cluster types beyond `superset` / `circuit`
 - Soft propagation between template layers
 - Log-instance tag join tables beyond template defaults (revisit later)
-- Per-user copies of No Tool / Uncategorized (rejected; see Design Decision — Global Sentinels)
+- Per-user copies of No Tool / Uncategorized (rejected; see Design Decision: Global Sentinels)
 
 ---
 
@@ -470,7 +470,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 | Doc | Role |
 |-----|------|
 | `docs/Styling.md` | Official visual system |
-| `docs/original-concept/Backend/Database_Design.md` | Concept schema + JSON tree — **note:** may still say `composition_categories` / `comp_category_id`; official name is `target_shapes` / `target_shape_id` |
+| `docs/original-concept/Backend/Database_Design.md` | Concept schema + JSON tree. **Note:** may still say `composition_categories` / `comp_category_id`; official name is `target_shapes` / `target_shape_id` |
 | `docs/original-concept/Frontend/Modular_Forms_Design.md` | Editor behavior that the schema supports |
 | `docs/original-concept/Frontend/UI_Design.md` | App shell / auth / tab structure |
 | `sql/` | Applied and pending migrations |
