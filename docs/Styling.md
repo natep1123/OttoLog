@@ -362,6 +362,15 @@ Account hub shows profile (username / email), then:
 
 Danger zone holds **Delete account** with confirmation. **Log out** stays on the Account hub footer.
 
+### Create & Library
+
+Both use the same hub pattern: `ScreenHeader` + stacked `HubAction` rows.
+
+- **Create:** Build templates (live) · Log a session (Soon) → Templates hub → Exercise (live) · Session / Block / Cluster (Soon)
+- **Library:** Templates (live) · Logs (Soon) → Templates hub → Exercise list with name search (live) · other layers (Soon)
+
+Exercise builder hides bottom nav. Library exercise list is top-aligned with `ListSearchBar`.
+
 ## Native Implementation Notes
 
 React Native does not use the browser CSS box model or CSS gradient backgrounds.

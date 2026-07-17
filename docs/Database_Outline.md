@@ -28,10 +28,14 @@ When outline, concept docs, and live SQL disagree, use this order:
 
 **App slice live**
 
-- Create hub → Template hub → Exercise builder (nestable `ExerciseEditor`)
-- Save / reopen exercise templates from Library
-- Searchable create-comboboxes for tools, primary groups, and tags
-- Account → Taxonomy management (tools, primary groups, tags: create / rename / archive / hard-delete when unused)
+- **Home** — dashboard with quick actions, recent exercise templates, live local week preview
+- **Create** → Template hub → Exercise builder (nestable `ExerciseEditor`); save to Supabase
+- **Library** → Templates → Exercises — browse, search, edit, delete exercise templates
+- Searchable create-comboboxes for tools, primary groups, and tags (in exercise builder)
+- **Account** → Taxonomy — tools, primary groups, tags (create / rename / archive / hard-delete when unused)
+- **Account** → Settings → Danger zone — delete account
+- Exercise name search can **copy** an existing template's state into the current draft (does not switch editor target)
+- Active exercise template names are unique per user (case-insensitive; `sql/007`)
 
 **Not live yet**
 

@@ -1,104 +1,56 @@
 # OttoLog
 
-OttoLog is a personal workout design and logging app — an infinite canvas for how *you* train, not a fixed exercise catalog. Build reusable templates at any layer, log real sessions with the same nested structure, and track only what matters with your own vocabulary.
+Personal workout design and logging — an infinite canvas for how *you* train, not a fixed exercise catalog. Build reusable templates, log sessions with the same nested structure, and track only what matters with your own vocabulary.
 
-React Native (Expo) · Supabase · TypeScript
+**Stack:** Expo · React Native · TypeScript · Supabase
 
-## Project Status
+## What's live
 
-Foundation + first vertical slice are live:
+Signed-in app with four tabs: **Home · Create · Library · Account**
 
-- OttoLog visual system, auth (welcome / log in / create account), session restore, Account + delete
-- Bottom tabs: Home · Create · Library · Account
-- Create hub → Template hub → **Exercise builder** (nestable form kit)
-- Save / reopen exercise templates in Supabase; Library browse
-- Searchable create-comboboxes for tools, primary analytics groups, and tags
-- **Account → Taxonomy** management (create / rename / archive / hard-delete when unused)
+| Area | Today |
+|------|--------|
+| **Home** | Dashboard — quick actions, recent exercise templates, live week preview |
+| **Create** | Exercise template builder (save to Supabase) |
+| **Library** | Browse / search / edit / delete exercise templates |
+| **Account** | Taxonomy CRUD (tools, primary groups, tags); Settings → delete account |
 
-**Next:** cluster / block / session template builders, then session logging + denest/renest.
+Auth (welcome, sign in, sign up), global sentinels **No Tool** / **Uncategorized**, searchable taxonomy pickers in the exercise editor, unique active template names.
 
-## Product Concept
+**Next:** cluster / block / session template builders, session logging, denest/renest.
 
-OttoLog is designed around a user-owned workout tree rather than a global exercise database. The long-term product lets people build reusable templates at multiple levels — session, block, cluster, and exercise — then log sessions with the same nested structure.
-
-The goal is a warm, journal-like training surface for designing and recording workouts without forcing someone into a preset catalog, fixed vocabulary, or rigid analytics model.
-
-## Tech Stack
-
-- Expo / React Native
-- TypeScript
-- Supabase Auth and Postgres
-- Plain `StyleSheet` styling with centralized theme tokens
-- `expo-font`, `expo-splash-screen`, `expo-linear-gradient`, and `react-native-svg`
-
-## Documentation
-
-Official project docs live in [`docs/`](./docs/). Concept / prototype material is under [`docs/original-concept/`](./docs/original-concept/).
-
-| Doc | Role |
-|-----|------|
-| [`docs/Database_Outline.md`](./docs/Database_Outline.md) | Official DB map + live vs planned (wins on naming) |
-| [`docs/Styling.md`](./docs/Styling.md) | Official visual system |
-| [`docs/original-concept/`](./docs/original-concept/) | Prototypes + deeper form/editor notes |
-
-## Getting Started
-
-Install dependencies:
+## Quick start
 
 ```sh
 npm install
+cp .env.example .env.local   # add Supabase URL + anon key
+npx expo start               # open in Expo Go
 ```
 
-Create a local env file:
+Run SQL migrations `sql/001` through `sql/007` in order in the Supabase SQL Editor. Details: [`docs/Setup.md`](docs/Setup.md).
 
-```sh
-cp .env.example .env.local
-# Edit .env.local with your actual Supabase keys
-```
+## Documentation
 
-Start the Expo dev server:
+Official docs (live contract):
 
-```sh
-npx expo start
-```
+| Doc | Contents |
+|-----|----------|
+| [`docs/Setup.md`](docs/Setup.md) | Env, migrations, run, verify |
+| [`docs/Project_Structure.md`](docs/Project_Structure.md) | Folders, navigation, key files |
+| [`docs/Database_Outline.md`](docs/Database_Outline.md) | Schema, RLS, live vs planned |
+| [`docs/Styling.md`](docs/Styling.md) | Visual system + screen patterns |
 
-Open the app with Expo Go on a phone.
+Historical prototypes: [`docs/original-concept/`](docs/original-concept/) — useful context, not the source of truth.
 
-## Supabase Setup
-
-Run migrations **in order** in the Supabase SQL Editor:
+## Project layout (short)
 
 ```text
-sql/001_users.sql
-sql/002_delete_own_account.sql
-sql/003_locked_atoms.sql
-sql/004_taxonomy.sql
-sql/005_analytics_taxonomy.sql
-sql/006_exercise_templates.sql
-sql/007_template_name_uniqueness.sql
+src/auth/          Session + profile
+src/components/    Shared UI + forms/ (ExerciseEditor kit)
+src/lib/           Supabase, templates, taxonomy, localTime
+src/screens/       Auth, Home shell, home/, create/, library/, account/
+src/theme/         tokens.ts
+sql/               Migrations 001–007
 ```
 
-Supabase Auth stores credentials in `auth.users`; OttoLog stores app profile data (e.g. `username`) in `public.users`. Global sentinels **No Tool** and **Uncategorized** are seeded in `004` (fixed UUIDs).
-
-## Current App Flow
-
-- Signed out: Welcome → Log in / Create account
-- Signed in: Home · Create · Library · Account
-- Create → Build templates → Exercise → save → Library reopen
-- Library → Templates → Exercise (open / edit saved templates); Logs is a stub
-- Account → Taxonomy → Tools / Primary groups / Analytics tags
-- Session / Block / Cluster tiles (Create + Library) and Log a session are stubs for now
-
-## Project Structure
-
-```text
-App.tsx                      Root app, fonts, auth routing
-src/auth/                    Auth context + session
-src/components/              Shared UI + nestable forms kit (forms/)
-src/constants/               Locked-atom + sentinel IDs, targetShapeFields
-src/lib/                     Supabase client, exercise + taxonomy helpers
-src/screens/                 Auth, Home shell, account/, create/, library/
-src/theme/                   OttoLog theme tokens
-sql/                         Supabase migrations (001–007)
-docs/                        Official + original-concept docs
-```
+Full map: [`docs/Project_Structure.md`](docs/Project_Structure.md).
