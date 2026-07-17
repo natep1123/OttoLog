@@ -56,7 +56,7 @@ OttoLog is an infinite workout canvas:
 
 They are null-buckets (so FKs never need to be null), immutable, and shared by every account. They are **not** seeded on signup.
 
-User-created tools, categories, analytics groups/tags, templates, and logs remain per-user and RLS-scoped to `auth.uid()` (except `public.users`, keyed by `id = auth.uid()`).
+User-created tools, session categories, `analytics_primary_groups`, `analytics_tags`, templates, and logs remain per-user and RLS-scoped to `auth.uid()` (except `public.users`, keyed by `id = auth.uid()`).
 
 Array order in the editor is the source of truth. Persisted `*_order` / `set_number` columns on log rows are denormalized for query and renest. Coordinates like `1.2.3` are derived, not stored as source of truth.
 
@@ -130,6 +130,28 @@ Policies must use explicit `is_system_default` / `user_id IS NULL` checks. Do no
 ### What signup does *not* do
 
 Signup creates `auth.users` + `public.users` only. It does **not** insert No Tool or Uncategorized. Those rows exist once for the whole project.
+
+---
+
+## Naming Glossary (locked)
+
+Use these names consistently in SQL, app code, and docs. Do not invent synonyms.
+
+| Concept | Table | FK / field | Notes |
+|---------|--------|------------|--------|
+| Tool | `tools` | `tool_id` | Equipment. Global sentinel: **No Tool**. |
+| Session category | `session_categories` | `category_id` | Session/template label. Global sentinel: **Uncategorized**. Not a composition category. |
+| Composition category | `composition_categories` | `comp_category_id` | Measurement shape (Reps, Time, …). Locked atom. |
+| Primary analytics group | `analytics_primary_groups` | `primary_group_id` | **One** optional reporting bucket per exercise when `track_analytics = true`. Not the exercise display name. |
+| Analytics tag | `analytics_tags` | via `analytics_tag_links.tag_id` | Many optional filters per exercise template. |
+| Tag link | `analytics_tag_links` | `exercise_template_id`, `tag_id` | M2M join only. No “groups” join table. |
+
+**Groups vs tags**
+
+- **Group** = `analytics_primary_groups` / `primary_group_id` — singular aggregation identity.
+- **Tag** = `analytics_tags` / `analytics_tag_links` — plural free-form labels.
+- Editor JSON may carry `analytics_tag_ids: uuid[]`; that array is expanded into `analytics_tag_links` rows for templates, not stored as a column named `analytics_tag_ids` on the template table.
+- Legacy prototype names `master_exercise_name` / `group_tags` are **not** used.
 
 ---
 
@@ -214,15 +236,15 @@ Do not confuse **composition categories** (exercise measurement shape) with **se
 
 ## 3. Taxonomy (`tools`, `session_categories`, analytics)
 
-Mixed ownership on tools/categories; analytics groups/tags are user-only.
+Mixed ownership on tools / session categories; analytics tables are user-only.
 
 | Table | Ownership | Purpose |
 |-------|-----------|---------|
 | `tools` | Global sentinel + user rows | Equipment vocabulary. Global **No Tool**; users add their own tools. |
 | `session_categories` | Global sentinel + user rows | Session / template labels. Global **Uncategorized**; users add their own. |
-| `analytics_primary_groups` | User only | Optional reporting bucket when analytics is on. |
-| `analytics_tags` | User only | Optional free-form filters. |
-| `analytics_tag_links` | User only (via exercise template) | Many-to-many: exercise templates ↔ tags. |
+| `analytics_primary_groups` | User only | Reporting buckets. Referenced by `primary_group_id`. |
+| `analytics_tags` | User only | Free-form filters. Referenced by `analytics_tag_links.tag_id`. |
+| `analytics_tag_links` | User only (via owning exercise template) | M2M: `exercise_template_id` ↔ `tag_id`. |
 
 ### Structural sentinels (global)
 
@@ -235,10 +257,11 @@ Sentinels cannot be renamed, archived, or deleted. User taxonomy rows may be sof
 
 ### Analytics identity vs exercise name
 
-- Exercise **display name** is free text.
-- If `track_analytics = true`, the exercise maps to exactly one `analytics_primary_groups` row via `primary_group_id`.
-- If `track_analytics = false`, `primary_group_id` is null and tags are empty.
-- Multiple differently named exercises can share one primary group so volume rolls up together.
+- Exercise **display `name`** is free text and is not the analytics identity.
+- If `track_analytics = true`, the exercise has exactly one `primary_group_id` → `analytics_primary_groups`.
+- If `track_analytics = false`, `primary_group_id` is null and there are no `analytics_tag_links` (editor `analytics_tag_ids` is `[]`).
+- Multiple differently named exercises can share one `analytics_primary_groups` row so volume rolls up together.
+- Tags (`analytics_tags`) are optional many-to-many filters and never replace `primary_group_id`.
 
 ---
 
@@ -248,10 +271,10 @@ Personal library objects for Create → Build templates.
 
 | Table | Storage style | Notes |
 |-------|---------------|--------|
-| `exercise_templates` | Columns + `default_target_shape` jsonb | Personal exercise presets. Always has `tool_id` and `comp_category_id`. |
+| `exercise_templates` | Columns + `default_target_shape` jsonb | Presets. Always `tool_id` + `comp_category_id`. Optional `track_analytics` + `primary_group_id` (required iff tracking). Tags via `analytics_tag_links`, not a column on this table. |
 | `cluster_templates` | `content` jsonb | Standalone cluster blob. `cluster_type` ∈ `superset` \| `circuit`. |
 | `block_templates` | `content` jsonb | Standalone block blob. |
-| `session_templates` | `content` jsonb + `category_id` | Full session tree. Default category = Uncategorized. |
+| `session_templates` | `content` jsonb + `category_id` | Full session tree. `category_id` never null; default = global Uncategorized. |
 
 ### Independence rule (v1)
 
@@ -306,14 +329,16 @@ auth.users
 tools / session_categories
   ├── global sentinels (No Tool, Uncategorized)
   └── user-owned rows
-  └── referenced by templates / log exercises
-  └── session_templates + session_logs require category_id (Uncategorized allowed)
-  └── exercises require tool_id (No Tool allowed)
+  └── session_templates.category_id / session_logs.category_id → session_categories
+  └── exercise tool_id → tools (No Tool allowed)
 
-analytics_primary_groups, analytics_tags
-  └── user-owned only
+analytics_primary_groups
+  └── exercise_templates.primary_group_id
+  └── log_items.primary_group_id / log_sub_items.primary_group_id
 
-exercise_templates ── analytics_tag_links ── analytics_tags
+analytics_tags
+  └── analytics_tag_links.tag_id
+        └── analytics_tag_links.exercise_template_id → exercise_templates
 
 block_templates / cluster_templates
   └── copied as JSON into session_templates.content (no FK)
@@ -348,7 +373,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 | 0 | `public.users` + delete RPC | Auth shell *(done)* |
 | 1 | Locked atoms | Exercise measurement shape |
 | 2 | `tools` + `session_categories` **including global No Tool / Uncategorized** | Valid FKs for templates/logs |
-| 3 | Analytics taxonomy tables | Optional exercise analytics |
+| 3 | `analytics_primary_groups`, `analytics_tags`, `analytics_tag_links` | Optional exercise analytics |
 | 4 | `exercise_templates` | First Create → save → Library path |
 | 5 | `cluster_templates` / `block_templates` / `session_templates` | Full template library |
 | 6 | Log tables + denest/renest | Session logging + analytics facts |
@@ -374,7 +399,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 - Extra load units (`% 1RM`, etc.) or cluster types beyond `superset` / `circuit`
 - Soft propagation between template layers
 - Log-instance tag join tables beyond template defaults (revisit later)
-- Per-user copies of No Tool / Uncategorized (rejected; see Design Decision for global nulls)
+- Per-user copies of No Tool / Uncategorized (rejected; see Design Decision — Global Sentinels)
 
 ---
 
