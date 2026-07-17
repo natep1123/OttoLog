@@ -8,7 +8,7 @@ Where code lives and how the signed-in app is organized.
 ottolog-app/
 ├── App.tsx                 Entry: fonts, splash, auth gate, then HomeScreen or auth stack
 ├── index.ts                Expo registerRootComponent
-├── sql/                    Supabase migrations (001 through 007), run in order
+├── sql/                    Supabase migrations (001 through 008), run in order
 ├── docs/                   Official project docs (this folder)
 │   ├── Database_Outline.md
 │   ├── Project_Structure.md
@@ -23,7 +23,7 @@ ottolog-app/
     ├── navigation/         Tab type definitions
     ├── screens/            Full screens and tab stacks
     ├── theme/              Design tokens
-    └── types/              Shared TS types (e.g. exercise template)
+    └── types/              Shared TS types (exercise / cluster templates)
 ```
 
 ## Navigation model
@@ -33,13 +33,13 @@ No React Navigation yet. **`HomeScreen`** holds four bottom tabs and a nested st
 | Tab | Hub | Live drill-in | Stubs |
 |-----|-----|---------------|-------|
 | **Home** | Dashboard | (none) | Week → sessions (Soon) |
-| **Create** | Create hub | Templates → Exercise builder | Log session; Session / Block / Cluster templates |
-| **Library** | Library hub | Templates → Exercises → editor | Logs; Session / Block / Cluster lists |
+| **Create** | Create hub | Templates → Exercise / Cluster builders | Log session; Session / Block templates |
+| **Library** | Library hub | Templates → Exercises / Clusters → editor | Logs; Session / Block lists |
 | **Account** | Account hub | Taxonomy → lists; Settings → Danger zone | Profile, Preferences |
 
 Tapping the brand wordmark resets nested stacks.
 
-Bottom nav hides on the exercise builder (Create or Library drill-in).
+Bottom nav hides on the exercise and cluster builders (Create or Library drill-in).
 
 ## Key directories
 
@@ -53,6 +53,7 @@ Bottom nav hides on the exercise builder (Create or Library drill-in).
 |------|------|
 | `supabase.ts` | Supabase client |
 | `exerciseTemplates.ts` | List, get, save, delete exercise templates; default draft |
+| `clusterTemplates.ts` | List, get, save, archive / hard-delete cluster templates; draft helpers |
 | `taxonomy.ts` | Picker lists and Account taxonomy CRUD |
 | `localTime.ts` | Local greeting and week strip (`dayjs`) |
 
@@ -60,7 +61,7 @@ Bottom nav hides on the exercise builder (Create or Library drill-in).
 
 Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `ConfirmDialog`, `ListSearchBar`, `BottomNav`, `BrandWordmark`.
 
-**`components/forms/`**: Nestable exercise editor (`ExerciseEditor`, `SearchableSelect`, `TargetsGrid`, etc.). Same leaf will embed in future cluster, block, and session builders.
+**`components/forms/`**: Nestable editors (`ExerciseEditor`, `ClusterEditor`, `SearchableSelect`, `TargetsGrid`, etc.). Cluster embeds Exercise leaves; the same leaves will embed in future block and session builders.
 
 ### `src/screens/`
 
@@ -69,8 +70,8 @@ Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `Co
 | `WelcomeScreen`, `SignInScreen`, `SignUpScreen` | Auth flow |
 | `HomeScreen.tsx` | Tab shell and stack routing |
 | `home/HomeDashboardScreen.tsx` | Home tab UI |
-| `create/` | Create hub, template hub, exercise builder |
-| `library/` | Library hub, templates hub, exercise list |
+| `create/` | Create hub, template hub, exercise + cluster builders |
+| `library/` | Library hub, templates hub, exercise + cluster lists |
 | `account/` | Account hub, settings, danger zone, taxonomy hub and lists |
 
 ### `src/constants/` and `src/types/`
@@ -78,16 +79,23 @@ Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `Co
 - **`sentinelIds.ts`**: `NO_TOOL_ID`, `UNCATEGORIZED_ID` (must match `sql/004`)
 - **`lockedAtoms.ts`**: Target shape UUIDs from `sql/003`
 - **`targetShapeFields.ts`**: Which columns each shape shows in the targets grid
-- **`types/exerciseTemplate.ts`**: Template row and editor input types
+- **`types/exerciseTemplate.ts`**: Exercise template row and editor input types
+- **`types/clusterTemplate.ts`**: Cluster template row, content blob, and editor input types
 
-## Data flow (exercise templates)
+## Data flow (templates)
 
 ```text
 ExerciseBuilderScreen
   → ExerciseEditor (draft state)
   → saveExerciseTemplate() → exercise_templates + analytics_tag_links
-LibraryScreen / HomeDashboardScreen
-  → listExerciseTemplates() → open ExerciseBuilderScreen by id
+
+ClusterBuilderScreen
+  → ClusterEditor → nested ExerciseEditor leaves
+  → saveClusterTemplate() → cluster_templates (content jsonb)
+
+LibraryScreen / LibraryClustersScreen / HomeDashboardScreen
+  → list*Templates() → open builder by id
+
 Account TaxonomyListScreen
   → taxonomy.ts → tools | analytics_primary_groups | analytics_tags
 ```

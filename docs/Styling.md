@@ -338,7 +338,7 @@ Home now uses a dashboard layout. Create, Library, and Account use hub / list / 
 
 - Header-sized wordmark
 - Screen title + muted subtitle via `ScreenHeader`
-- Bottom navigation (hidden on the exercise builder)
+- Bottom navigation (hidden on the exercise and cluster builders)
 
 ### Home
 
@@ -366,10 +366,10 @@ Danger zone has **Delete account** with confirmation. **Log out** is on the Acco
 
 Same hub pattern: `ScreenHeader` plus stacked `HubAction` rows.
 
-- **Create**: Build templates (live), Log a session (Soon) → Templates hub → Exercise (live), Session / Block / Cluster (Soon)
-- **Library**: Templates (live), Logs (Soon) → Templates hub → Exercise list with name search (live), other layers (Soon)
+- **Create**: Build templates (live), Log a session (Soon) → Templates hub → Exercise / Cluster (live), Session / Block (Soon)
+- **Library**: Templates (live), Logs (Soon) → Templates hub → Exercise / Cluster lists with name search (live), Session / Block (Soon)
 
-Exercise builder hides bottom nav. Library exercise list is top-aligned with `ListSearchBar`.
+Exercise and cluster builders hide bottom nav. Library lists are top-aligned with `ListSearchBar`. Cluster nodes use the dusk left accent; nested exercises use sunrise.
 
 ## Native Implementation Notes
 

@@ -42,6 +42,7 @@ sql/004_taxonomy.sql
 sql/005_analytics_taxonomy.sql
 sql/006_exercise_templates.sql
 sql/007_template_name_uniqueness.sql
+sql/008_cluster_templates.sql
 ```
 
 After `004`, **No Tool** and **Uncategorized** exist once for the whole project (fixed UUIDs). Signup does not create copies per user.
@@ -60,9 +61,10 @@ Scan the QR code in Expo Go.
 
 1. Create account and sign in
 2. **Create** → Build templates → Exercise → save
-3. **Library** → Templates → Exercises → reopen and edit
-4. **Account** → Taxonomy → add a tool
-5. **Home** → recent templates and quick actions show up
+3. **Create** → Build templates → Cluster → add exercises → save
+4. **Library** → Templates → Exercises / Clusters → reopen and edit
+5. **Account** → Taxonomy → add a tool
+6. **Home** → recent exercise templates and quick actions show up
 
 ## Troubleshooting
 
@@ -71,6 +73,7 @@ Scan the QR code in Expo Go.
 | Auth errors | URL and anon key in `.env.local`; restart Metro after env changes |
 | RLS / empty lists | Migrations applied in order; user is signed in |
 | Delete account fails | `sql/002_delete_own_account.sql` applied |
-| Duplicate template name | By design. Active names are unique per user (`007`). |
+| Duplicate template name | By design. Active names are unique per user per layer (`007`, `008`). |
+| Cluster list empty / RLS | Apply `sql/008_cluster_templates.sql`; user signed in |
 
 Schema: [`Database_Outline.md`](./Database_Outline.md). Folders: [`Project_Structure.md`](./Project_Structure.md).

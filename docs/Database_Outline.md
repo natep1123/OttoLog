@@ -25,21 +25,23 @@ When outline, concept docs, and live SQL disagree, use this order:
 | Taxonomy | `tools`, `session_categories` + global No Tool / Uncategorized |
 | Analytics taxonomy | `analytics_primary_groups`, `analytics_tags` |
 | Exercise templates | `exercise_templates`, `analytics_tag_links` |
+| Cluster templates | `cluster_templates` |
 
 **App slice live**
 
 - **Home**: dashboard with quick actions, recent exercise templates, local week preview
-- **Create** → Template hub → Exercise builder (`ExerciseEditor`); save to Supabase
-- **Library** → Templates → Exercises: browse, search, edit, delete
+- **Create** → Template hub → Exercise builder (`ExerciseEditor`) or Cluster builder (`ClusterEditor` + nested exercises); save to Supabase
+- **Library** → Templates → Exercises / Clusters: browse, search, edit, delete
 - Searchable create-comboboxes for tools, primary groups, and tags in the exercise builder
 - **Account** → Taxonomy: tools, primary groups, tags (create, rename, archive, hard-delete when unused)
 - **Account** → Settings → Danger zone: delete account
 - Name search in the exercise builder can copy another template's fields into the current draft without switching which template you are editing
-- Active exercise template names are unique per user, case-insensitive (`sql/007`)
+- Active exercise and cluster template names are unique per user, case-insensitive (`sql/007`, `sql/008`)
+- Cluster delete prefers soft archive; hard delete only when unreferenced (v1: always allowed — no FK references yet)
 
 **Not live yet**
 
-- Cluster / block / session templates
+- Block / session templates
 - Log / relational session tables
 - Denest / renest functions
 
@@ -52,6 +54,7 @@ Applied migrations:
 - `sql/005_analytics_taxonomy.sql`
 - `sql/006_exercise_templates.sql`
 - `sql/007_template_name_uniqueness.sql`
+- `sql/008_cluster_templates.sql`
 
 ---
 
@@ -210,7 +213,7 @@ taxonomy
 
 templates (library / blueprints)
   exercise_templates                       ← LIVE
-  cluster_templates             (jsonb content)  ← planned
+  cluster_templates             (jsonb content)  ← LIVE
   block_templates               (jsonb content)  ← planned
   session_templates             (jsonb content)  ← planned
 
@@ -329,7 +332,7 @@ Personal library objects for Create → Build templates.
 | Table | Storage style | Notes |
 |-------|---------------|--------|
 | `exercise_templates` | Columns + `default_target_shape` jsonb | Presets. Always `tool_id` + `target_shape_id`. Optional `track_analytics` + `primary_group_id` (required iff tracking). Tags via `analytics_tag_links`, not a column on this table. `default_target_shape` holds the targets[] payload for that shape. Active names are unique per user (case-insensitive), enforced app-side and by a partial unique index (`sql/007`). |
-| `cluster_templates` | `content` jsonb | Standalone cluster blob. `cluster_type` ∈ `superset` \| `circuit`. |
+| `cluster_templates` | Columns + `content` jsonb | Standalone cluster blob. `cluster_type` ∈ `superset` \| `circuit`. `name` + `cluster_type` are columns; `content` holds `{ notes, track_duration, duration, items[] }` with nested exercise leaves (`targets`, taxonomy FKs, analytics). Active names unique per user (`sql/008`). Soft-archive preferred; hard delete when unreferenced. |
 | `block_templates` | `content` jsonb | Standalone block blob. |
 | `session_templates` | `content` jsonb + `category_id` | Full session tree. `category_id` never null; default = global Uncategorized. |
 
@@ -343,6 +346,7 @@ Personal library objects for Create → Build templates.
 
 - Active template names are unique per user, per layer (case-insensitive). Archiving frees the name. Log session names may repeat later.
 - In the exercise builder, picking a name from search copies that template's editable fields into the current draft. It does not open that template for editing. Save under a new name if you are creating a copy.
+- Cluster templates: soft archive removes them from library lists and frees the name; hard delete is available when unreferenced.
 
 ---
 
@@ -437,7 +441,8 @@ Do not create the full graph in one migration. Ship in dependency order:
 | 2 | `tools` + `session_categories` **including global No Tool / Uncategorized** | Valid FKs for templates/logs *(done)* |
 | 3 | `analytics_primary_groups`, `analytics_tags`, `analytics_tag_links` | Optional exercise analytics *(done)* |
 | 4 | `exercise_templates` | First Create → save → Library path *(done)* |
-| 5 | `cluster_templates` / `block_templates` / `session_templates` | Full template library |
+| 5 | `cluster_templates` | Cluster Create → save → Library *(done)* |
+| 5b | `block_templates` / `session_templates` | Full template library |
 | 6 | Log tables + denest/renest | Session logging + analytics facts |
 
 ---

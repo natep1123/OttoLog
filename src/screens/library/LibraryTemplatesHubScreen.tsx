@@ -7,19 +7,21 @@ type Props = {
   onBrandPress?: () => void;
   onBack: () => void;
   onExercises: () => void;
+  onClusters: () => void;
 };
 
-/** Library → Templates hub. Only Exercise is browsable for now. */
+/** Library → Templates hub. Exercise and Cluster are browsable. */
 export function LibraryTemplatesHubScreen({
   onBrandPress,
   onBack,
   onExercises,
+  onClusters,
 }: Props) {
   return (
     <View style={styles.root}>
       <ScreenHeader
         title="Templates"
-        subtitle="Pick a layer to manage. Only Exercise is live for now."
+        subtitle="Pick a layer to manage. Exercise and Cluster are live."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />
@@ -40,10 +42,8 @@ export function LibraryTemplatesHubScreen({
         />
         <HubAction
           title="Cluster"
-          body="Superset or circuit blueprints."
-          onPress={() => {}}
-          disabled
-          badge="Soon"
+          body="Open, edit, archive, or delete cluster templates."
+          onPress={onClusters}
         />
         <HubAction
           title="Exercise"

@@ -7,14 +7,20 @@ type Props = {
   onBrandPress?: () => void;
   onBack: () => void;
   onExercise: () => void;
+  onCluster: () => void;
 };
 
-export function TemplateHubScreen({ onBrandPress, onBack, onExercise }: Props) {
+export function TemplateHubScreen({
+  onBrandPress,
+  onBack,
+  onExercise,
+  onCluster,
+}: Props) {
   return (
     <View style={styles.root}>
       <ScreenHeader
         title="Templates"
-        subtitle="Pick what to build. Only Exercise is live for now."
+        subtitle="Pick what to build. Exercise and Cluster are live."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />
@@ -35,10 +41,8 @@ export function TemplateHubScreen({ onBrandPress, onBack, onExercise }: Props) {
         />
         <HubAction
           title="Cluster"
-          body="Superset or circuit blueprint."
-          onPress={() => {}}
-          disabled
-          badge="Soon"
+          body="Superset or circuit with nested exercises."
+          onPress={onCluster}
         />
         <HubAction
           title="Exercise"

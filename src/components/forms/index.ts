@@ -12,5 +12,6 @@ export { MorePanel } from './MorePanel';
 export { TargetsGrid } from './TargetsGrid';
 export { AnalyticsCheckbox } from './AnalyticsCheckbox';
 export { ExerciseEditor } from './ExerciseEditor';
+export { ClusterEditor } from './ClusterEditor';
 export { formRadii, nodeAccents, nestedExerciseAccent } from './formTokens';
 export type { FormNodeKind } from './formTokens';
