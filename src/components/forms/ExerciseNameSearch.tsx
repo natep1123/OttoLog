@@ -76,7 +76,7 @@ export function ExerciseNameSearch({
             // Delay so suggestion press can register
             setTimeout(() => setFocused(false), 180);
           }}
-          placeholder="Exercise name (e.g. Halo reverse lunges)"
+          placeholder="Exercise name"
           placeholderTextColor={colors.textDim}
           selectionColor={colors.sunrise}
           autoCapitalize="words"
