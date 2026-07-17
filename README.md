@@ -11,13 +11,13 @@ Four tabs when signed in: **Home**, **Create**, **Library**, **Account**.
 | Area | Today |
 |------|--------|
 | **Home** | Dashboard with quick actions, recent exercise templates, week preview |
-| **Create** | Exercise and Cluster template builders (saved to Supabase) |
-| **Library** | Browse, search, edit exercise and cluster templates |
+| **Create** | Session, Block, Cluster, and Exercise template builders (saved to Supabase) |
+| **Library** | Browse, search, edit session / block / cluster / exercise templates |
 | **Account** | Taxonomy (tools, primary groups, tags); Settings with account delete |
 
-Also in place: auth, global **No Tool** and **Uncategorized** sentinels, searchable taxonomy pickers in the exercise editor, unique active template names per user (per layer). Clusters prefer soft archive; hard delete when unreferenced.
+Also in place: auth, global **No Tool** and **Uncategorized** sentinels, searchable taxonomy pickers in the exercise editor, unique active template names per user (per layer). Composition is Session → Block → Cluster → Exercise (JSON copy, no cross-template FKs). Clusters use rounds × per-round exercises with sparse overrides; soft archive preferred.
 
-**Next:** block and session template builders, then session logging and denest/renest.
+**Next:** session logging and denest/renest.
 
 ## Quick start
 
@@ -27,7 +27,7 @@ cp .env.example .env.local   # Supabase URL + anon key
 npx expo start               # Expo Go on your phone
 ```
 
-Run `sql/001` through `sql/008` in order in the Supabase SQL Editor. See [`docs/Setup.md`](docs/Setup.md).
+Run `sql/001` through `sql/010` in order in the Supabase SQL Editor. See [`docs/Setup.md`](docs/Setup.md).
 
 ## Documentation
 
@@ -44,11 +44,11 @@ Older prototypes live in [`docs/original-concept/`](docs/original-concept/). The
 
 ```text
 src/auth/          Session and profile
-src/components/    Shared UI and forms/ (ExerciseEditor, ClusterEditor)
+src/components/    Shared UI and forms/ (Session → Block → Cluster → Exercise)
 src/lib/           Supabase, templates, taxonomy, localTime
 src/screens/       Auth, Home shell, home/, create/, library/, account/
 src/theme/         tokens.ts
-sql/               Migrations 001 through 008
+sql/               Migrations 001 through 010
 ```
 
 Full map: [`docs/Project_Structure.md`](docs/Project_Structure.md).

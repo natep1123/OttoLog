@@ -16,11 +16,15 @@ import { CreateHubScreen } from './create/CreateHubScreen';
 import { TemplateHubScreen } from './create/TemplateHubScreen';
 import { ExerciseBuilderScreen } from './create/ExerciseBuilderScreen';
 import { ClusterBuilderScreen } from './create/ClusterBuilderScreen';
+import { BlockBuilderScreen } from './create/BlockBuilderScreen';
+import { SessionBuilderScreen } from './create/SessionBuilderScreen';
 import { HomeDashboardScreen } from './home/HomeDashboardScreen';
 import { LibraryHubScreen } from './library/LibraryHubScreen';
 import { LibraryTemplatesHubScreen } from './library/LibraryTemplatesHubScreen';
 import { LibraryScreen } from './library/LibraryScreen';
 import { LibraryClustersScreen } from './library/LibraryClustersScreen';
+import { LibraryBlocksScreen } from './library/LibraryBlocksScreen';
+import { LibrarySessionsScreen } from './library/LibrarySessionsScreen';
 import type { ExerciseTemplateRow } from '../types/exerciseTemplate';
 import { spacing } from '../theme/tokens';
 
@@ -35,7 +39,9 @@ type CreateStack =
   | { screen: 'hub' }
   | { screen: 'templates' }
   | { screen: 'exercise'; templateId?: string | null }
-  | { screen: 'cluster'; templateId?: string | null };
+  | { screen: 'cluster'; templateId?: string | null }
+  | { screen: 'block'; templateId?: string | null }
+  | { screen: 'session'; templateId?: string | null };
 
 type LibraryStack =
   | { screen: 'hub' }
@@ -43,7 +49,11 @@ type LibraryStack =
   | { screen: 'exercises' }
   | { screen: 'exercise'; templateId: string }
   | { screen: 'clusters' }
-  | { screen: 'cluster'; templateId: string };
+  | { screen: 'cluster'; templateId: string }
+  | { screen: 'blocks' }
+  | { screen: 'block'; templateId: string }
+  | { screen: 'sessions' }
+  | { screen: 'session'; templateId: string };
 
 type AccountStack =
   | { screen: 'hub' }
@@ -158,6 +168,40 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
         />
       );
     }
+    if (createStack.screen === 'block') {
+      return (
+        <BlockBuilderScreen
+          templateId={createStack.templateId}
+          onBrandPress={goHomeBrand}
+          onBack={() => setCreateStack({ screen: 'templates' })}
+          onSaved={(id) => {
+            setCreateStack({ screen: 'block', templateId: id });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+          onDeleted={() => {
+            setCreateStack({ screen: 'templates' });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+        />
+      );
+    }
+    if (createStack.screen === 'session') {
+      return (
+        <SessionBuilderScreen
+          templateId={createStack.templateId}
+          onBrandPress={goHomeBrand}
+          onBack={() => setCreateStack({ screen: 'templates' })}
+          onSaved={(id) => {
+            setCreateStack({ screen: 'session', templateId: id });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+          onDeleted={() => {
+            setCreateStack({ screen: 'templates' });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+        />
+      );
+    }
     if (createStack.screen === 'templates') {
       return (
         <TemplateHubScreen
@@ -168,6 +212,10 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
           }
           onCluster={() =>
             setCreateStack({ screen: 'cluster', templateId: null })
+          }
+          onBlock={() => setCreateStack({ screen: 'block', templateId: null })}
+          onSession={() =>
+            setCreateStack({ screen: 'session', templateId: null })
           }
         />
       );
@@ -216,6 +264,40 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
         />
       );
     }
+    if (libraryStack.screen === 'block') {
+      return (
+        <BlockBuilderScreen
+          templateId={libraryStack.templateId}
+          onBrandPress={goHomeBrand}
+          onBack={() => {
+            setLibraryStack({ screen: 'blocks' });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+          onSaved={() => setLibraryRefreshKey((k) => k + 1)}
+          onDeleted={() => {
+            setLibraryStack({ screen: 'blocks' });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+        />
+      );
+    }
+    if (libraryStack.screen === 'session') {
+      return (
+        <SessionBuilderScreen
+          templateId={libraryStack.templateId}
+          onBrandPress={goHomeBrand}
+          onBack={() => {
+            setLibraryStack({ screen: 'sessions' });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+          onSaved={() => setLibraryRefreshKey((k) => k + 1)}
+          onDeleted={() => {
+            setLibraryStack({ screen: 'sessions' });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+        />
+      );
+    }
     if (libraryStack.screen === 'exercises') {
       return (
         <LibraryScreen
@@ -240,6 +322,30 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
         />
       );
     }
+    if (libraryStack.screen === 'blocks') {
+      return (
+        <LibraryBlocksScreen
+          onBrandPress={goHomeBrand}
+          onBack={() => setLibraryStack({ screen: 'templates' })}
+          refreshKey={libraryRefreshKey}
+          onOpenBlock={(id) =>
+            setLibraryStack({ screen: 'block', templateId: id })
+          }
+        />
+      );
+    }
+    if (libraryStack.screen === 'sessions') {
+      return (
+        <LibrarySessionsScreen
+          onBrandPress={goHomeBrand}
+          onBack={() => setLibraryStack({ screen: 'templates' })}
+          refreshKey={libraryRefreshKey}
+          onOpenSession={(id) =>
+            setLibraryStack({ screen: 'session', templateId: id })
+          }
+        />
+      );
+    }
     if (libraryStack.screen === 'templates') {
       return (
         <LibraryTemplatesHubScreen
@@ -247,6 +353,8 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
           onBack={() => setLibraryStack({ screen: 'hub' })}
           onExercises={() => setLibraryStack({ screen: 'exercises' })}
           onClusters={() => setLibraryStack({ screen: 'clusters' })}
+          onBlocks={() => setLibraryStack({ screen: 'blocks' })}
+          onSessions={() => setLibraryStack({ screen: 'sessions' })}
         />
       );
     }
@@ -323,9 +431,15 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
 
   const hideBottomNav =
     (activeTab === 'create' &&
-      (createStack.screen === 'exercise' || createStack.screen === 'cluster')) ||
+      (createStack.screen === 'exercise' ||
+        createStack.screen === 'cluster' ||
+        createStack.screen === 'block' ||
+        createStack.screen === 'session')) ||
     (activeTab === 'library' &&
-      (libraryStack.screen === 'exercise' || libraryStack.screen === 'cluster'));
+      (libraryStack.screen === 'exercise' ||
+        libraryStack.screen === 'cluster' ||
+        libraryStack.screen === 'block' ||
+        libraryStack.screen === 'session'));
 
   const showAccountActions =
     activeTab === 'account' && accountStack.screen === 'hub';

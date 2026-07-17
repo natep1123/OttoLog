@@ -37,7 +37,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: spacing.lg,
+    // Between md (16) and lg (24) — wider than original, not edge-tight.
+    paddingHorizontal: 20,
     paddingVertical: spacing.xl,
   },
 });

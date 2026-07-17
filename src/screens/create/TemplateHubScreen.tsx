@@ -8,6 +8,8 @@ type Props = {
   onBack: () => void;
   onExercise: () => void;
   onCluster: () => void;
+  onBlock: () => void;
+  onSession: () => void;
 };
 
 export function TemplateHubScreen({
@@ -15,29 +17,27 @@ export function TemplateHubScreen({
   onBack,
   onExercise,
   onCluster,
+  onBlock,
+  onSession,
 }: Props) {
   return (
     <View style={styles.root}>
       <ScreenHeader
         title="Templates"
-        subtitle="Pick what to build. Exercise and Cluster are live."
+        subtitle="Pick what to build — session down to exercise."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />
       <View style={styles.actions}>
         <HubAction
           title="Session"
-          body="Full session tree blueprint."
-          onPress={() => {}}
-          disabled
-          badge="Soon"
+          body="Full session tree — blocks of clusters."
+          onPress={onSession}
         />
         <HubAction
           title="Block"
-          body="Reusable block blob."
-          onPress={() => {}}
-          disabled
-          badge="Soon"
+          body="Reusable block of ordered clusters."
+          onPress={onBlock}
         />
         <HubAction
           title="Cluster"

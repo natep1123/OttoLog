@@ -3,16 +3,16 @@
 --
 -- Requires: 001_users (public.users)
 --
--- Standalone cluster blueprints. content jsonb holds notes/duration/items[];
--- name + cluster_type are columns for listing and uniqueness. Active names
--- unique per user (case-insensitive), same pattern as sql/007.
+-- Standalone cluster blueprints. content jsonb holds rounds, per-round items[],
+-- sparse overrides[], notes/duration; name + cluster_type are columns for listing
+-- and uniqueness. Templates stay compact; session logs expand sets on denest.
 
 create table if not exists public.cluster_templates (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users (id) on delete cascade,
   name text not null,
   cluster_type text not null,
-  content jsonb not null default '{"notes":null,"track_duration":false,"duration":null,"items":[]}'::jsonb,
+  content jsonb not null default '{"notes":null,"track_duration":false,"duration":null,"rounds":1,"items":[],"overrides":[]}'::jsonb,
   archived_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

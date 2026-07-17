@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -6,34 +6,54 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import {
+  DISTANCE_UNIT_CODES,
+  LOAD_UNIT_CODES,
+} from '../../constants/lockedAtoms';
+import { fieldsForTargetShape } from '../../constants/targetShapeFields';
 import { ChoiceChips } from '../ChoiceChips';
 import {
   CLUSTER_TYPE_OPTIONS,
   type ClusterExerciseItem,
+  type ClusterOverridePatch,
+  type ClusterRoundOverride,
   type ClusterTemplateInput,
 } from '../../types/clusterTemplate';
 import type {
+  DistanceUnitCode,
+  ExerciseTarget,
   ExerciseTemplateInput,
   ExerciseTemplateRow,
+  LoadUnitCode,
 } from '../../types/exerciseTemplate';
 import { colors, radii, spacing, typography } from '../../theme/tokens';
 import {
   clusterItemToExerciseDraft,
   defaultClusterExerciseItem,
   exerciseDraftToClusterItem,
+  formatOverrideSummary,
+  newOverrideId,
+  pruneClusterOverrides,
 } from '../../lib/clusterTemplates';
 import {
   buildTargets,
   getExerciseTemplate,
 } from '../../lib/exerciseTemplates';
 import { CoordRow } from './CoordRow';
+import { ClusterSequenceDiagram } from './ClusterSequenceDiagram';
+import { Disclosure } from './Disclosure';
 import { ExerciseEditor } from './ExerciseEditor';
+import { FormSelect } from './FormSelect';
 import { IconButton } from './IconButton';
 import { MorePanel } from './MorePanel';
 import { NameInput } from './NameInput';
 import { NodeShell } from './NodeShell';
+import { RoundStepper } from './RoundStepper';
 import { TimePartsInput } from './TimePartsInput';
 import { ToggleChip } from './ToggleChip';
+
+const MAX_ROUNDS = 99;
 
 type Props = {
   value: ClusterTemplateInput;
@@ -46,9 +66,184 @@ type Props = {
   showDelete?: boolean;
 };
 
+function truncateLabel(name: string, max = 10): string {
+  const t = name.trim();
+  if (!t) return '…';
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1)}…`;
+}
+
+/** Coarse metrics a user can choose to override (shape-dependent). */
+type OverrideMetric = 'reps' | 'time' | 'distance' | 'load';
+
+const METRIC_LABELS: Record<OverrideMetric, string> = {
+  reps: 'Reps',
+  time: 'Time',
+  distance: 'Distance',
+  load: 'Load',
+};
+
+function metricsForShape(targetShapeId: string): OverrideMetric[] {
+  const fields = fieldsForTargetShape(targetShapeId);
+  const metrics: OverrideMetric[] = [];
+  if (fields.includes('reps')) metrics.push('reps');
+  if (fields.includes('time_duration')) metrics.push('time');
+  if (fields.includes('distance_value')) metrics.push('distance');
+  if (fields.includes('load_value') || fields.includes('load_unit')) {
+    metrics.push('load');
+  }
+  return metrics;
+}
+
+function baselineTarget(item: ClusterExerciseItem): ExerciseTarget {
+  const targets = item.targets?.length ? item.targets : buildTargets(1);
+  return targets[0];
+}
+
+function formatBaselineReps(t: ExerciseTarget): string {
+  if (t.reps == null) return '—';
+  return t.is_per_side ? `${t.reps} /side` : String(t.reps);
+}
+
+function formatBaselineTime(t: ExerciseTarget): string {
+  return t.time_duration?.trim() || '—';
+}
+
+function formatBaselineDistance(t: ExerciseTarget): string {
+  if (t.distance_value == null) return '—';
+  return `${t.distance_value} ${t.distance_unit}`;
+}
+
+function formatBaselineLoad(t: ExerciseTarget): string {
+  if (t.load_unit === 'BW' && (t.load_value == null || t.load_value === 0)) {
+    return 'BW';
+  }
+  if (t.load_value == null) return t.load_unit || '—';
+  return `${t.load_value} ${t.load_unit}`;
+}
+
+type OverrideDraft = {
+  exercise_id: string;
+  from_round: string;
+  to_round: string;
+  skipped: boolean;
+  notes: string;
+  selectedMetrics: OverrideMetric[];
+  reps: string;
+  is_per_side: boolean;
+  load_value: string;
+  load_unit: LoadUnitCode;
+  time_duration: string | null;
+  distance_value: string;
+  distance_unit: DistanceUnitCode;
+};
+
+function emptyOverrideDraft(
+  exerciseId: string,
+  rounds: number,
+): OverrideDraft {
+  return {
+    exercise_id: exerciseId,
+    from_round: '1',
+    to_round: String(Math.max(1, rounds)),
+    skipped: false,
+    notes: '',
+    selectedMetrics: [],
+    reps: '',
+    is_per_side: false,
+    load_value: '',
+    load_unit: 'BW',
+    time_duration: '00:00:00',
+    distance_value: '',
+    distance_unit: 'mi',
+  };
+}
+
+/** Rehydrate the override form from a saved exception. */
+function draftFromOverride(
+  override: ClusterRoundOverride,
+  rounds: number,
+): OverrideDraft {
+  const { patch } = override;
+  const selectedMetrics: OverrideMetric[] = [];
+  if (!override.skipped) {
+    if ('reps' in patch || 'is_per_side' in patch) selectedMetrics.push('reps');
+    if ('time_duration' in patch) selectedMetrics.push('time');
+    if ('distance_value' in patch || 'distance_unit' in patch) {
+      selectedMetrics.push('distance');
+    }
+    if ('load_value' in patch || 'load_unit' in patch) {
+      selectedMetrics.push('load');
+    }
+  }
+
+  return {
+    exercise_id: override.exercise_id,
+    from_round: String(
+      Math.max(1, Math.min(rounds, override.from_round)),
+    ),
+    to_round: String(
+      Math.max(
+        Math.max(1, Math.min(rounds, override.from_round)),
+        Math.min(rounds, override.to_round),
+      ),
+    ),
+    skipped: override.skipped,
+    notes: override.notes ?? '',
+    selectedMetrics,
+    reps: patch.reps != null ? String(patch.reps) : '',
+    is_per_side: patch.is_per_side ?? false,
+    load_value: patch.load_value != null ? String(patch.load_value) : '',
+    load_unit: patch.load_unit ?? 'BW',
+    time_duration: patch.time_duration ?? '00:00:00',
+    distance_value:
+      patch.distance_value != null ? String(patch.distance_value) : '',
+    distance_unit: patch.distance_unit ?? 'mi',
+  };
+}
+
+function seedMetricFromBaseline(
+  draft: OverrideDraft,
+  metric: OverrideMetric,
+  baseline: ExerciseTarget,
+): OverrideDraft {
+  switch (metric) {
+    case 'reps':
+      return {
+        ...draft,
+        reps: baseline.reps != null ? String(baseline.reps) : '',
+        is_per_side: baseline.is_per_side,
+      };
+    case 'time':
+      return {
+        ...draft,
+        time_duration: baseline.time_duration ?? '00:00:00',
+      };
+    case 'distance':
+      return {
+        ...draft,
+        distance_value:
+          baseline.distance_value != null
+            ? String(baseline.distance_value)
+            : '',
+        distance_unit: baseline.distance_unit,
+      };
+    case 'load':
+      return {
+        ...draft,
+        load_value:
+          baseline.load_value != null ? String(baseline.load_value) : '',
+        load_unit: baseline.load_unit,
+      };
+    default:
+      return draft;
+  }
+}
+
+
 /**
- * Nestable cluster editor — type, name, ⋯ (duration/notes), nested ExerciseEditor leaves.
- * Solo builder hosts this; future block/session hosts will embed the same leaf.
+ * Nestable cluster editor — rounds (each) model with sequence strip,
+ * per-round ExerciseEditor subitems, and sparse round-range overrides.
  */
 export function ClusterEditor({
   value,
@@ -61,10 +256,35 @@ export function ClusterEditor({
   showDelete = false,
 }: Props) {
   const [moreOpen, setMoreOpen] = useState(false);
+  const [expanded, setExpanded] = useState(true);
+  const [visualizeOpen, setVisualizeOpen] = useState(false);
+  const [overridesOpen, setOverridesOpen] = useState(false);
   const [notesFocused, setNotesFocused] = useState(false);
+  const [addingOverride, setAddingOverride] = useState(false);
+  const [editingOverrideId, setEditingOverrideId] = useState<string | null>(
+    null,
+  );
+  const [overrideDraft, setOverrideDraft] = useState<OverrideDraft | null>(
+    null,
+  );
+  const [overrideError, setOverrideError] = useState<string | null>(null);
+
+  const rounds = Math.max(1, Math.min(MAX_ROUNDS, value.rounds || 1));
 
   const patch = (partial: Partial<ClusterTemplateInput>) => {
     onChange({ ...value, ...partial });
+  };
+
+  const setRounds = (nextRaw: number) => {
+    const next = Math.max(1, Math.min(MAX_ROUNDS, Math.floor(nextRaw) || 1));
+    patch({
+      rounds: next,
+      overrides: pruneClusterOverrides(
+        value.overrides ?? [],
+        value.items,
+        next,
+      ),
+    });
   };
 
   const onToggleDuration = () => {
@@ -77,12 +297,24 @@ export function ClusterEditor({
 
   const updateItem = (index: number, draft: ExerciseTemplateInput) => {
     const items = [...value.items];
-    items[index] = exerciseDraftToClusterItem(draft, items[index].id);
+    const clamped: ExerciseTemplateInput = {
+      ...draft,
+      default_target_shape: buildTargets(1, draft.default_target_shape),
+    };
+    items[index] = exerciseDraftToClusterItem(clamped, items[index].id);
     patch({ items });
   };
 
   const removeItem = (index: number) => {
-    patch({ items: value.items.filter((_, i) => i !== index) });
+    const items = value.items.filter((_, i) => i !== index);
+    patch({
+      items,
+      overrides: pruneClusterOverrides(
+        value.overrides ?? [],
+        items,
+        rounds,
+      ),
+    });
   };
 
   const addItem = () => {
@@ -98,6 +330,10 @@ export function ClusterEditor({
     const targets = Array.isArray(data.default_target_shape)
       ? data.default_target_shape
       : [];
+    // Nested copy: keep first target as the per-round default when the
+    // library exercise had many consecutive sets.
+    const perRound =
+      targets.length > 1 ? [targets[0]] : targets.length ? targets : buildTargets(1);
     updateItem(index, {
       name: data.name,
       tool_id: data.tool_id,
@@ -105,123 +341,799 @@ export function ClusterEditor({
       track_analytics: data.track_analytics,
       primary_group_id: data.primary_group_id,
       analytics_tag_ids: data.analytics_tag_ids,
-      default_target_shape: targets.length ? targets : buildTargets(1),
+      default_target_shape: perRound.map((t, i) => ({ ...t, set: i + 1 })),
       track_duration: data.track_duration,
       duration: data.duration,
       notes: data.notes,
     });
   };
 
+  const nameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of value.items) map.set(item.id, item.name);
+    return map;
+  }, [value.items]);
+
+  const startAddOverride = () => {
+    if (value.items.length === 0) return;
+    setOverrideError(null);
+    setEditingOverrideId(null);
+    setOverrideDraft(emptyOverrideDraft(value.items[0].id, rounds));
+    setAddingOverride(true);
+    setOverridesOpen(true);
+    setExpanded(true);
+  };
+
+  const startEditOverride = (override: ClusterRoundOverride) => {
+    setOverrideError(null);
+    setEditingOverrideId(override.id);
+    setOverrideDraft(draftFromOverride(override, rounds));
+    setAddingOverride(true);
+    setOverridesOpen(true);
+    setExpanded(true);
+  };
+
+  const cancelAddOverride = () => {
+    setAddingOverride(false);
+    setEditingOverrideId(null);
+    setOverrideDraft(null);
+    setOverrideError(null);
+  };
+
+  const commitOverride = () => {
+    if (!overrideDraft) return;
+    const from = Math.floor(Number(overrideDraft.from_round));
+    const to = Math.floor(Number(overrideDraft.to_round));
+    if (!Number.isFinite(from) || !Number.isFinite(to) || from < 1 || to < from) {
+      setOverrideError('Round range must be valid (from ≤ to, starting at 1).');
+      return;
+    }
+    if (to > rounds) {
+      setOverrideError(`Rounds cannot exceed ${rounds}.`);
+      return;
+    }
+    const item = value.items.find((i) => i.id === overrideDraft.exercise_id);
+    if (!item) {
+      setOverrideError('Pick an exercise in this cluster.');
+      return;
+    }
+
+    const notes = overrideDraft.notes.trim() || null;
+    const patchFields: ClusterOverridePatch = {};
+    const selected = new Set(overrideDraft.selectedMetrics);
+    const shapeFields = fieldsForTargetShape(item.target_shape_id);
+
+    if (!overrideDraft.skipped) {
+      if (selected.has('reps')) {
+        const repsTrim = overrideDraft.reps.trim();
+        if (repsTrim === '') {
+          setOverrideError('Enter override reps.');
+          return;
+        }
+        const reps = Number(repsTrim);
+        if (!Number.isFinite(reps)) {
+          setOverrideError('Reps must be a number.');
+          return;
+        }
+        patchFields.reps = reps;
+        if (shapeFields.includes('is_per_side')) {
+          patchFields.is_per_side = overrideDraft.is_per_side;
+        }
+      }
+      if (selected.has('time')) {
+        const t = overrideDraft.time_duration;
+        patchFields.time_duration =
+          !t || t === '00:00:00' ? null : t;
+      }
+      if (selected.has('distance')) {
+        const distTrim = overrideDraft.distance_value.trim();
+        if (distTrim === '') {
+          patchFields.distance_value = null;
+        } else {
+          const distance_value = Number(distTrim);
+          if (!Number.isFinite(distance_value)) {
+            setOverrideError('Distance must be a number.');
+            return;
+          }
+          // 0 means unset — same as time 00:00:00 → null.
+          patchFields.distance_value =
+            distance_value === 0 ? null : distance_value;
+        }
+        patchFields.distance_unit = overrideDraft.distance_unit;
+      }
+      if (selected.has('load')) {
+        if (overrideDraft.load_unit === 'BW') {
+          patchFields.load_value = null;
+        } else {
+          const loadTrim = overrideDraft.load_value.trim();
+          if (loadTrim === '') {
+            patchFields.load_value = null;
+          } else {
+            const load_value = Number(loadTrim);
+            if (!Number.isFinite(load_value)) {
+              setOverrideError('Load must be a number.');
+              return;
+            }
+            patchFields.load_value = load_value;
+          }
+        }
+        patchFields.load_unit = overrideDraft.load_unit;
+      }
+    }
+
+    if (
+      !overrideDraft.skipped &&
+      Object.keys(patchFields).length === 0 &&
+      !notes
+    ) {
+      setOverrideError('Skip, choose a metric to change, or add a note.');
+      return;
+    }
+
+    const next: ClusterRoundOverride = {
+      id: editingOverrideId ?? newOverrideId(),
+      exercise_id: overrideDraft.exercise_id,
+      from_round: from,
+      to_round: to,
+      skipped: overrideDraft.skipped,
+      notes,
+      patch: overrideDraft.skipped ? {} : patchFields,
+    };
+
+    const existing = value.overrides ?? [];
+    patch({
+      overrides: editingOverrideId
+        ? existing.map((o) => (o.id === editingOverrideId ? next : o))
+        : [...existing, next],
+    });
+    cancelAddOverride();
+  };
+
+  const selectedOverrideItem = value.items.find(
+    (i) => i.id === overrideDraft?.exercise_id,
+  );
+  const availableMetrics = selectedOverrideItem
+    ? metricsForShape(selectedOverrideItem.target_shape_id)
+    : [];
+  const baseline = selectedOverrideItem
+    ? baselineTarget(selectedOverrideItem)
+    : null;
+  const shapeFields = selectedOverrideItem
+    ? fieldsForTargetShape(selectedOverrideItem.target_shape_id)
+    : [];
+
+  // Drop metric toggles that no longer exist when the exercise shape changes
+  // while the override form is open (e.g. reps → time).
+  useEffect(() => {
+    if (!selectedOverrideItem) return;
+    const allowed = new Set(
+      metricsForShape(selectedOverrideItem.target_shape_id),
+    );
+    setOverrideDraft((prev) => {
+      if (!prev) return prev;
+      const nextSelected = prev.selectedMetrics.filter((m) => allowed.has(m));
+      if (nextSelected.length === prev.selectedMetrics.length) return prev;
+      return { ...prev, selectedMetrics: nextSelected };
+    });
+  }, [selectedOverrideItem?.id, selectedOverrideItem?.target_shape_id]);
+
+  // Keep override range inside the current cluster rounds.
+  useEffect(() => {
+    setOverrideDraft((prev) => {
+      if (!prev) return prev;
+      const fromRaw = Number.parseInt(prev.from_round, 10);
+      const toRaw = Number.parseInt(prev.to_round, 10);
+      const from = Math.max(
+        1,
+        Math.min(rounds, Number.isFinite(fromRaw) ? fromRaw : 1),
+      );
+      const to = Math.max(
+        from,
+        Math.min(rounds, Number.isFinite(toRaw) ? toRaw : rounds),
+      );
+      if (
+        String(from) === prev.from_round &&
+        String(to) === prev.to_round
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        from_round: String(from),
+        to_round: String(to),
+      };
+    });
+  }, [rounds]);
+
+  const toggleMetric = (metric: OverrideMetric) => {
+    if (!overrideDraft || !baseline) return;
+    const on = overrideDraft.selectedMetrics.includes(metric);
+    if (on) {
+      setOverrideDraft({
+        ...overrideDraft,
+        selectedMetrics: overrideDraft.selectedMetrics.filter(
+          (m) => m !== metric,
+        ),
+      });
+      return;
+    }
+    setOverrideDraft(
+      seedMetricFromBaseline(
+        {
+          ...overrideDraft,
+          selectedMetrics: [...overrideDraft.selectedMetrics, metric],
+        },
+        metric,
+        baseline,
+      ),
+    );
+  };
+
+  const onOverrideExerciseChange = (exercise_id: string) => {
+    if (!overrideDraft) return;
+    setOverrideDraft({
+      ...emptyOverrideDraft(exercise_id, rounds),
+      from_round: overrideDraft.from_round,
+      to_round: overrideDraft.to_round,
+      skipped: overrideDraft.skipped,
+      notes: overrideDraft.notes,
+    });
+  };
+
+  const removeOverride = (id: string) => {
+    patch({
+      overrides: (value.overrides ?? []).filter((o) => o.id !== id),
+    });
+  };
+
   return (
     <NodeShell kind="cluster" nested={nested}>
-      <CoordRow meta={coordMeta} coord={coord} onCoordPress={onCoordPress} />
-
-      <View style={styles.header}>
-        <ChoiceChips
-          label="Type"
-          options={CLUSTER_TYPE_OPTIONS}
-          value={value.cluster_type}
-          onChange={(cluster_type) =>
-            patch({
-              cluster_type: cluster_type as ClusterTemplateInput['cluster_type'],
-            })
-          }
-        />
-
-        <View style={styles.nameRow}>
+      <CoordRow
+        meta={coordMeta}
+        coord={coord}
+        onCoordPress={onCoordPress}
+        expanded={expanded}
+        onToggleExpand={() => setExpanded((e) => !e)}
+        title={
           <NameInput
             value={value.name}
             onChangeText={(name) => patch({ name })}
             placeholder="Cluster name"
             accessibilityLabel="Cluster name"
+            style={styles.titleField}
           />
+        }
+        trailing={
           <IconButton
+            kind="cluster"
             active={moreOpen}
-            onPress={() => setMoreOpen((o) => !o)}
-          />
-        </View>
-      </View>
-
-      <MorePanel open={moreOpen}>
-        <View style={styles.durationRow}>
-          <ToggleChip
-            label={value.track_duration ? 'Duration on' : 'Track duration'}
-            active={value.track_duration}
-            onPress={onToggleDuration}
-          />
-          {value.track_duration ? (
-            <View style={styles.durationPicker}>
-              <View style={styles.durationUnitLabels} pointerEvents="none">
-                <Text style={styles.durationUnitLabel}>HH</Text>
-                <Text style={styles.durationUnitColon}>:</Text>
-                <Text style={styles.durationUnitLabel}>MM</Text>
-                <Text style={styles.durationUnitColon}>:</Text>
-                <Text style={styles.durationUnitLabel}>SS</Text>
-              </View>
-              <TimePartsInput
-                value={value.duration}
-                onChange={(duration) => patch({ duration })}
-              />
-            </View>
-          ) : null}
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Coaching notes</Text>
-          <TextInput
-            value={value.notes ?? ''}
-            onChangeText={(notes) => patch({ notes: notes || null })}
-            onFocus={() => setNotesFocused(true)}
-            onBlur={() => setNotesFocused(false)}
-            placeholder="e.g., Minimal rest between exercises. Three rounds…"
-            placeholderTextColor={colors.textDim}
-            multiline
-            style={[
-              styles.fieldInput,
-              styles.notes,
-              notesFocused && styles.notesFocused,
-            ]}
-          />
-        </View>
-
-        {showDelete && onDelete ? (
-          <Pressable
-            onPress={onDelete}
-            style={({ pressed }) => [
-              styles.deleteBtn,
-              pressed && styles.deletePressed,
-            ]}
-          >
-            <Text style={styles.deleteText}>Delete cluster</Text>
-          </Pressable>
-        ) : null}
-      </MorePanel>
-
-      <View style={styles.items}>
-        {value.items.map((item: ClusterExerciseItem, index: number) => (
-          <ExerciseEditor
-            key={item.id}
-            value={clusterItemToExerciseDraft(item)}
-            onChange={(draft) => updateItem(index, draft)}
-            nested
-            coordMeta={`Exercise ${index + 1}`}
-            showDelete
-            onDelete={() => removeItem(index)}
-            onPickTemplate={(row) => {
-              void onPickExerciseTemplate(index, row);
+            onPress={() => {
+              setExpanded(true);
+              setMoreOpen((o) => !o);
             }}
           />
-        ))}
-      </View>
+        }
+      />
 
-      <Pressable
-        onPress={addItem}
-        style={({ pressed }) => [styles.addBtn, pressed && styles.addPressed]}
-        accessibilityRole="button"
-        accessibilityLabel="Add exercise"
-      >
-        <Text style={styles.addText}>+ Add exercise</Text>
-      </Pressable>
+      {expanded ? (
+        <>
+          <View
+            style={[
+              styles.header,
+              !visualizeOpen && styles.headerVisualizeCollapsed,
+            ]}
+          >
+            <View style={styles.controlsRow}>
+              <View style={styles.controlBlock}>
+                <ChoiceChips
+                  label="Type"
+                  singleLine
+                  options={CLUSTER_TYPE_OPTIONS}
+                  value={value.cluster_type}
+                  onChange={(cluster_type) =>
+                    patch({
+                      cluster_type:
+                        cluster_type as ClusterTemplateInput['cluster_type'],
+                    })
+                  }
+                />
+              </View>
+              <View style={styles.controlBlock}>
+                <Text style={styles.controlLabel}>Rounds</Text>
+                <RoundStepper
+                  value={rounds}
+                  onChange={setRounds}
+                  min={1}
+                  max={MAX_ROUNDS}
+                  accessibilityLabel="Number of rounds"
+                />
+              </View>
+            </View>
+
+            <Disclosure
+              label="Visualize"
+              open={visualizeOpen}
+              onToggle={() => setVisualizeOpen((o) => !o)}
+              tight
+            >
+              <ClusterSequenceDiagram
+                items={value.items}
+                showLabel={false}
+              />
+            </Disclosure>
+          </View>
+
+          <MorePanel open={moreOpen} kind="cluster">
+            <View style={styles.durationRow}>
+              <ToggleChip
+                label={
+                  value.track_duration ? 'Duration on' : 'Track duration'
+                }
+                active={value.track_duration}
+                onPress={onToggleDuration}
+              />
+              {value.track_duration ? (
+                <View style={styles.durationPicker}>
+                  <View
+                    style={styles.durationUnitLabels}
+                    pointerEvents="none"
+                  >
+                    <Text style={styles.durationUnitLabel}>HH</Text>
+                    <Text style={styles.durationUnitColon}>:</Text>
+                    <Text style={styles.durationUnitLabel}>MM</Text>
+                    <Text style={styles.durationUnitColon}>:</Text>
+                    <Text style={styles.durationUnitLabel}>SS</Text>
+                  </View>
+                  <TimePartsInput
+                    value={value.duration}
+                    onChange={(duration) => patch({ duration })}
+                    emptyAsNull={false}
+                  />
+                </View>
+              ) : null}
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Coaching notes</Text>
+              <TextInput
+                value={value.notes ?? ''}
+                onChangeText={(notes) => patch({ notes: notes || null })}
+                onFocus={() => setNotesFocused(true)}
+                onBlur={() => setNotesFocused(false)}
+                placeholder="e.g., Minimal rest between exercises. Three rounds…"
+                placeholderTextColor={colors.textDim}
+                multiline
+                style={[
+                  styles.fieldInput,
+                  styles.notes,
+                  notesFocused && styles.notesFocused,
+                ]}
+              />
+            </View>
+
+            {showDelete && onDelete ? (
+              <Pressable
+                onPress={onDelete}
+                style={({ pressed }) => [
+                  styles.deleteBtn,
+                  pressed && styles.deletePressed,
+                ]}
+              >
+                <Text style={styles.deleteText}>Delete cluster</Text>
+              </Pressable>
+            ) : null}
+          </MorePanel>
+
+          <View
+            style={[
+              styles.eachRoundHeader,
+              !visualizeOpen && styles.eachRoundHeaderTight,
+            ]}
+          >
+            <Text style={styles.sectionTitle}>Per-round exercises</Text>
+            <Text style={styles.sectionHint}>
+              Values below are what you do each time through the sequence.
+            </Text>
+          </View>
+
+          <View style={styles.items}>
+            {value.items.map((item: ClusterExerciseItem, index: number) => (
+              <ExerciseEditor
+                key={item.id}
+                value={clusterItemToExerciseDraft(item)}
+                onChange={(draft) => updateItem(index, draft)}
+                nested
+                subitem
+                coordMeta={`${index + 1} in round`}
+                showDelete
+                onDelete={() => removeItem(index)}
+                onPickTemplate={(row) => {
+                  void onPickExerciseTemplate(index, row);
+                }}
+              />
+            ))}
+          </View>
+
+          <Pressable
+            onPress={addItem}
+            style={({ pressed }) => [
+              styles.addBtn,
+              pressed && styles.addPressed,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Add exercise"
+          >
+            <Text style={styles.addText}>+ Add exercise</Text>
+          </Pressable>
+
+          <View
+            style={[
+              styles.overrides,
+              !overridesOpen && styles.overridesCollapsed,
+            ]}
+          >
+            <Disclosure
+              label="Overrides"
+              open={overridesOpen}
+              onToggle={() => setOverridesOpen((o) => !o)}
+              tight
+              hint="Exceptions for round ranges — skip, pick metrics to change, or leave a note. Skips are not logged as zero-rep sets."
+            >
+        {(value.overrides ?? []).length === 0 && !addingOverride ? (
+          <Text style={styles.overridesEmpty}>No overrides yet.</Text>
+        ) : null}
+
+        {(value.overrides ?? [])
+          .filter((o) => o.id !== editingOverrideId)
+          .map((o) => (
+          <View key={o.id} style={styles.overrideRow}>
+            <Text style={styles.overrideText}>
+              {formatOverrideSummary(
+                o,
+                nameById.get(o.exercise_id) ?? 'Exercise',
+              )}
+            </Text>
+            <View style={styles.overrideRowActions}>
+              <Pressable
+                onPress={() => startEditOverride(o)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Edit override"
+                style={({ pressed }) => [
+                  styles.overrideIconBtn,
+                  pressed && styles.overrideIconBtnPressed,
+                ]}
+              >
+                <Feather name="edit-2" size={15} color={colors.sunrise} />
+              </Pressable>
+              <Pressable
+                onPress={() => removeOverride(o.id)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Remove override"
+              >
+                <Text style={styles.overrideRemove}>Remove</Text>
+              </Pressable>
+            </View>
+          </View>
+        ))}
+
+        {addingOverride && overrideDraft ? (
+          <View style={styles.overrideForm}>
+            <Text style={styles.fieldLabel}>Exercise</Text>
+            <ChoiceChips
+              options={value.items.map((item) => ({
+                id: item.id,
+                label: truncateLabel(item.name || 'Untitled', 14),
+              }))}
+              value={overrideDraft.exercise_id}
+              onChange={onOverrideExerciseChange}
+            />
+
+            <View style={styles.rangeRow}>
+              <View style={styles.rangeField}>
+                <Text style={styles.fieldLabel}>From round</Text>
+                <RoundStepper
+                  value={Math.max(
+                    1,
+                    Math.min(
+                      rounds,
+                      Number.parseInt(overrideDraft.from_round, 10) || 1,
+                    ),
+                  )}
+                  onChange={(from) => {
+                    const to = Math.max(
+                      from,
+                      Math.min(
+                        rounds,
+                        Number.parseInt(overrideDraft.to_round, 10) || from,
+                      ),
+                    );
+                    setOverrideDraft({
+                      ...overrideDraft,
+                      from_round: String(from),
+                      to_round: String(to),
+                    });
+                  }}
+                  min={1}
+                  max={rounds}
+                  accessibilityLabel="From round"
+                />
+              </View>
+              <View style={styles.rangeField}>
+                <Text style={styles.fieldLabel}>To round</Text>
+                <RoundStepper
+                  value={Math.max(
+                    1,
+                    Math.min(
+                      rounds,
+                      Number.parseInt(overrideDraft.to_round, 10) || rounds,
+                    ),
+                  )}
+                  onChange={(to) => {
+                    const from = Math.min(
+                      to,
+                      Math.max(
+                        1,
+                        Number.parseInt(overrideDraft.from_round, 10) || 1,
+                      ),
+                    );
+                    setOverrideDraft({
+                      ...overrideDraft,
+                      from_round: String(from),
+                      to_round: String(to),
+                    });
+                  }}
+                  min={1}
+                  max={rounds}
+                  accessibilityLabel="To round"
+                />
+              </View>
+            </View>
+
+            <ToggleChip
+              label={overrideDraft.skipped ? 'Skipped' : 'Skip these rounds'}
+              active={overrideDraft.skipped}
+              onPress={() =>
+                setOverrideDraft({
+                  ...overrideDraft,
+                  skipped: !overrideDraft.skipped,
+                  selectedMetrics: !overrideDraft.skipped
+                    ? []
+                    : overrideDraft.selectedMetrics,
+                })
+              }
+            />
+
+            {!overrideDraft.skipped && baseline ? (
+              <View style={styles.overrideFields}>
+                <Text style={styles.fieldLabel}>Change</Text>
+                <View style={styles.metricRow}>
+                  {availableMetrics.map((metric) => {
+                    const active =
+                      overrideDraft.selectedMetrics.includes(metric);
+                    return (
+                      <Pressable
+                        key={metric}
+                        onPress={() => toggleMetric(metric)}
+                        style={({ pressed }) => [
+                          styles.metricChip,
+                          active && styles.metricChipActive,
+                          pressed && styles.metricChipPressed,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.metricChipText,
+                            active && styles.metricChipTextActive,
+                          ]}
+                        >
+                          {METRIC_LABELS[metric]}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
+                {overrideDraft.selectedMetrics.includes('reps') ? (
+                  <View style={styles.compareRow}>
+                    <Text style={styles.compareCurrent} numberOfLines={1}>
+                      {formatBaselineReps(baseline)}
+                    </Text>
+                    <Text style={styles.compareArrow}>→</Text>
+                    <View style={styles.compareEdit}>
+                      <TextInput
+                        value={overrideDraft.reps}
+                        onChangeText={(reps) =>
+                          setOverrideDraft({ ...overrideDraft, reps })
+                        }
+                        keyboardType="number-pad"
+                        selectTextOnFocus
+                        style={styles.compareInput}
+                        accessibilityLabel="Override reps"
+                      />
+                      {shapeFields.includes('is_per_side') ? (
+                        <ToggleChip
+                          label={
+                            overrideDraft.is_per_side ? 'Per side' : 'Total'
+                          }
+                          active={overrideDraft.is_per_side}
+                          size="compact"
+                          onPress={() =>
+                            setOverrideDraft({
+                              ...overrideDraft,
+                              is_per_side: !overrideDraft.is_per_side,
+                            })
+                          }
+                        />
+                      ) : null}
+                    </View>
+                  </View>
+                ) : null}
+
+                {overrideDraft.selectedMetrics.includes('time') ? (
+                  <View style={styles.compareRow}>
+                    <Text style={styles.compareCurrent} numberOfLines={1}>
+                      {formatBaselineTime(baseline)}
+                    </Text>
+                    <Text style={styles.compareArrow}>→</Text>
+                    <View style={styles.compareEdit}>
+                      <TimePartsInput
+                        value={overrideDraft.time_duration}
+                        onChange={(time_duration) =>
+                          setOverrideDraft({
+                            ...overrideDraft,
+                            time_duration,
+                          })
+                        }
+                      />
+                    </View>
+                  </View>
+                ) : null}
+
+                {overrideDraft.selectedMetrics.includes('distance') ? (
+                  <View style={styles.compareRow}>
+                    <Text style={styles.compareCurrent} numberOfLines={1}>
+                      {formatBaselineDistance(baseline)}
+                    </Text>
+                    <Text style={styles.compareArrow}>→</Text>
+                    <View style={styles.compareEdit}>
+                      <TextInput
+                        value={overrideDraft.distance_value}
+                        onChangeText={(distance_value) =>
+                          setOverrideDraft({
+                            ...overrideDraft,
+                            distance_value,
+                          })
+                        }
+                        keyboardType="decimal-pad"
+                        selectTextOnFocus
+                        style={styles.compareInput}
+                        accessibilityLabel="Override distance"
+                      />
+                      <FormSelect
+                        options={DISTANCE_UNIT_CODES.map((u) => ({
+                          id: u,
+                          label: u,
+                        }))}
+                        value={overrideDraft.distance_unit}
+                        onChange={(distance_unit) =>
+                          setOverrideDraft({
+                            ...overrideDraft,
+                            distance_unit: distance_unit as DistanceUnitCode,
+                          })
+                        }
+                        compact
+                        accessibilityLabel="Override distance unit"
+                      />
+                    </View>
+                  </View>
+                ) : null}
+
+                {overrideDraft.selectedMetrics.includes('load') ? (
+                  <View style={styles.compareRow}>
+                    <Text style={styles.compareCurrent} numberOfLines={1}>
+                      {formatBaselineLoad(baseline)}
+                    </Text>
+                    <Text style={styles.compareArrow}>→</Text>
+                    <View style={styles.compareEdit}>
+                      <TextInput
+                        value={
+                          overrideDraft.load_unit === 'BW'
+                            ? ''
+                            : overrideDraft.load_value
+                        }
+                        onChangeText={(load_value) =>
+                          setOverrideDraft({ ...overrideDraft, load_value })
+                        }
+                        keyboardType="decimal-pad"
+                        selectTextOnFocus
+                        editable={overrideDraft.load_unit !== 'BW'}
+                        style={[
+                          styles.compareInput,
+                          overrideDraft.load_unit === 'BW' &&
+                            styles.compareInputDisabled,
+                        ]}
+                        placeholder="—"
+                        placeholderTextColor={colors.textDim}
+                        accessibilityLabel="Override load"
+                      />
+                      <FormSelect
+                        options={LOAD_UNIT_CODES.map((u) => ({
+                          id: u,
+                          label: u,
+                        }))}
+                        value={overrideDraft.load_unit}
+                        onChange={(load_unit) =>
+                          setOverrideDraft({
+                            ...overrideDraft,
+                            load_unit: load_unit as LoadUnitCode,
+                            ...(load_unit === 'BW'
+                              ? { load_value: '' }
+                              : {}),
+                          })
+                        }
+                        compact
+                        accessibilityLabel="Override load unit"
+                      />
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Notes</Text>
+              <TextInput
+                value={overrideDraft.notes}
+                onChangeText={(notes) =>
+                  setOverrideDraft({ ...overrideDraft, notes })
+                }
+                placeholder="Why this override, or a note for these rounds…"
+                placeholderTextColor={colors.textDim}
+                multiline
+                style={[styles.fieldInput, styles.notes]}
+              />
+            </View>
+
+            {overrideError ? (
+              <Text style={styles.overrideError}>{overrideError}</Text>
+            ) : null}
+
+            <View style={styles.overrideActions}>
+              <Pressable
+                onPress={commitOverride}
+                style={({ pressed }) => [
+                  styles.overrideSave,
+                  pressed && styles.addPressed,
+                ]}
+              >
+                <Text style={styles.overrideSaveText}>
+                  {editingOverrideId ? 'Save changes' : 'Add override'}
+                </Text>
+              </Pressable>
+              <Pressable onPress={cancelAddOverride} hitSlop={8}>
+                <Text style={styles.overrideCancel}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <Pressable
+            onPress={startAddOverride}
+            disabled={value.items.length === 0}
+            style={({ pressed }) => [
+              styles.addOverrideBtn,
+              pressed && styles.addPressed,
+              value.items.length === 0 && styles.addDisabled,
+            ]}
+          >
+            <Text style={styles.addOverrideText}>+ Add override</Text>
+          </Pressable>
+        )}
+            </Disclosure>
+          </View>
+        </>
+      ) : null}
     </NodeShell>
   );
 }
@@ -231,20 +1143,40 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginBottom: spacing.sm,
   },
-  nameRow: {
+  headerVisualizeCollapsed: {
+    marginBottom: 0,
+  },
+  titleField: {
+    flex: 1,
+    minWidth: 0,
+  },
+  controlsRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+  },
+  controlBlock: {
+    flex: 1,
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+  },
+  controlLabel: {
+    fontFamily: typography.fontSemiBold,
+    fontSize: 11,
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+    color: colors.textDim,
+    textAlign: 'center',
   },
   durationRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 10,
-    paddingTop: 14,
   },
   durationPicker: {
     position: 'relative',
+    paddingTop: 14,
   },
   durationUnitLabels: {
     position: 'absolute',
@@ -315,6 +1247,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.sunset,
   },
+  eachRoundHeader: {
+    gap: 4,
+    marginTop: spacing.sm,
+  },
+  eachRoundHeaderTight: {
+    marginTop: 4,
+  },
+  sectionTitle: {
+    fontFamily: typography.fontSemiBold,
+    fontSize: 13,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: colors.textMuted,
+  },
+  sectionHint: {
+    fontFamily: typography.font,
+    fontSize: 13,
+    lineHeight: 18,
+    color: colors.textDim,
+  },
   items: {
     gap: spacing.sm,
     marginTop: spacing.sm,
@@ -334,9 +1286,212 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     backgroundColor: colors.amberGlow,
   },
+  addDisabled: {
+    opacity: 0.4,
+  },
   addText: {
     fontFamily: typography.fontMedium,
     fontSize: 14,
     color: colors.sunrise,
+  },
+  overrides: {
+    // Space after + Add exercise before the divider
+    marginTop: spacing.md,
+    gap: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  overridesCollapsed: {
+    // Pull up into NodeShell bottom pad when the panel is closed
+    marginBottom: -6,
+  },
+  overridesEmpty: {
+    fontFamily: typography.font,
+    fontSize: 13,
+    color: colors.textDim,
+  },
+  overrideRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    backgroundColor: colors.bgInset,
+  },
+  overrideText: {
+    flex: 1,
+    fontFamily: typography.font,
+    fontSize: 13,
+    color: colors.text,
+  },
+  overrideRowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flexShrink: 0,
+  },
+  overrideIconBtn: {
+    padding: 4,
+  },
+  overrideIconBtnPressed: {
+    opacity: 0.7,
+  },
+  overrideRemove: {
+    fontFamily: typography.fontMedium,
+    fontSize: 13,
+    color: colors.sunset,
+  },
+  overrideForm: {
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(201, 107, 138, 0.06)',
+  },
+  overrideFields: {
+    gap: spacing.sm,
+  },
+  metricRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  metricChip: {
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bgInset,
+  },
+  metricChipActive: {
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.amberGlow,
+  },
+  metricChipPressed: {
+    borderColor: colors.borderStrong,
+  },
+  metricChipText: {
+    fontFamily: typography.fontMedium,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  metricChipTextActive: {
+    color: colors.text,
+  },
+  compareRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    backgroundColor: colors.bgInset,
+  },
+  compareCurrent: {
+    flexShrink: 1,
+    minWidth: 52,
+    maxWidth: 88,
+    fontFamily: typography.fontMedium,
+    fontSize: 13,
+    color: colors.textDim,
+  },
+  compareArrow: {
+    fontFamily: typography.font,
+    fontSize: 14,
+    color: colors.dusk,
+  },
+  compareEdit: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 6,
+  },
+  compareInput: {
+    minWidth: 52,
+    maxWidth: 72,
+    textAlign: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+    fontFamily: typography.font,
+    fontSize: 14,
+    color: colors.text,
+    backgroundColor: colors.bgElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+  },
+  compareInputDisabled: {
+    opacity: 0.35,
+  },
+  unchangedHint: {
+    fontFamily: typography.font,
+    fontSize: 12,
+    color: colors.textDim,
+  },
+  clearField: {
+    fontFamily: typography.fontMedium,
+    fontSize: 12,
+    color: colors.dusk,
+  },
+  rangeRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  rangeField: {
+    flex: 1,
+    gap: 6,
+  },
+  overrideError: {
+    fontFamily: typography.font,
+    fontSize: 13,
+    color: colors.sunset,
+  },
+  overrideActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: 4,
+  },
+  overrideSave: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: radii.sm,
+    backgroundColor: colors.amberGlow,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  overrideSaveText: {
+    fontFamily: typography.fontMedium,
+    fontSize: 14,
+    color: colors.text,
+  },
+  overrideCancel: {
+    fontFamily: typography.fontMedium,
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  addOverrideBtn: {
+    alignSelf: 'flex-start',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
+    borderStyle: 'dashed',
+  },
+  addOverrideText: {
+    fontFamily: typography.fontMedium,
+    fontSize: 14,
+    color: colors.dusk,
   },
 });

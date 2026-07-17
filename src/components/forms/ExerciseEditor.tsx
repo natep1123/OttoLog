@@ -8,7 +8,10 @@ import {
 } from 'react-native';
 import { useAuth } from '../../auth/AuthContext';
 import { TARGET_SHAPE_OPTIONS } from '../../constants/targetShapeFields';
-import { buildTargets } from '../../lib/exerciseTemplates';
+import {
+  buildTargets,
+  migrateTargetsForShapeChange,
+} from '../../lib/exerciseTemplates';
 import {
   createAnalyticsTag,
   createPrimaryGroup,
@@ -42,6 +45,11 @@ type Props = {
   onChange: (next: ExerciseTemplateInput) => void;
   /** Nesting context for future cluster/block hosts */
   nested?: boolean;
+  /**
+   * Cluster/block subitem: targets are per-round (or per-block) prescription,
+   * not consecutive solo sets. Relabels Sets → Per round.
+   */
+  subitem?: boolean;
   coord?: string | null;
   coordMeta?: string;
   onCoordPress?: () => void;
@@ -62,6 +70,7 @@ export function ExerciseEditor({
   value,
   onChange,
   nested = false,
+  subitem = false,
   coord = null,
   coordMeta = 'Exercise',
   onCoordPress,
@@ -73,6 +82,7 @@ export function ExerciseEditor({
   const userId = user?.id;
 
   const [moreOpen, setMoreOpen] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [notesFocused, setNotesFocused] = useState(false);
   const [tools, setTools] = useState<TaxonomyOption[]>([]);
   const [groups, setGroups] = useState<TaxonomyOption[]>([]);
@@ -152,219 +162,265 @@ export function ExerciseEditor({
 
   return (
     <NodeShell kind="exercise" nested={nested}>
-      <CoordRow meta={coordMeta} coord={coord} onCoordPress={onCoordPress} />
-
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <SearchableSelect
-            variant="tool"
-            options={tools}
-            onOptionsChange={setTools}
-            value={value.tool_id}
-            onChange={(tool_id) => {
-              if (tool_id) patch({ tool_id });
-            }}
-            onCreate={async (name) => {
-              if (!userId) return { data: null, error: 'Not signed in.' };
-              return createTool(userId, name);
-            }}
-            placeholder="Search tools…"
-            emptyLabel="None"
-            accessibilityLabel="Tool"
-          />
+      <CoordRow
+        meta={coordMeta}
+        coord={coord}
+        onCoordPress={onCoordPress}
+        expanded={expanded}
+        onToggleExpand={() => setExpanded((e) => !e)}
+        title={
           <ExerciseNameSearch
             value={value.name}
             onChangeText={(name) => patch({ name })}
             onPickTemplate={onPickTemplate}
+            style={styles.titleField}
+            placeholder="Exercise name"
+            accessibilityLabel="Exercise name"
           />
-        </View>
-
-        <View style={styles.headerRow}>
-          <View style={[styles.headerSlot, styles.headerSlotStart]}>
-            <FormSelect
-              options={TARGET_SHAPE_OPTIONS.map((o) => ({
-                id: o.id,
-                label: o.label,
-              }))}
-              value={value.target_shape_id}
-              onChange={(target_shape_id) => patch({ target_shape_id })}
-              accessibilityLabel="Target shape"
-            />
-          </View>
-          <View style={[styles.headerSlot, styles.headerSlotCenter]}>
-            <View style={styles.setsField}>
-              <Text style={styles.setsLabel}>Sets</Text>
-              <TextInput
-                value={String(setCount)}
-                onChangeText={onChangeSetCount}
-                keyboardType="number-pad"
-                selectTextOnFocus
-                style={styles.setsInput}
-                accessibilityLabel="Prescribed sets"
-              />
-            </View>
-          </View>
-          <View style={[styles.headerSlot, styles.headerSlotEnd]}>
-            <IconButton
-              active={moreOpen}
-              onPress={() => setMoreOpen((o) => !o)}
-            />
-          </View>
-        </View>
-      </View>
-
-      <MorePanel open={moreOpen}>
-        <View style={styles.durationRow}>
-          <ToggleChip
-            label={value.track_duration ? 'Duration on' : 'Track duration'}
-            active={value.track_duration}
-            onPress={onToggleDuration}
+        }
+        trailing={
+          <IconButton
+            kind="exercise"
+            active={moreOpen}
+            onPress={() => {
+              setExpanded(true);
+              setMoreOpen((o) => !o);
+            }}
           />
-          {value.track_duration ? (
-            <View style={styles.durationPicker}>
-              <View style={styles.durationUnitLabels} pointerEvents="none">
-                <Text style={styles.durationUnitLabel}>HH</Text>
-                <Text style={styles.durationUnitColon}>:</Text>
-                <Text style={styles.durationUnitLabel}>MM</Text>
-                <Text style={styles.durationUnitColon}>:</Text>
-                <Text style={styles.durationUnitLabel}>SS</Text>
-              </View>
-              <TimePartsInput
-                value={value.duration}
-                onChange={(duration) => patch({ duration })}
-              />
-            </View>
-          ) : null}
-        </View>
-
-        <View style={styles.analyticsBlock}>
-          <ToggleChip
-            label={value.track_analytics ? 'Analytics on' : 'Track analytics'}
-            active={value.track_analytics}
-            onPress={onToggleAnalytics}
-          />
-          {value.track_analytics ? (
-            <View style={styles.analyticsFields}>
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Primary analytics group</Text>
-                <View style={styles.comboFull}>
-                  <SearchableSelect
-                    options={groups}
-                    onOptionsChange={setGroups}
-                    value={value.primary_group_id}
-                    onChange={(primary_group_id) =>
-                      patch({ primary_group_id })
-                    }
-                    onCreate={async (name) => {
-                      if (!userId) return { data: null, error: 'Not signed in.' };
-                      return createPrimaryGroup(userId, name);
-                    }}
-                    placeholder="Search or create group…"
-                    emptyLabel="Select a group"
-                    clearable
-                    accessibilityLabel="Primary analytics group"
-                  />
-                </View>
-              </View>
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Analytics tags</Text>
-                <View style={styles.comboFull}>
-                  <SearchableSelect
-                    mode="multi"
-                    options={tags}
-                    onOptionsChange={setTags}
-                    value={value.analytics_tag_ids}
-                    onChange={(analytics_tag_ids) =>
-                      patch({ analytics_tag_ids })
-                    }
-                    onCreate={async (name) => {
-                      if (!userId) return { data: null, error: 'Not signed in.' };
-                      return createAnalyticsTag(userId, name);
-                    }}
-                    placeholder="Search or create tags…"
-                    emptyLabel="No tags"
-                    accessibilityLabel="Analytics tags"
-                  />
-                </View>
-              </View>
-            </View>
-          ) : null}
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Coaching notes</Text>
-          <TextInput
-            value={value.notes ?? ''}
-            onChangeText={(notes) => patch({ notes: notes || null })}
-            onFocus={() => setNotesFocused(true)}
-            onBlur={() => setNotesFocused(false)}
-            placeholder="e.g., Focus on explosive hip drive. Keep pace steady…"
-            placeholderTextColor={colors.textDim}
-            multiline
-            style={[
-              styles.fieldInput,
-              styles.notes,
-              notesFocused && styles.notesFocused,
-            ]}
-          />
-        </View>
-
-        {showDelete && onDelete ? (
-          <Pressable
-            onPress={onDelete}
-            style={({ pressed }) => [
-              styles.deleteBtn,
-              pressed && styles.deletePressed,
-            ]}
-          >
-            <Text style={styles.deleteText}>Delete exercise</Text>
-          </Pressable>
-        ) : null}
-      </MorePanel>
-
-      <TargetsGrid
-        targetShapeId={value.target_shape_id}
-        targets={value.default_target_shape}
-        trackAnalytics={value.track_analytics}
-        onChangeTarget={onChangeTarget}
+        }
       />
+
+      {expanded ? (
+        <>
+          <View style={styles.controlsRow}>
+            <View style={styles.controlCol}>
+              <Text style={styles.controlLabel}>Tool</Text>
+              <SearchableSelect
+                variant="tool"
+                fill
+                options={tools}
+                onOptionsChange={setTools}
+                value={value.tool_id}
+                onChange={(tool_id) => {
+                  if (tool_id) patch({ tool_id });
+                }}
+                onCreate={async (name) => {
+                  if (!userId) return { data: null, error: 'Not signed in.' };
+                  return createTool(userId, name);
+                }}
+                placeholder="Search tools…"
+                emptyLabel="None"
+                accessibilityLabel="Tool"
+              />
+            </View>
+            <View style={styles.controlCol}>
+              <Text style={styles.controlLabel}>Shape</Text>
+              <FormSelect
+                fill
+                options={TARGET_SHAPE_OPTIONS.map((o) => ({
+                  id: o.id,
+                  label: o.label,
+                }))}
+                value={value.target_shape_id}
+                onChange={(target_shape_id) => {
+                  if (target_shape_id === value.target_shape_id) return;
+                  patch({
+                    target_shape_id,
+                    default_target_shape: migrateTargetsForShapeChange(
+                      target_shape_id,
+                      value.default_target_shape,
+                    ),
+                  });
+                }}
+                accessibilityLabel="Target shape"
+              />
+            </View>
+            <View style={styles.setsCol}>
+              <Text style={styles.controlLabel}>
+                {subitem ? 'Round' : 'Sets'}
+              </Text>
+              {subitem ? (
+                <View
+                  style={[styles.setsInput, styles.setsInputLocked]}
+                  accessibilityLabel="One target per round (locked)"
+                >
+                  <Text style={styles.setsLockedText}>1</Text>
+                </View>
+              ) : (
+                <TextInput
+                  value={String(setCount)}
+                  onChangeText={onChangeSetCount}
+                  keyboardType="number-pad"
+                  selectTextOnFocus
+                  style={styles.setsInput}
+                  accessibilityLabel="Prescribed sets"
+                />
+              )}
+            </View>
+          </View>
+
+          <MorePanel open={moreOpen} kind="exercise">
+            <View style={styles.durationRow}>
+              <ToggleChip
+                label={value.track_duration ? 'Duration on' : 'Track duration'}
+                active={value.track_duration}
+                onPress={onToggleDuration}
+              />
+              {value.track_duration ? (
+                <View style={styles.durationPicker}>
+                  <View style={styles.durationUnitLabels} pointerEvents="none">
+                    <Text style={styles.durationUnitLabel}>HH</Text>
+                    <Text style={styles.durationUnitColon}>:</Text>
+                    <Text style={styles.durationUnitLabel}>MM</Text>
+                    <Text style={styles.durationUnitColon}>:</Text>
+                    <Text style={styles.durationUnitLabel}>SS</Text>
+                  </View>
+                  <TimePartsInput
+                    value={value.duration}
+                    onChange={(duration) => patch({ duration })}
+                    emptyAsNull={false}
+                  />
+                </View>
+              ) : null}
+            </View>
+
+            <View style={styles.analyticsBlock}>
+              <ToggleChip
+                label={
+                  value.track_analytics ? 'Analytics on' : 'Track analytics'
+                }
+                active={value.track_analytics}
+                onPress={onToggleAnalytics}
+              />
+              {value.track_analytics ? (
+                <View style={styles.analyticsFields}>
+                  <View style={styles.field}>
+                    <Text style={styles.fieldLabel}>
+                      Primary analytics group
+                    </Text>
+                    <View style={styles.comboFull}>
+                      <SearchableSelect
+                        options={groups}
+                        onOptionsChange={setGroups}
+                        value={value.primary_group_id}
+                        onChange={(primary_group_id) =>
+                          patch({ primary_group_id })
+                        }
+                        onCreate={async (name) => {
+                          if (!userId)
+                            return { data: null, error: 'Not signed in.' };
+                          return createPrimaryGroup(userId, name);
+                        }}
+                        placeholder="Search or create group…"
+                        emptyLabel="Select a group"
+                        clearable
+                        accessibilityLabel="Primary analytics group"
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.field}>
+                    <Text style={styles.fieldLabel}>Analytics tags</Text>
+                    <View style={styles.comboFull}>
+                      <SearchableSelect
+                        mode="multi"
+                        options={tags}
+                        onOptionsChange={setTags}
+                        value={value.analytics_tag_ids}
+                        onChange={(analytics_tag_ids) =>
+                          patch({ analytics_tag_ids })
+                        }
+                        onCreate={async (name) => {
+                          if (!userId)
+                            return { data: null, error: 'Not signed in.' };
+                          return createAnalyticsTag(userId, name);
+                        }}
+                        placeholder="Search or create tags…"
+                        emptyLabel="No tags"
+                        accessibilityLabel="Analytics tags"
+                      />
+                    </View>
+                  </View>
+                </View>
+              ) : null}
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Coaching notes</Text>
+              <TextInput
+                value={value.notes ?? ''}
+                onChangeText={(notes) => patch({ notes: notes || null })}
+                onFocus={() => setNotesFocused(true)}
+                onBlur={() => setNotesFocused(false)}
+                placeholder="e.g., Focus on explosive hip drive. Keep pace steady…"
+                placeholderTextColor={colors.textDim}
+                multiline
+                style={[
+                  styles.fieldInput,
+                  styles.notes,
+                  notesFocused && styles.notesFocused,
+                ]}
+              />
+            </View>
+
+            {showDelete && onDelete ? (
+              <Pressable
+                onPress={onDelete}
+                style={({ pressed }) => [
+                  styles.deleteBtn,
+                  pressed && styles.deletePressed,
+                ]}
+              >
+                <Text style={styles.deleteText}>
+                  {subitem ? 'Remove from cluster' : 'Delete exercise'}
+                </Text>
+              </Pressable>
+            ) : null}
+          </MorePanel>
+
+          <TargetsGrid
+            targetShapeId={value.target_shape_id}
+            targets={value.default_target_shape}
+            trackAnalytics={value.track_analytics}
+            onChangeTarget={onChangeTarget}
+          />
+        </>
+      ) : null}
     </NodeShell>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    gap: 8,
+  titleField: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
+  },
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
     marginBottom: 10,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerSlot: {
+  controlCol: {
     flex: 1,
+    minWidth: 0,
+    gap: 6,
+    alignItems: 'stretch',
   },
-  headerSlotStart: {
-    alignItems: 'flex-start',
-  },
-  headerSlotCenter: {
-    alignItems: 'center',
-  },
-  headerSlotEnd: {
-    alignItems: 'flex-end',
-  },
-  setsField: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  setsLabel: {
+  controlLabel: {
     fontFamily: typography.fontSemiBold,
     fontSize: 11,
-    letterSpacing: 0.5,
+    letterSpacing: 0.7,
     textTransform: 'uppercase',
     color: colors.textDim,
+    textAlign: 'center',
+  },
+  setsCol: {
+    width: 52,
+    flexShrink: 0,
+    gap: 6,
+    alignItems: 'center',
   },
   setsInput: {
     width: 44,
@@ -379,16 +435,28 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radii.sm,
   },
+  setsInputLocked: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.45,
+    backgroundColor: colors.bgElevated,
+    borderColor: 'rgba(255, 180, 120, 0.08)',
+  },
+  setsLockedText: {
+    fontFamily: typography.fontMedium,
+    fontSize: 14,
+    color: colors.textDim,
+  },
   durationRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 10,
-    // Room for HH/MM/SS floating above the time boxes only
-    paddingTop: 14,
   },
   durationPicker: {
     position: 'relative',
+    // Room for HH/MM/SS floating above the time boxes only
+    paddingTop: 14,
   },
   durationUnitLabels: {
     position: 'absolute',

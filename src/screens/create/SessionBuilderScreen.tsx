@@ -11,17 +11,16 @@ import {
 import { useAuth } from '../../auth/AuthContext';
 import { Button } from '../../components/Button';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { ClusterEditor } from '../../components/forms';
+import { SessionEditor } from '../../components/forms';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import {
-  archiveClusterTemplate,
-  defaultClusterDraft,
-  deleteClusterTemplate,
-  getClusterTemplate,
-  isClusterTemplateReferenced,
-  saveClusterTemplate,
-} from '../../lib/clusterTemplates';
-import type { ClusterTemplateInput } from '../../types/clusterTemplate';
+  archiveSessionTemplate,
+  defaultSessionDraft,
+  deleteSessionTemplate,
+  getSessionTemplate,
+  saveSessionTemplate,
+} from '../../lib/sessionTemplates';
+import type { SessionTemplateInput } from '../../types/sessionTemplate';
 import { colors, spacing, typography } from '../../theme/tokens';
 
 type Props = {
@@ -34,11 +33,7 @@ type Props = {
 
 type RemoveMode = 'archive' | 'hard' | null;
 
-/**
- * Solo cluster template builder — hosts nestable ClusterEditor (ExerciseEditor leaves).
- * Footer actions live outside the form. Prefer soft archive; hard delete when unreferenced.
- */
-export function ClusterBuilderScreen({
+export function SessionBuilderScreen({
   templateId,
   onBrandPress,
   onBack,
@@ -46,13 +41,12 @@ export function ClusterBuilderScreen({
   onDeleted,
 }: Props) {
   const { user } = useAuth();
-  const [draft, setDraft] = useState<ClusterTemplateInput>(defaultClusterDraft);
+  const [draft, setDraft] = useState<SessionTemplateInput>(defaultSessionDraft);
   const [loading, setLoading] = useState(Boolean(templateId));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<string | null>(templateId ?? null);
   const [removeMode, setRemoveMode] = useState<RemoveMode>(null);
-  const [canHardDelete, setCanHardDelete] = useState(true);
   const [removing, setRemoving] = useState(false);
   const [showSavedHint, setShowSavedHint] = useState(false);
   const justSavedRef = useRef(false);
@@ -62,17 +56,15 @@ export function ClusterBuilderScreen({
       setLoading(false);
       return;
     }
-
     if (justSavedRef.current) {
       justSavedRef.current = false;
       setLoading(false);
       return;
     }
-
     setLoading(true);
     setError(null);
     setShowSavedHint(false);
-    const { data, error: loadError } = await getClusterTemplate(templateId);
+    const { data, error: loadError } = await getSessionTemplate(templateId);
     setLoading(false);
     if (loadError || !data) {
       setError(loadError ?? 'Could not load template.');
@@ -80,20 +72,15 @@ export function ClusterBuilderScreen({
     }
     setDraft({
       name: data.name,
-      cluster_type: data.cluster_type,
+      category_id: data.category_id,
       notes: data.content.notes,
       track_duration: data.content.track_duration,
       duration: data.content.duration,
-      rounds: data.content.rounds ?? 1,
-      items: data.content.items.length
-        ? data.content.items
-        : defaultClusterDraft().items,
-      overrides: data.content.overrides ?? [],
+      blocks: data.content.blocks.length
+        ? data.content.blocks
+        : defaultSessionDraft().blocks,
     });
     setSavedId(data.id);
-
-    const { referenced } = await isClusterTemplateReferenced(data.id);
-    setCanHardDelete(!referenced);
   }, [templateId]);
 
   useEffect(() => {
@@ -107,8 +94,7 @@ export function ClusterBuilderScreen({
     }
     setSaving(true);
     setError(null);
-
-    const { id, error: saveError } = await saveClusterTemplate({
+    const { id, error: saveError } = await saveSessionTemplate({
       userId: user.id,
       templateId: savedId,
       draft,
@@ -128,12 +114,10 @@ export function ClusterBuilderScreen({
     if (!user?.id || !savedId || !removeMode || removing) return;
     setRemoving(true);
     setError(null);
-
     const result =
       removeMode === 'hard'
-        ? await deleteClusterTemplate(savedId, user.id)
-        : await archiveClusterTemplate(savedId, user.id);
-
+        ? await deleteSessionTemplate(savedId, user.id)
+        : await archiveSessionTemplate(savedId, user.id);
     setRemoving(false);
     if (result.error) {
       setRemoveMode(null);
@@ -168,24 +152,19 @@ export function ClusterBuilderScreen({
         nestedScrollEnabled
       >
         <ScreenHeader
-          title={savedId ? 'Edit cluster' : 'Cluster'}
-          subtitle="Rounds through a sequence of exercises — compact template; sets expand when you log."
+          title={savedId ? 'Edit session' : 'Session'}
+          subtitle="Full day blueprint — blocks of clusters. Category defaults to Uncategorized."
           onBack={onBack}
           onBrandPress={onBrandPress}
         />
 
-        <ClusterEditor
-          value={draft}
-          onChange={setDraft}
-          coordMeta="Cluster"
-        />
+        <SessionEditor value={draft} onChange={setDraft} />
 
         <View style={styles.footer}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {showSavedHint ? (
             <Text style={styles.savedHint}>Saved · reopen from Library</Text>
           ) : null}
-
           <View style={styles.primaryActions}>
             <Button
               label={
@@ -207,7 +186,6 @@ export function ClusterBuilderScreen({
               />
             ) : null}
           </View>
-
           {savedId ? (
             <View style={styles.deleteSection}>
               <View style={styles.footerDivider} />
@@ -220,17 +198,15 @@ export function ClusterBuilderScreen({
                 }}
                 disabled={busy}
               />
-              {canHardDelete ? (
-                <Button
-                  label="Delete forever"
-                  variant="danger"
-                  onPress={() => {
-                    setError(null);
-                    setRemoveMode('hard');
-                  }}
-                  disabled={busy}
-                />
-              ) : null}
+              <Button
+                label="Delete forever"
+                variant="danger"
+                onPress={() => {
+                  setError(null);
+                  setRemoveMode('hard');
+                }}
+                disabled={busy}
+              />
             </View>
           ) : null}
         </View>
@@ -239,7 +215,7 @@ export function ClusterBuilderScreen({
       <ConfirmDialog
         visible={removeMode === 'archive'}
         title="Remove from library?"
-        message={`Archive “${displayName}”? It leaves your library and frees the name. Prefer this over permanent delete.`}
+        message={`Archive “${displayName}”? It leaves your library and frees the name.`}
         confirmLabel="Archive"
         cancelLabel="Keep template"
         destructive
@@ -249,7 +225,6 @@ export function ClusterBuilderScreen({
           if (!removing) setRemoveMode(null);
         }}
       />
-
       <ConfirmDialog
         visible={removeMode === 'hard'}
         title="Delete forever?"
@@ -285,17 +260,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  primaryActions: {
-    gap: spacing.sm,
-  },
-  deleteSection: {
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
+  primaryActions: { gap: spacing.sm },
+  deleteSection: { gap: spacing.sm, marginTop: spacing.sm },
   footerDivider: {
     height: 1,
     backgroundColor: colors.border,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   error: {
     fontFamily: typography.font,
@@ -305,6 +275,6 @@ const styles = StyleSheet.create({
   savedHint: {
     fontFamily: typography.font,
     fontSize: 13,
-    color: colors.gold,
+    color: colors.textMuted,
   },
 });

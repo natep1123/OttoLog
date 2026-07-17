@@ -1,39 +1,38 @@
 import { ReactNode } from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
-import { colors, spacing } from '../../theme/tokens';
+import { spacing } from '../../theme/tokens';
 import {
   FormNodeKind,
   formRadii,
-  nestedExerciseAccent,
   nodeAccents,
+  nodePaddingX,
 } from './formTokens';
 
 type Props = {
   kind: FormNodeKind;
-  /** Exercise nested under a cluster → sunrise left accent */
+  /** Exercise nested under a cluster (layout hint; accent is always by kind). */
   nested?: boolean;
   children: ReactNode;
   style?: ViewStyle;
 };
 
 /**
- * Nestable card chrome from the session templator:
- * block = panel, cluster = dusk bar, exercise = gold (sunrise when nested).
+ * Nestable card chrome (layer table):
+ * session bg+sunset · block bgPanel+sunrise · cluster bgElevated+dusk · exercise bgInset+gold
  */
-export function NodeShell({ kind, nested, children, style }: Props) {
-  const accent =
-    kind === 'exercise' && nested
-      ? nestedExerciseAccent
-      : nodeAccents[kind];
+export function NodeShell({ kind, children, style }: Props) {
+  const accent = nodeAccents[kind];
 
   return (
     <View
       style={[
         styles.base,
         kind === 'block' && styles.block,
+        kind === 'session' && styles.session,
         {
           backgroundColor: accent.background,
           borderLeftColor: accent.borderLeft,
+          borderColor: accent.border,
         },
         style,
       ]}
@@ -46,16 +45,19 @@ export function NodeShell({ kind, nested, children, style }: Props) {
 const styles = StyleSheet.create({
   base: {
     borderWidth: 1,
-    borderColor: colors.border,
     borderLeftWidth: 3,
     borderRadius: formRadii.node,
     paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: nodePaddingX,
   },
   block: {
     borderRadius: formRadii.panel,
     borderLeftWidth: 1,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
+  },
+  session: {
+    borderRadius: formRadii.panel,
+    borderLeftWidth: 3,
   },
 });

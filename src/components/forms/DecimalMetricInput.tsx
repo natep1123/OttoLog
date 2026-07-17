@@ -37,13 +37,14 @@ function sanitizeDecimalDraft(raw: string): string {
 function parseDraft(text: string): number | null {
   if (text === '' || text === '.') return null;
   const n = Number.parseFloat(text);
-  if (!Number.isFinite(n)) return null;
+  if (!Number.isFinite(n) || n === 0) return null;
   return Math.round(n * 100) / 100;
 }
 
 /**
  * Single-box decimal metric (e.g. distance). Draft text is free while focused
  * so "1." / ".8" work; blur normalizes to 0.00 display (1 → 1.00, .89 → 0.89).
+ * Zero commits as null (unset), matching time 00:00:00 → null.
  */
 export function DecimalMetricInput({
   value,

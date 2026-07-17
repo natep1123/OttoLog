@@ -43,9 +43,11 @@ sql/005_analytics_taxonomy.sql
 sql/006_exercise_templates.sql
 sql/007_template_name_uniqueness.sql
 sql/008_cluster_templates.sql
+sql/009_block_templates.sql
+sql/010_session_templates.sql
 ```
 
-After `004`, **No Tool** and **Uncategorized** exist once for the whole project (fixed UUIDs). Signup does not create copies per user.
+After `004`, **No Tool** and **Uncategorized** exist once for the whole project (fixed UUIDs). Signup does not create copies per user. Session templates require Uncategorized (`010` depends on `004`).
 
 **Auth vs profile:** credentials in `auth.users`; profile `username` in `public.users` where `id = auth.uid()`.
 
@@ -62,9 +64,10 @@ Scan the QR code in Expo Go.
 1. Create account and sign in
 2. **Create** → Build templates → Exercise → save
 3. **Create** → Build templates → Cluster → add exercises → save
-4. **Library** → Templates → Exercises / Clusters → reopen and edit
-5. **Account** → Taxonomy → add a tool
-6. **Home** → recent exercise templates and quick actions show up
+4. **Create** → Build templates → Block / Session → nest lower layers → save
+5. **Library** → Templates → Exercises / Clusters / Blocks / Sessions → reopen and edit
+6. **Account** → Taxonomy → add a tool
+7. **Home** → recent exercise templates and quick actions show up
 
 ## Troubleshooting
 
@@ -73,7 +76,8 @@ Scan the QR code in Expo Go.
 | Auth errors | URL and anon key in `.env.local`; restart Metro after env changes |
 | RLS / empty lists | Migrations applied in order; user is signed in |
 | Delete account fails | `sql/002_delete_own_account.sql` applied |
-| Duplicate template name | By design. Active names are unique per user per layer (`007`, `008`). |
+| Duplicate template name | By design. Active names are unique per user per layer (`007`–`010`). |
 | Cluster list empty / RLS | Apply `sql/008_cluster_templates.sql`; user signed in |
+| Block / Session list empty | Apply `sql/009` and `sql/010`; user signed in |
 
 Schema: [`Database_Outline.md`](./Database_Outline.md). Folders: [`Project_Structure.md`](./Project_Structure.md).

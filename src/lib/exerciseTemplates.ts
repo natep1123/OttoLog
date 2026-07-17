@@ -6,6 +6,7 @@ import type {
   ExerciseTemplateWithTags,
 } from '../types/exerciseTemplate';
 import { TARGET_SHAPE_IDS } from '../constants/lockedAtoms';
+import { fieldsForTargetShape } from '../constants/targetShapeFields';
 import { NO_TOOL_ID } from '../constants/sentinelIds';
 
 function emptyTarget(set: number): ExerciseTarget {
@@ -29,6 +30,58 @@ export function buildTargets(count: number, existing: ExerciseTarget[] = []): Ex
     next.push(prev ? { ...prev, set: i + 1 } : emptyTarget(i + 1));
   }
   return next;
+}
+
+/**
+ * Keep metrics that the new shape still uses; clear the rest.
+ * e.g. Time → Time & Distance keeps time; Reps → Time clears reps.
+ * Zero duration / distance are normalized to null (unset).
+ */
+export function migrateTargetsForShapeChange(
+  newShapeId: string,
+  targets: ExerciseTarget[],
+): ExerciseTarget[] {
+  return sanitizeTargetsForShape(newShapeId, targets);
+}
+
+function normalizeTimeDuration(value: string | null): string | null {
+  if (!value || value === '00:00:00') return null;
+  return value;
+}
+
+function normalizeDistanceValue(value: number | null): number | null {
+  if (value == null || value === 0) return null;
+  return value;
+}
+
+/**
+ * Zero out metric fields that the current shape does not use.
+ * Used on save and when migrating after a shape change.
+ */
+export function sanitizeTargetsForShape(
+  targetShapeId: string,
+  targets: ExerciseTarget[],
+): ExerciseTarget[] {
+  const fields = new Set(fieldsForTargetShape(targetShapeId));
+  return targets.map((t) => {
+    const next = emptyTarget(t.set);
+    next.track_analytics = t.track_analytics;
+    if (fields.has('reps')) next.reps = t.reps;
+    if (fields.has('is_per_side')) next.is_per_side = t.is_per_side;
+    if (fields.has('time_duration')) {
+      next.time_duration = normalizeTimeDuration(t.time_duration);
+    }
+    if (fields.has('distance_value')) {
+      next.distance_value = normalizeDistanceValue(t.distance_value);
+    }
+    if (fields.has('distance_unit')) next.distance_unit = t.distance_unit;
+    if (fields.has('load_unit')) next.load_unit = t.load_unit;
+    if (fields.has('load_value')) {
+      next.load_value =
+        next.load_unit === 'BW' ? null : t.load_value;
+    }
+    return next;
+  });
 }
 
 export function defaultExerciseDraft(): ExerciseTemplateInput {
@@ -187,7 +240,10 @@ export async function saveExerciseTemplate(
     target_shape_id: draft.target_shape_id,
     track_analytics: draft.track_analytics,
     primary_group_id,
-    default_target_shape: draft.default_target_shape,
+    default_target_shape: sanitizeTargetsForShape(
+      draft.target_shape_id,
+      draft.default_target_shape,
+    ),
     track_duration: draft.track_duration,
     duration: draft.track_duration ? draft.duration : null,
     notes: draft.notes?.trim() || null,

@@ -7,6 +7,11 @@ type Props = {
   onChange: (next: string | null) => void;
   /** Show faint HH / MM / SS labels above this picker (does not change box height). */
   showLabels?: boolean;
+  /**
+   * When true (default), 00:00:00 commits as null — “unset”, same as distance 0.
+   * Set false for exercise/cluster duration while track_duration is on.
+   */
+  emptyAsNull?: boolean;
 };
 
 type PartKey = 'h' | 'm' | 's';
@@ -44,13 +49,14 @@ export function formatTimeParts(h: string, m: string, s: string): string {
  * 00:90:00 → 01:30:00 and 01:60:00 → 02:00:00.
  *
  * showLabels draws faint HH/MM/SS above the boxes without changing box size.
- * For the sets table, prefer putting those labels in the Duration column header
+ * For the sets table, prefer putting those labels in the Time column header
  * so set rows stay vertically aligned.
  */
 export function TimePartsInput({
   value,
   onChange,
   showLabels = false,
+  emptyAsNull = true,
 }: Props) {
   const [parts, setParts] = useState<Parts>(() => parseTimeParts(value));
   const [focusedPart, setFocusedPart] = useState<PartKey | null>(null);
@@ -66,8 +72,15 @@ export function TimePartsInput({
 
   const normalize = () => {
     const normalized = formatTimeParts(parts.h, parts.m, parts.s);
-    setParts(parseTimeParts(normalized));
-    onChange(normalized);
+    const p = parseTimeParts(normalized);
+    const totalSeconds =
+      (Number.parseInt(p.h, 10) || 0) * 3600 +
+      (Number.parseInt(p.m, 10) || 0) * 60 +
+      (Number.parseInt(p.s, 10) || 0);
+
+    setParts(p);
+    // Zero duration is "not set" for set/override metrics.
+    onChange(emptyAsNull && totalSeconds === 0 ? null : normalized);
     setFocusedPart(null);
   };
 

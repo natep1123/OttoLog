@@ -38,6 +38,8 @@ type SharedProps = {
   /** Allow clearing single selection */
   clearable?: boolean;
   disabled?: boolean;
+  /** Fill parent width instead of fixed tool width (dense control rows). */
+  fill?: boolean;
 };
 
 type Props = SharedProps & (SingleProps | MultiProps);
@@ -69,6 +71,7 @@ export function SearchableSelect(props: Props) {
     variant = 'default',
     clearable = false,
     disabled = false,
+    fill = false,
   } = props;
 
   const multi = props.mode === 'multi';
@@ -196,6 +199,7 @@ export function SearchableSelect(props: Props) {
         style={[
           styles.triggerWrap,
           variant === 'tool' && styles.triggerWrapTool,
+          fill && styles.triggerWrapFill,
         ]}
       >
         <Pressable
@@ -340,9 +344,15 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   triggerWrapTool: {
-    // Match the target-shape select's visual truncation point.
+    // Match FormSelect shape trigger — fixed equal width.
+    width: 128,
     maxWidth: 128,
     alignSelf: 'auto',
+  },
+  triggerWrapFill: {
+    width: '100%',
+    maxWidth: '100%',
+    alignSelf: 'stretch',
   },
   trigger: {
     flexDirection: 'row',

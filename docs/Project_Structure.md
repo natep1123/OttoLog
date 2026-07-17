@@ -8,7 +8,7 @@ Where code lives and how the signed-in app is organized.
 ottolog-app/
 ├── App.tsx                 Entry: fonts, splash, auth gate, then HomeScreen or auth stack
 ├── index.ts                Expo registerRootComponent
-├── sql/                    Supabase migrations (001 through 008), run in order
+├── sql/                    Supabase migrations (001 through 010), run in order
 ├── docs/                   Official project docs (this folder)
 │   ├── Database_Outline.md
 │   ├── Project_Structure.md
@@ -23,7 +23,7 @@ ottolog-app/
     ├── navigation/         Tab type definitions
     ├── screens/            Full screens and tab stacks
     ├── theme/              Design tokens
-    └── types/              Shared TS types (exercise / cluster templates)
+    └── types/              Shared TS types (exercise / cluster / block / session)
 ```
 
 ## Navigation model
@@ -33,13 +33,13 @@ No React Navigation yet. **`HomeScreen`** holds four bottom tabs and a nested st
 | Tab | Hub | Live drill-in | Stubs |
 |-----|-----|---------------|-------|
 | **Home** | Dashboard | (none) | Week → sessions (Soon) |
-| **Create** | Create hub | Templates → Exercise / Cluster builders | Log session; Session / Block templates |
-| **Library** | Library hub | Templates → Exercises / Clusters → editor | Logs; Session / Block lists |
+| **Create** | Create hub | Templates → Session / Block / Cluster / Exercise builders | Log session |
+| **Library** | Library hub | Templates → Sessions / Blocks / Clusters / Exercises → editor | Logs |
 | **Account** | Account hub | Taxonomy → lists; Settings → Danger zone | Profile, Preferences |
 
 Tapping the brand wordmark resets nested stacks.
 
-Bottom nav hides on the exercise and cluster builders (Create or Library drill-in).
+Bottom nav hides on Session / Block / Cluster / Exercise builders (Create or Library drill-in).
 
 ## Key directories
 
@@ -53,7 +53,9 @@ Bottom nav hides on the exercise and cluster builders (Create or Library drill-i
 |------|------|
 | `supabase.ts` | Supabase client |
 | `exerciseTemplates.ts` | List, get, save, delete exercise templates; default draft |
-| `clusterTemplates.ts` | List, get, save, archive / hard-delete cluster templates; draft helpers |
+| `clusterTemplates.ts` | List, get, save, archive / hard-delete; rounds + overrides; `expandClusterRounds` for future denest |
+| `blockTemplates.ts` | List, get, save, archive / hard-delete; nested cluster items |
+| `sessionTemplates.ts` | List, get, save, archive / hard-delete; nested blocks; default Uncategorized |
 | `taxonomy.ts` | Picker lists and Account taxonomy CRUD |
 | `localTime.ts` | Local greeting and week strip (`dayjs`) |
 
@@ -61,7 +63,7 @@ Bottom nav hides on the exercise and cluster builders (Create or Library drill-i
 
 Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `ConfirmDialog`, `ListSearchBar`, `BottomNav`, `BrandWordmark`.
 
-**`components/forms/`**: Nestable editors (`ExerciseEditor`, `ClusterEditor`, `SearchableSelect`, `TargetsGrid`, etc.). Cluster embeds Exercise leaves; the same leaves will embed in future block and session builders.
+**`components/forms/`**: Nestable editors — `SessionEditor` → `BlockEditor` → `ClusterEditor` → `ExerciseEditor`, plus `MorePanel`, `Disclosure`, `ClusterSequenceDiagram`, `CoordRow`, `NodeShell`, etc.
 
 ### `src/screens/`
 
@@ -70,8 +72,8 @@ Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `Co
 | `WelcomeScreen`, `SignInScreen`, `SignUpScreen` | Auth flow |
 | `HomeScreen.tsx` | Tab shell and stack routing |
 | `home/HomeDashboardScreen.tsx` | Home tab UI |
-| `create/` | Create hub, template hub, exercise + cluster builders |
-| `library/` | Library hub, templates hub, exercise + cluster lists |
+| `create/` | Create hub, template hub, session / block / cluster / exercise builders |
+| `library/` | Library hub, templates hub, session / block / cluster / exercise lists |
 | `account/` | Account hub, settings, danger zone, taxonomy hub and lists |
 
 ### `src/constants/` and `src/types/`
@@ -81,6 +83,8 @@ Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `Co
 - **`targetShapeFields.ts`**: Which columns each shape shows in the targets grid
 - **`types/exerciseTemplate.ts`**: Exercise template row and editor input types
 - **`types/clusterTemplate.ts`**: Cluster template row, content blob, and editor input types
+- **`types/blockTemplate.ts`**: Block template row and nested cluster items
+- **`types/sessionTemplate.ts`**: Session template row and nested blocks
 
 ## Data flow (templates)
 
@@ -93,26 +97,21 @@ ClusterBuilderScreen
   → ClusterEditor → nested ExerciseEditor leaves
   → saveClusterTemplate() → cluster_templates (content jsonb)
 
-LibraryScreen / LibraryClustersScreen / HomeDashboardScreen
+BlockBuilderScreen
+  → BlockEditor → nested ClusterEditor leaves
+  → saveBlockTemplate() → block_templates (content jsonb)
+
+SessionBuilderScreen
+  → SessionEditor → nested BlockEditor → ClusterEditor leaves
+  → saveSessionTemplate() → session_templates (content jsonb)
+
+Library* screens / HomeDashboardScreen
   → list*Templates() → open builder by id
 
 Account TaxonomyListScreen
   → taxonomy.ts → tools | analytics_primary_groups | analytics_tags
 ```
 
-Pickers load active taxonomy rows only. Editors resolve archived labels by id when reopening a template.
+## Forms layer accents
 
-## Adding a new screen
-
-1. Match patterns in [`Styling.md`](./Styling.md): `Screen`, tokens, `ScreenHeader`, `HubAction`.
-2. Add stack state in `HomeScreen.tsx` if the screen needs back navigation.
-3. Put domain logic in `src/lib/`, not in the screen file.
-4. Add SQL under `sql/` with the next sequence number; update [`Database_Outline.md`](./Database_Outline.md).
-
-## Related docs
-
-| Doc | Use when |
-|-----|----------|
-| [`Setup.md`](./Setup.md) | First run, env, migrations |
-| [`Database_Outline.md`](./Database_Outline.md) | Tables, RLS, sentinels, live vs planned |
-| [`Styling.md`](./Styling.md) | Colors, typography, component patterns |
+See `formTokens.ts` / `docs/Styling.md`. Session → Block → Cluster → Exercise each own a background + accent rail used by `NodeShell`, `IconButton`, and `MorePanel`.

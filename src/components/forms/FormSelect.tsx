@@ -19,6 +19,8 @@ type Props = {
   accessibilityLabel?: string;
   /** Compact trigger width hint */
   compact?: boolean;
+  /** Fill parent width instead of fixed 128 (dense control rows). */
+  fill?: boolean;
 };
 
 /**
@@ -32,6 +34,7 @@ export function FormSelect({
   variant = 'default',
   accessibilityLabel,
   compact,
+  fill,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState({ x: 0, y: 0, w: 0, h: 0 });
@@ -53,7 +56,11 @@ export function FormSelect({
       <View
         ref={triggerRef}
         collapsable={false}
-        style={[styles.wrap, compact && styles.wrapCompact]}
+        style={[
+          styles.wrap,
+          compact && styles.wrapCompact,
+          fill && styles.wrapFill,
+        ]}
       >
         <Pressable
           onPress={openMenu}
@@ -123,10 +130,14 @@ export function FormSelect({
 
 const styles = StyleSheet.create({
   wrap: {
-    minWidth: 88,
+    // Match SearchableSelect tool trigger — fixed so label length doesn't resize.
+    width: 128,
   },
   wrapCompact: {
-    minWidth: 64,
+    width: 64,
+  },
+  wrapFill: {
+    width: '100%',
   },
   trigger: {
     flexDirection: 'row',

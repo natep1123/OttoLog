@@ -1,9 +1,14 @@
 /**
  * Cluster template row + editor draft.
- * content jsonb holds notes/duration/items; name + cluster_type are columns.
+ * content jsonb: rounds + per-round items + sparse overrides.
+ * Expanded individual sets live only in session logs after denest.
  */
 
-import type { ExerciseTarget } from './exerciseTemplate';
+import type {
+  DistanceUnitCode,
+  ExerciseTarget,
+  LoadUnitCode,
+} from './exerciseTemplate';
 
 export type ClusterType = 'superset' | 'circuit';
 
@@ -17,10 +22,10 @@ export const CLUSTER_TYPE_LABELS: Record<ClusterType, string> = {
   circuit: 'Circuit',
 };
 
-/** Exercise leaf stored inside cluster content.items[] */
+/** Exercise leaf stored inside cluster content.items[] (per-round prescription) */
 export type ClusterExerciseItem = {
   kind: 'exercise';
-  /** Stable id within the blob (React keys / reorder) */
+  /** Stable id within the blob (React keys / overrides / reorder) */
   id: string;
   name: string;
   tool_id: string;
@@ -28,17 +33,48 @@ export type ClusterExerciseItem = {
   track_analytics: boolean;
   primary_group_id: string | null;
   analytics_tag_ids: string[];
+  /** Targets performed once per round (not consecutive solo sets) */
   targets: ExerciseTarget[];
   track_duration: boolean;
   duration: string | null;
   notes: string | null;
 };
 
+/** Partial target fields for a round-range override */
+export type ClusterOverridePatch = {
+  reps?: number | null;
+  is_per_side?: boolean;
+  time_duration?: string | null;
+  distance_value?: number | null;
+  distance_unit?: DistanceUnitCode;
+  load_value?: number | null;
+  load_unit?: LoadUnitCode;
+};
+
+/**
+ * Exception to the default per-round prescription for a round range.
+ * skipped=true means that exercise is omitted for those rounds (not logged as 0-rep sets).
+ * notes can exist alone (why / coaching for those rounds) without changing targets.
+ * patch fields stay within the exercise's existing target_shape — shape itself is not overridden.
+ */
+export type ClusterRoundOverride = {
+  id: string;
+  exercise_id: string;
+  from_round: number;
+  to_round: number;
+  skipped: boolean;
+  notes: string | null;
+  patch: ClusterOverridePatch;
+};
+
 export type ClusterContent = {
   notes: string | null;
   track_duration: boolean;
   duration: string | null;
+  /** How many times to walk the exercise sequence */
+  rounds: number;
   items: ClusterExerciseItem[];
+  overrides: ClusterRoundOverride[];
 };
 
 export type ClusterTemplateRow = {
@@ -58,5 +94,17 @@ export type ClusterTemplateInput = {
   notes: string | null;
   track_duration: boolean;
   duration: string | null;
+  rounds: number;
   items: ClusterExerciseItem[];
+  overrides: ClusterRoundOverride[];
+};
+
+/** One expanded slot after applying rounds + overrides (for future denest / log UI) */
+export type ExpandedClusterSet = {
+  round: number;
+  exercise_id: string;
+  exercise_name: string;
+  target_index: number;
+  target: ExerciseTarget;
+  skipped: boolean;
 };

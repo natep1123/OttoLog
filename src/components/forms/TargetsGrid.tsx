@@ -55,7 +55,7 @@ export function TargetsGrid({
           </View>
           {fields.includes('time_duration') ? (
             <View style={[styles.colTime, styles.headCell]}>
-              <Text style={styles.th}>Duration</Text>
+              <Text style={styles.th}>Time</Text>
             </View>
           ) : null}
           {fields.includes('reps') ? (

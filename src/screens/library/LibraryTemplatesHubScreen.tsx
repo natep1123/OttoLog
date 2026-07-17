@@ -8,20 +8,24 @@ type Props = {
   onBack: () => void;
   onExercises: () => void;
   onClusters: () => void;
+  onBlocks: () => void;
+  onSessions: () => void;
 };
 
-/** Library → Templates hub. Exercise and Cluster are browsable. */
+/** Library → Templates hub. */
 export function LibraryTemplatesHubScreen({
   onBrandPress,
   onBack,
   onExercises,
   onClusters,
+  onBlocks,
+  onSessions,
 }: Props) {
   return (
     <View style={styles.root}>
       <ScreenHeader
         title="Templates"
-        subtitle="Pick a layer to manage. Exercise and Cluster are live."
+        subtitle="Pick a layer to manage."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />
@@ -29,16 +33,12 @@ export function LibraryTemplatesHubScreen({
         <HubAction
           title="Session"
           body="Full session tree blueprints."
-          onPress={() => {}}
-          disabled
-          badge="Soon"
+          onPress={onSessions}
         />
         <HubAction
           title="Block"
           body="Reusable block blobs."
-          onPress={() => {}}
-          disabled
-          badge="Soon"
+          onPress={onBlocks}
         />
         <HubAction
           title="Cluster"

@@ -10,28 +10,24 @@ import {
 } from 'react-native';
 import { ListSearchBar } from '../../components/ListSearchBar';
 import { ScreenHeader } from '../../components/ScreenHeader';
-import { listClusterTemplates } from '../../lib/clusterTemplates';
-import {
-  CLUSTER_TYPE_LABELS,
-  type ClusterTemplateRow,
-} from '../../types/clusterTemplate';
+import { listBlockTemplates } from '../../lib/blockTemplates';
+import type { BlockTemplateRow } from '../../types/blockTemplate';
 import { colors, radii, spacing, typography } from '../../theme/tokens';
 
 type Props = {
   onBrandPress?: () => void;
   onBack?: () => void;
-  onOpenCluster: (id: string) => void;
+  onOpenBlock: (id: string) => void;
   refreshKey?: number;
 };
 
-/** Library → Templates → Clusters list with name search. */
-export function LibraryClustersScreen({
+export function LibraryBlocksScreen({
   onBrandPress,
   onBack,
-  onOpenCluster,
+  onOpenBlock,
   refreshKey = 0,
 }: Props) {
-  const [rows, setRows] = useState<ClusterTemplateRow[]>([]);
+  const [rows, setRows] = useState<BlockTemplateRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +37,7 @@ export function LibraryClustersScreen({
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
-    const { data, error: listError } = await listClusterTemplates();
+    const { data, error: listError } = await listBlockTemplates();
     setLoading(false);
     setRefreshing(false);
     if (listError) {
@@ -64,19 +60,17 @@ export function LibraryClustersScreen({
   return (
     <View style={styles.root}>
       <ScreenHeader
-        title="Clusters"
+        title="Blocks"
         subtitle="Open one to edit, archive, or delete. Create new ones under Create."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />
-
       <ListSearchBar
         value={searchQuery}
         onChangeText={setSearchQuery}
-        placeholder="Search clusters…"
-        accessibilityLabel="Search clusters"
+        placeholder="Search blocks…"
+        accessibilityLabel="Search blocks"
       />
-
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.sunrise} />
@@ -96,7 +90,7 @@ export function LibraryClustersScreen({
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {!error && rows.length === 0 ? (
             <Text style={styles.empty}>
-              No cluster templates yet. Create → Build templates → Cluster.
+              No block templates yet. Create → Build templates → Block.
             </Text>
           ) : null}
           {!error && rows.length > 0 && filteredRows.length === 0 ? (
@@ -105,12 +99,11 @@ export function LibraryClustersScreen({
             </Text>
           ) : null}
           {filteredRows.map((row) => {
-            const exerciseCount = row.content.items?.length ?? 0;
-            const rounds = row.content.rounds ?? 1;
+            const clusterCount = row.content.items?.length ?? 0;
             return (
               <Pressable
                 key={row.id}
-                onPress={() => onOpenCluster(row.id)}
+                onPress={() => onOpenBlock(row.id)}
                 style={({ pressed }) => [
                   styles.item,
                   pressed && styles.itemPressed,
@@ -118,12 +111,8 @@ export function LibraryClustersScreen({
               >
                 <Text style={styles.itemTitle}>{row.name}</Text>
                 <Text style={styles.itemMeta}>
-                  {CLUSTER_TYPE_LABELS[row.cluster_type] ?? row.cluster_type}
-                  {' · '}
-                  {rounds} {rounds === 1 ? 'round' : 'rounds'}
-                  {' · '}
-                  {exerciseCount}{' '}
-                  {exerciseCount === 1 ? 'exercise' : 'exercises'}
+                  {clusterCount}{' '}
+                  {clusterCount === 1 ? 'cluster' : 'clusters'}
                 </Text>
               </Pressable>
             );
@@ -135,18 +124,9 @@ export function LibraryClustersScreen({
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    gap: spacing.md,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  list: {
-    flex: 1,
-  },
+  root: { flex: 1, gap: spacing.md },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  list: { flex: 1 },
   listContent: {
     flexGrow: 1,
     alignItems: 'stretch',

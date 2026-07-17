@@ -2,18 +2,29 @@ import { supabase } from './supabase';
 import {
   buildTargets,
   defaultExerciseDraft,
+  sanitizeTargetsForShape,
 } from './exerciseTemplates';
-import type { ExerciseTemplateInput } from '../types/exerciseTemplate';
+import type {
+  ExerciseTarget,
+  ExerciseTemplateInput,
+} from '../types/exerciseTemplate';
 import type {
   ClusterContent,
   ClusterExerciseItem,
+  ClusterOverridePatch,
+  ClusterRoundOverride,
   ClusterTemplateInput,
   ClusterTemplateRow,
   ClusterType,
+  ExpandedClusterSet,
 } from '../types/clusterTemplate';
 
 function newItemId(): string {
   return `ex_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+export function newOverrideId(): string {
+  return `ov_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
 export function exerciseDraftToClusterItem(
@@ -65,8 +76,85 @@ export function defaultClusterDraft(): ClusterTemplateInput {
     notes: null,
     track_duration: false,
     duration: null,
+    rounds: 1,
     items: [defaultClusterExerciseItem()],
+    overrides: [],
   };
+}
+
+function normalizePatch(raw: unknown): ClusterOverridePatch {
+  if (!raw || typeof raw !== 'object') return {};
+  const p = raw as Record<string, unknown>;
+  const patch: ClusterOverridePatch = {};
+  if ('reps' in p) {
+    patch.reps =
+      p.reps === null || p.reps === undefined
+        ? null
+        : typeof p.reps === 'number'
+          ? p.reps
+          : Number(p.reps);
+  }
+  if (typeof p.is_per_side === 'boolean') patch.is_per_side = p.is_per_side;
+  if ('time_duration' in p) {
+    const t = typeof p.time_duration === 'string' ? p.time_duration : null;
+    patch.time_duration = !t || t === '00:00:00' ? null : t;
+  }
+  if ('distance_value' in p) {
+    const rawDist =
+      p.distance_value === null || p.distance_value === undefined
+        ? null
+        : typeof p.distance_value === 'number'
+          ? p.distance_value
+          : Number(p.distance_value);
+    patch.distance_value =
+      rawDist == null || !Number.isFinite(rawDist) || rawDist === 0
+        ? null
+        : rawDist;
+  }
+  if (
+    p.distance_unit === 'mi' ||
+    p.distance_unit === 'km' ||
+    p.distance_unit === 'm'
+  ) {
+    patch.distance_unit = p.distance_unit;
+  }
+  if (p.load_unit === 'lbs' || p.load_unit === 'kg' || p.load_unit === 'BW') {
+    patch.load_unit = p.load_unit;
+  }
+  if ('load_value' in p || patch.load_unit === 'BW') {
+    if (patch.load_unit === 'BW') {
+      patch.load_value = null;
+    } else if ('load_value' in p) {
+      patch.load_value =
+        p.load_value === null || p.load_value === undefined
+          ? null
+          : typeof p.load_value === 'number'
+            ? p.load_value
+            : Number(p.load_value);
+    }
+  }
+  return patch;
+}
+
+function normalizeOverrides(raw: unknown): ClusterRoundOverride[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((row, index) => {
+    const r = (row ?? {}) as Record<string, unknown>;
+    const from = Math.max(1, Number(r.from_round) || 1);
+    const to = Math.max(from, Number(r.to_round) || from);
+    return {
+      id:
+        typeof r.id === 'string' && r.id
+          ? r.id
+          : `ov_migrated_${index}_${newOverrideId()}`,
+      exercise_id: typeof r.exercise_id === 'string' ? r.exercise_id : '',
+      from_round: from,
+      to_round: to,
+      skipped: Boolean(r.skipped),
+      notes: typeof r.notes === 'string' && r.notes.trim() ? r.notes.trim() : null,
+      patch: normalizePatch(r.patch),
+    };
+  });
 }
 
 function normalizeContent(raw: unknown): ClusterContent {
@@ -74,7 +162,9 @@ function normalizeContent(raw: unknown): ClusterContent {
     notes: null,
     track_duration: false,
     duration: null,
+    rounds: 1,
     items: [],
+    overrides: [],
   };
   if (!raw || typeof raw !== 'object') return empty;
   const c = raw as Record<string, unknown>;
@@ -98,7 +188,12 @@ function normalizeContent(raw: unknown): ClusterContent {
       analytics_tag_ids: Array.isArray(r.analytics_tag_ids)
         ? (r.analytics_tag_ids as string[])
         : [],
-      targets: targets.length ? (targets as ClusterExerciseItem['targets']) : buildTargets(1),
+      targets: buildTargets(
+        1,
+        targets.length
+          ? (targets as ClusterExerciseItem['targets'])
+          : buildTargets(1),
+      ),
       track_duration: Boolean(r.track_duration),
       duration: typeof r.duration === 'string' ? r.duration : null,
       notes: typeof r.notes === 'string' ? r.notes : null,
@@ -106,6 +201,7 @@ function normalizeContent(raw: unknown): ClusterContent {
   });
 
   const track_duration = Boolean(c.track_duration);
+  const rounds = Math.max(1, Math.min(99, Number(c.rounds) || 1));
   return {
     notes: typeof c.notes === 'string' ? c.notes : null,
     track_duration,
@@ -114,7 +210,9 @@ function normalizeContent(raw: unknown): ClusterContent {
         ? c.duration
         : '00:00:00'
       : null,
+    rounds,
     items,
+    overrides: normalizeOverrides(c.overrides),
   };
 }
 
@@ -129,6 +227,142 @@ function rowFromDb(row: Record<string, unknown>): ClusterTemplateRow {
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
   };
+}
+
+/** Clamp / drop overrides that no longer fit items or rounds. */
+export function pruneClusterOverrides(
+  overrides: ClusterRoundOverride[],
+  items: ClusterExerciseItem[],
+  rounds: number,
+): ClusterRoundOverride[] {
+  const ids = new Set(items.map((i) => i.id));
+  return overrides
+    .filter((o) => ids.has(o.exercise_id))
+    .map((o) => ({
+      ...o,
+      from_round: Math.min(Math.max(1, o.from_round), rounds),
+      to_round: Math.min(Math.max(1, o.to_round), rounds),
+    }))
+    .filter((o) => o.from_round <= o.to_round);
+}
+
+function findOverrideForRound(
+  overrides: ClusterRoundOverride[],
+  exerciseId: string,
+  round: number,
+): ClusterRoundOverride | null {
+  let hit: ClusterRoundOverride | null = null;
+  for (const o of overrides) {
+    if (o.exercise_id !== exerciseId) continue;
+    if (round < o.from_round || round > o.to_round) continue;
+    hit = o;
+  }
+  return hit;
+}
+
+function applyPatch(
+  target: ExerciseTarget,
+  patch: ClusterOverridePatch,
+): ExerciseTarget {
+  return {
+    ...target,
+    ...patch,
+    set: target.set,
+  };
+}
+
+/**
+ * Expand compact cluster programming into per-round sets.
+ * Used when denesting session logs later. Skipped slots are marked, not
+ * turned into zero-rep performed sets.
+ */
+export function expandClusterRounds(
+  draft: Pick<ClusterTemplateInput, 'rounds' | 'items' | 'overrides'>,
+): ExpandedClusterSet[] {
+  const rounds = Math.max(1, draft.rounds || 1);
+  const out: ExpandedClusterSet[] = [];
+
+  for (let round = 1; round <= rounds; round += 1) {
+    for (const item of draft.items) {
+      const targets = item.targets.length ? item.targets : buildTargets(1);
+      const override = findOverrideForRound(
+        draft.overrides ?? [],
+        item.id,
+        round,
+      );
+      const skipped = Boolean(override?.skipped);
+
+      targets.forEach((target, target_index) => {
+        const base = { ...target, set: target_index + 1 };
+        const next =
+          !skipped && override && Object.keys(override.patch).length > 0
+            ? applyPatch(base, override.patch)
+            : base;
+        out.push({
+          round,
+          exercise_id: item.id,
+          exercise_name: item.name,
+          target_index,
+          target: next,
+          skipped,
+        });
+      });
+    }
+  }
+
+  return out;
+}
+
+/** Performed-only expansion (skips omitted for analytics volume). */
+export function expandClusterPerformedSets(
+  draft: Pick<ClusterTemplateInput, 'rounds' | 'items' | 'overrides'>,
+): ExpandedClusterSet[] {
+  return expandClusterRounds(draft).filter((s) => !s.skipped);
+}
+
+export function formatOverrideSummary(
+  override: ClusterRoundOverride,
+  exerciseName: string,
+): string {
+  const range =
+    override.from_round === override.to_round
+      ? `R${override.from_round}`
+      : `R${override.from_round}–${override.to_round}`;
+  const name = exerciseName.trim() || 'Exercise';
+  const bits: string[] = [];
+
+  if (override.skipped) bits.push('skipped');
+
+  const { patch } = override;
+  if ('reps' in patch) {
+    bits.push(patch.reps == null ? 'reps cleared' : `${patch.reps} reps`);
+  }
+  if ('load_value' in patch || 'load_unit' in patch) {
+    const v = 'load_value' in patch ? patch.load_value : undefined;
+    const u = patch.load_unit ?? '';
+    if (v === undefined && u) bits.push(u);
+    else if (v == null && 'load_value' in patch) bits.push('load cleared');
+    else if (v != null) bits.push(`${v}${u ? ` ${u}` : ''}`.trim());
+  }
+  if ('time_duration' in patch) {
+    bits.push(patch.time_duration ? patch.time_duration : 'time cleared');
+  }
+  if ('distance_value' in patch || 'distance_unit' in patch) {
+    const v = 'distance_value' in patch ? patch.distance_value : undefined;
+    const u = patch.distance_unit ?? '';
+    if (v === undefined && u) bits.push(u);
+    else if (v == null && 'distance_value' in patch) bits.push('distance cleared');
+    else if (v != null) bits.push(`${v}${u ? ` ${u}` : ''}`);
+  }
+  if (override.notes?.trim()) {
+    const note = override.notes.trim();
+    bits.push(
+      note.length > 28 ? `“${note.slice(0, 27)}…”` : `“${note}”`,
+    );
+  }
+
+  if (bits.length === 0) return `${name} · ${range}`;
+  return `${name} · ${range} · ${bits.join(' · ')}`;
 }
 
 export async function listClusterTemplates(): Promise<{
@@ -174,6 +408,9 @@ function validateDraft(draft: ClusterTemplateInput): string | null {
   if (draft.cluster_type !== 'superset' && draft.cluster_type !== 'circuit') {
     return 'Cluster type must be Superset or Circuit.';
   }
+  if (!Number.isFinite(draft.rounds) || draft.rounds < 1) {
+    return 'Rounds must be at least 1.';
+  }
   if (draft.items.length === 0) {
     return 'Add at least one exercise.';
   }
@@ -186,6 +423,26 @@ function validateDraft(draft: ClusterTemplateInput): string | null {
       return `Exercise “${item.name.trim()}” needs a primary analytics group.`;
     }
   }
+
+  const itemIds = new Set(draft.items.map((i) => i.id));
+  for (const o of draft.overrides ?? []) {
+    if (!itemIds.has(o.exercise_id)) {
+      return 'An override points at a missing exercise.';
+    }
+    if (o.from_round < 1 || o.to_round < o.from_round) {
+      return 'Override round range is invalid.';
+    }
+    if (o.to_round > draft.rounds) {
+      return `Override rounds cannot exceed ${draft.rounds}.`;
+    }
+    if (
+      !o.skipped &&
+      Object.keys(o.patch).length === 0 &&
+      !o.notes?.trim()
+    ) {
+      return 'Each override must skip, change a field, or add a note.';
+    }
+  }
   return null;
 }
 
@@ -193,10 +450,22 @@ export async function saveClusterTemplate(
   args: SaveClusterArgs,
 ): Promise<{ id: string | null; error: string | null }> {
   const { userId, templateId, draft } = args;
-  const validationError = validateDraft(draft);
+  const rounds = Math.max(1, Math.min(99, Math.floor(draft.rounds) || 1));
+  const overrides = pruneClusterOverrides(
+    draft.overrides ?? [],
+    draft.items,
+    rounds,
+  );
+  const normalized: ClusterTemplateInput = {
+    ...draft,
+    rounds,
+    overrides,
+  };
+
+  const validationError = validateDraft(normalized);
   if (validationError) return { id: null, error: validationError };
 
-  const name = draft.name.trim();
+  const name = normalized.name.trim();
 
   let dupeQuery = supabase
     .from('cluster_templates')
@@ -215,26 +484,37 @@ export async function saveClusterTemplate(
     };
   }
 
-  const track_duration = draft.track_duration;
+  const track_duration = normalized.track_duration;
   const content: ClusterContent = {
-    notes: draft.notes?.trim() || null,
+    notes: normalized.notes?.trim() || null,
     track_duration,
-    duration: track_duration ? draft.duration ?? '00:00:00' : null,
-    items: draft.items.map((item) => ({
+    duration: track_duration ? normalized.duration ?? '00:00:00' : null,
+    rounds,
+    items: normalized.items.map((item) => ({
       ...item,
       kind: 'exercise' as const,
       name: item.name.trim(),
       notes: item.notes?.trim() || null,
       primary_group_id: item.track_analytics ? item.primary_group_id : null,
-      analytics_tag_ids: item.track_analytics ? item.analytics_tag_ids ?? [] : [],
+      analytics_tag_ids: item.track_analytics
+        ? item.analytics_tag_ids ?? []
+        : [],
       duration: item.track_duration ? item.duration : null,
+      targets: sanitizeTargetsForShape(
+        item.target_shape_id,
+        buildTargets(1, item.targets),
+      ),
+    })),
+    overrides: overrides.map((o) => ({
+      ...o,
+      notes: o.notes?.trim() || null,
     })),
   };
 
   const payload = {
     user_id: userId,
     name,
-    cluster_type: draft.cluster_type,
+    cluster_type: normalized.cluster_type,
     content,
     updated_at: new Date().toISOString(),
   };
@@ -261,10 +541,6 @@ export async function saveClusterTemplate(
   return { id, error: null };
 }
 
-/**
- * Soft-archive a cluster template (preferred removal).
- * Frees the active name for reuse.
- */
 export async function archiveClusterTemplate(
   id: string,
   userId: string,
@@ -283,11 +559,6 @@ export async function archiveClusterTemplate(
   return { error: null };
 }
 
-/**
- * Hard-delete only when unreferenced.
- * v1: cluster_templates are never FK-referenced (JSON copy independence),
- * so this is always allowed when the row exists.
- */
 export async function isClusterTemplateReferenced(
   _id: string,
 ): Promise<{ referenced: boolean; error: string | null }> {

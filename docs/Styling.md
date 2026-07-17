@@ -139,8 +139,8 @@ Use these values for normal layout spacing. Small optical adjustments are allowe
 The standard `Screen` content inset is:
 
 ```ts
-paddingHorizontal: 24
-paddingVertical: 32
+paddingHorizontal: 20
+paddingVertical: 32  // spacing.xl
 ```
 
 ## Radii
@@ -338,7 +338,7 @@ Home now uses a dashboard layout. Create, Library, and Account use hub / list / 
 
 - Header-sized wordmark
 - Screen title + muted subtitle via `ScreenHeader`
-- Bottom navigation (hidden on the exercise and cluster builders)
+- Bottom navigation (hidden on Session / Block / Cluster / Exercise builders)
 
 ### Home
 
@@ -366,10 +366,23 @@ Danger zone has **Delete account** with confirmation. **Log out** is on the Acco
 
 Same hub pattern: `ScreenHeader` plus stacked `HubAction` rows.
 
-- **Create**: Build templates (live), Log a session (Soon) → Templates hub → Exercise / Cluster (live), Session / Block (Soon)
-- **Library**: Templates (live), Logs (Soon) → Templates hub → Exercise / Cluster lists with name search (live), Session / Block (Soon)
+- **Create**: Build templates (live), Log a session (Soon) → Templates hub → Session / Block / Cluster / Exercise builders (live)
+- **Library**: Templates (live), Logs (Soon) → Templates hub → Session / Block / Cluster / Exercise lists with name search (live)
 
-Exercise and cluster builders hide bottom nav. Library lists are top-aligned with `ListSearchBar`. Cluster nodes use the dusk left accent; nested exercises use sunrise.
+All four template builders hide bottom nav. Library lists are top-aligned with `ListSearchBar`.
+
+### Nestable form layers
+
+Each template layer owns a background and accent (see `formTokens.ts`). Used by `NodeShell` left rail, hairline border, `IconButton`, and `MorePanel` (dashed left rail + tinted wash):
+
+| Layer | Background | Accent |
+|-------|------------|--------|
+| Session | `bg` | sunset |
+| Block | `bgPanel` | sunrise |
+| Cluster | `bgElevated` | dusk |
+| Exercise | `bgInset` | gold |
+
+Clusters show a circuit-style sequence diagram (chips left→right, wrap onto the next line, dashed return loop), per-round subitem editors, and an overrides list for round-range exceptions. Visualize and Overrides use a tight `Disclosure`.
 
 ## Native Implementation Notes
 
