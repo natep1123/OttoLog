@@ -22,11 +22,11 @@ When outline, concept docs, and live SQL disagree, use this order:
 | Profile | `public.users` (`id = auth.uid()`, unique `username`) |
 | RPCs | `delete_own_account()` |
 
-**Not live yet**
+**Not live yet** *(SQL ready to apply)*
 
-- Locked atoms
-- Taxonomy tables (`tools`, `session_categories`, analytics tables)
-- Global **No Tool** / **Uncategorized** sentinel rows
+- Locked atoms — `sql/003_locked_atoms.sql`
+- Taxonomy tables (`tools`, `session_categories`) + global sentinels — `sql/004_taxonomy.sql`
+- Analytics tables
 - Template tables
 - Log / relational session tables
 - Denest / renest functions
@@ -38,6 +38,11 @@ Applied migrations:
 - `sql/001_users.sql`
 - `sql/002_delete_own_account.sql`
 
+Pending (run in order in Supabase SQL Editor):
+
+- `sql/003_locked_atoms.sql`
+- `sql/004_taxonomy.sql`
+
 ---
 
 ## Philosophy
@@ -47,7 +52,7 @@ OttoLog is an infinite workout canvas:
 - No fixed global exercise catalog
 - No fixed equipment list beyond structural defaults
 - No fixed session category list beyond structural defaults
-- Only the *shape* of tracking is shared (composition categories, load units, distance units, cluster types)
+- Only the *shape* of tracking is shared (target shapes, load units, distance units, cluster types)
 
 **Structural defaults are global sentinels, not per-user copies:**
 
@@ -68,7 +73,7 @@ Array order in the editor is the source of truth. Persisted `*_order` / `set_num
 
 This deliberately diverges from `docs/original-concept/Backend/Database_Design.md`, which seeded a copy of each default per user. Official project docs win.
 
-### Why global (not per-user copies)
+### Why global nulls (not per-user copies)
 
 - These rows are structural system shape, not personal vocabulary.
 - Avoids N identical copies for N users.
@@ -114,7 +119,14 @@ session_categories
   archived_at     timestamptz NULL
 ```
 
-Fixed UUIDs will be chosen and recorded in the taxonomy migration SQL (and mirrored as app constants). Until that migration ships, treat the *pattern* as locked and the literal UUID values as TBD in SQL.
+Fixed UUIDs (locked — match `sql/003_locked_atoms.sql` / `sql/004_taxonomy.sql` and `src/constants/`):
+
+| Constant | UUID | Row |
+|----------|------|-----|
+| `NO_TOOL_ID` | `40000000-0000-4000-8000-000000000001` | tools → No Tool |
+| `UNCATEGORIZED_ID` | `40000000-0000-4000-8000-000000000002` | session_categories → Uncategorized |
+
+Locked-atom IDs are listed at the top of `sql/003_locked_atoms.sql` and in `src/constants/lockedAtoms.ts`.
 
 ### RLS implications
 
@@ -140,11 +152,20 @@ Use these names consistently in SQL, app code, and docs. Do not invent synonyms.
 | Concept | Table | FK / field | Notes |
 |---------|--------|------------|--------|
 | Tool | `tools` | `tool_id` | Equipment. Global sentinel: **No Tool**. |
-| Session category | `session_categories` | `category_id` | Session/template label. Global sentinel: **Uncategorized**. Not a composition category. |
-| Composition category | `composition_categories` | `comp_category_id` | Measurement shape (Reps, Time, …). Locked atom. |
+| Session category | `session_categories` | `category_id` | Session/template label. Global sentinel: **Uncategorized**. Not a target shape. |
+| Target shape | `target_shapes` | `target_shape_id` | Which **set/target input fields** an exercise uses (Reps, Time, Time & Distance, Time & Reps, Distance). Locked atom. Not tree `kind`. Not session category. |
 | Primary analytics group | `analytics_primary_groups` | `primary_group_id` | **One** optional reporting bucket per exercise when `track_analytics = true`. Not the exercise display name. |
 | Analytics tag | `analytics_tags` | via `analytics_tag_links.tag_id` | Many optional filters per exercise template. |
 | Tag link | `analytics_tag_links` | `exercise_template_id`, `tag_id` | M2M join only. No “groups” join table. |
+
+**Target shape (important)**
+
+- An exercise in the nest (template or log) points at one `target_shape_id`.
+- That row decides which columns appear on each set/target: reps, time, distance (and combinations).
+- It does **not** mean the structural role of the node (`kind = exercise | cluster`).
+- It does **not** mean session labeling (`category_id` / Uncategorized).
+- `default_target_shape` (jsonb on exercise templates) is the **prescribed targets array payload**, not the shape enum. The enum is `target_shape_id`; the jsonb holds the actual target rows for that shape.
+- Legacy / concept-doc name `composition_categories` / `comp_category_id` is **retired** in official project docs and SQL. Original-concept files may still say composition; this outline wins.
 
 **Groups vs tags**
 
@@ -162,7 +183,7 @@ auth.users
   └── public.users                         ← LIVE
 
 locked atoms (global, no user_id)          ← planned
-  composition_categories
+  target_shapes
   load_units
   distance_units
 
@@ -222,15 +243,34 @@ No Tool and Uncategorized are **not** created here — they are global sentinels
 
 Shared by all users. No `user_id`. Seeded once for the project.
 
-| Table | v1 values |
-|-------|-----------|
-| `composition_categories` | Reps, Time, Time & Distance, Time & Reps, Distance |
-| `load_units` | `lbs`, `kg`, `BW` |
-| `distance_units` | `mi`, `km`, `m` |
+| Table | v1 values | Meaning |
+|-------|-----------|---------|
+| `target_shapes` | Reps, Time, Time & Distance, Time & Reps, Distance | Which set/target **inputs** an exercise uses |
+| `load_units` | `lbs`, `kg`, `BW` | Load unit options on a target |
+| `distance_units` | `mi`, `km`, `m` | Distance unit options on a target |
 
-These define *how* tracking works. They are not user vocabulary.
+### `target_shapes` in plain language
 
-Do not confuse **composition categories** (exercise measurement shape) with **session categories** (user labels like Strength / Uncategorized).
+OttoLog’s smallest nest unit (above sets) is an **exercise**. Each exercise picks one **target shape** so the editor knows which fields to show per set — for example Reps vs Time & Distance.
+
+```
+Exercise "Pull-Ups"
+  target_shape_id → Reps
+  → each target row shows: reps, per-side, load…
+
+Exercise "Incline Walk"
+  target_shape_id → Time & Distance
+  → each target row shows: time, distance, distance unit, load…
+```
+
+Do not confuse:
+
+| Term | Table / field | Means |
+|------|---------------|--------|
+| Target shape | `target_shapes` / `target_shape_id` | Set input field pattern |
+| Session category | `session_categories` / `category_id` | How the user labels a session/template (e.g. Uncategorized) |
+| Tree kind | `kind` on items | `exercise` vs `cluster` in the nest |
+| Default targets payload | `default_target_shape` jsonb | The actual prescribed target rows for an exercise template |
 
 ---
 
@@ -271,7 +311,7 @@ Personal library objects for Create → Build templates.
 
 | Table | Storage style | Notes |
 |-------|---------------|--------|
-| `exercise_templates` | Columns + `default_target_shape` jsonb | Presets. Always `tool_id` + `comp_category_id`. Optional `track_analytics` + `primary_group_id` (required iff tracking). Tags via `analytics_tag_links`, not a column on this table. |
+| `exercise_templates` | Columns + `default_target_shape` jsonb | Presets. Always `tool_id` + `target_shape_id`. Optional `track_analytics` + `primary_group_id` (required iff tracking). Tags via `analytics_tag_links`, not a column on this table. `default_target_shape` holds the targets[] payload for that shape. |
 | `cluster_templates` | `content` jsonb | Standalone cluster blob. `cluster_type` ∈ `superset` \| `circuit`. |
 | `block_templates` | `content` jsonb | Standalone block blob. |
 | `session_templates` | `content` jsonb + `category_id` | Full session tree. `category_id` never null; default = global Uncategorized. |
@@ -298,7 +338,7 @@ Logged sessions are fully relational so analytics can query sets.
 
 ### `log_items` rules
 
-- `kind = 'exercise'` → `tool_id` + `comp_category_id` required; `cluster_type` null; `primary_group_id` required iff `track_analytics`
+- `kind = 'exercise'` → `tool_id` + `target_shape_id` required; `cluster_type` null; `primary_group_id` required iff `track_analytics`
 - `kind = 'cluster'` → `cluster_type` required (`superset` \| `circuit`); exercise-only FKs null
 
 ### Tree → rows (denest)
@@ -371,7 +411,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 | Step | Ship | Unlocks |
 |------|------|---------|
 | 0 | `public.users` + delete RPC | Auth shell *(done)* |
-| 1 | Locked atoms | Exercise measurement shape |
+| 1 | Locked atoms (`target_shapes`, load/distance units) | Exercise set-input patterns |
 | 2 | `tools` + `session_categories` **including global No Tool / Uncategorized** | Valid FKs for templates/logs |
 | 3 | `analytics_primary_groups`, `analytics_tags`, `analytics_tag_links` | Optional exercise analytics |
 | 4 | `exercise_templates` | First Create → save → Library path |
@@ -408,7 +448,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 | Doc | Role |
 |-----|------|
 | `docs/Styling.md` | Official visual system |
-| `docs/original-concept/Backend/Database_Design.md` | Concept schema + JSON tree — **note:** still describes per-user seeds; this outline overrides that for sentinels |
+| `docs/original-concept/Backend/Database_Design.md` | Concept schema + JSON tree — **note:** may still say `composition_categories` / `comp_category_id`; official name is `target_shapes` / `target_shape_id` |
 | `docs/original-concept/Frontend/Modular_Forms_Design.md` | Editor behavior that the schema supports |
 | `docs/original-concept/Frontend/UI_Design.md` | App shell / auth / tab structure |
 | `sql/` | Applied and pending migrations |
