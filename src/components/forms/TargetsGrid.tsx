@@ -17,6 +17,7 @@ import type {
 } from '../../types/exerciseTemplate';
 import { colors, radii, typography } from '../../theme/tokens';
 import { AnalyticsCheckbox } from './AnalyticsCheckbox';
+import { DecimalMetricInput } from './DecimalMetricInput';
 import { FormSelect } from './FormSelect';
 import { TimePartsInput } from './TimePartsInput';
 import { ToggleChip } from './ToggleChip';
@@ -148,22 +149,12 @@ export function TargetsGrid({
 
               {fields.includes('distance_value') ? (
                 <View style={[styles.distCell, styles.colDist]}>
-                  <TextInput
-                    value={
-                      target.distance_value != null
-                        ? String(target.distance_value)
-                        : ''
+                  <DecimalMetricInput
+                    value={target.distance_value}
+                    onChange={(distance_value) =>
+                      onChangeTarget(index, { distance_value })
                     }
-                    onChangeText={(v) =>
-                      onChangeTarget(index, {
-                        distance_value:
-                          v === '' ? null : Number.parseFloat(v) || 0,
-                      })
-                    }
-                    keyboardType="decimal-pad"
-                    placeholder="—"
-                    placeholderTextColor={colors.textDim}
-                    style={styles.metric}
+                    accessibilityLabel="Distance"
                   />
                   <FormSelect
                     compact
