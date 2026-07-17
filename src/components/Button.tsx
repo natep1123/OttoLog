@@ -8,7 +8,7 @@ import {
   typography,
 } from '../theme/tokens';
 
-type Variant = 'primary' | 'ghost';
+type Variant = 'primary' | 'ghost' | 'danger';
 
 type Props = {
   label: string;
@@ -49,6 +49,24 @@ export function Button({
         >
           <Text style={styles.primaryLabel}>{label}</Text>
         </LinearGradient>
+      </Pressable>
+    );
+  }
+
+  if (variant === 'danger') {
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={disabled}
+        style={({ pressed }) => [
+          styles.pressable,
+          styles.danger,
+          pressed && !disabled && styles.dangerPressed,
+          disabled && styles.disabled,
+          style,
+        ]}
+      >
+        <Text style={styles.dangerLabel}>{label}</Text>
       </Pressable>
     );
   }
@@ -107,6 +125,23 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontMedium,
     fontSize: 16,
     color: colors.textMuted,
+  },
+  danger: {
+    paddingVertical: 13,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.sunset,
+  },
+  dangerPressed: {
+    backgroundColor: 'rgba(232, 93, 76, 0.1)',
+  },
+  dangerLabel: {
+    fontFamily: typography.fontMedium,
+    fontSize: 16,
+    color: colors.sunset,
   },
   disabled: {
     opacity: 0.55,

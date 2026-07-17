@@ -28,6 +28,7 @@ type AuthContextValue = {
     password: string;
   }) => Promise<{ error: string | null; needsEmailConfirmation?: boolean }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ error: string | null }>;
   refreshProfile: () => Promise<void>;
 };
 
@@ -179,6 +180,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    const { error } = await supabase.rpc('delete_own_account', {});
+    if (error) {
+      const missingRpc =
+        error.code === 'PGRST202' ||
+        error.message.toLowerCase().includes('schema cache');
+
+      return {
+        error: missingRpc
+          ? 'Account deletion is not set up yet. Run sql/002_delete_own_account.sql in Supabase, then try again.'
+          : error.message,
+      };
+    }
+    // Auth user is gone; clear local session without calling signOut against a deleted user
+    setProfile(null);
+    setSession(null);
+    await supabase.auth.signOut({ scope: 'local' });
+    return { error: null };
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
@@ -188,9 +209,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signUp,
       signOut,
+      deleteAccount,
       refreshProfile,
     }),
-    [session, profile, loading, signIn, signUp, signOut, refreshProfile],
+    [
+      session,
+      profile,
+      loading,
+      signIn,
+      signUp,
+      signOut,
+      deleteAccount,
+      refreshProfile,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
