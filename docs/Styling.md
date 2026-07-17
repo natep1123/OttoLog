@@ -334,11 +334,24 @@ Users navigate to Welcome by pressing the wordmark. They move directly between L
 
 ### Shell
 
-Home keeps a simple welcome layout. Create, Library, and Account use hub / list / builder screens with:
+Home now uses a dashboard layout. Create, Library, and Account use hub / list / builder screens with:
 
 - Header-sized wordmark
 - Screen title + muted subtitle via `ScreenHeader`
 - Bottom navigation (hidden on the exercise builder)
+
+### Home
+
+Home is top-aligned and uses live app data where available:
+
+- Warm greeting / hero panel driven by the device local clock (`dayjs`)
+- Quick actions for Build exercise, Browse exercise library, and Manage taxonomy
+- Recent exercise templates (up to four) from Supabase
+- Live **This week** preview with today's local date highlighted and a **Soon** badge for future session logging
+
+Greeting bands (local hour): morning 5–11, afternoon 12–17, evening 18–21, late night **Hey** (22–4) so midnight is never “Good morning.”
+
+The week preview is intentionally not a fake session calendar yet. It is a visual placeholder for the future log-driven Home screen.
 
 ### Account
 

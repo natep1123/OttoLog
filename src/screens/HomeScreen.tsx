@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
 import { BottomNav } from '../components/BottomNav';
-import { BrandWordmark } from '../components/BrandWordmark';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
+import { listExerciseTemplates } from '../lib/exerciseTemplates';
 import type { TaxonomyKind } from '../lib/taxonomy';
 import { MainTab } from '../navigation/tabs';
 import { AccountDangerScreen } from './account/AccountDangerScreen';
@@ -15,10 +15,12 @@ import { TaxonomyListScreen } from './account/TaxonomyListScreen';
 import { CreateHubScreen } from './create/CreateHubScreen';
 import { TemplateHubScreen } from './create/TemplateHubScreen';
 import { ExerciseBuilderScreen } from './create/ExerciseBuilderScreen';
+import { HomeDashboardScreen } from './home/HomeDashboardScreen';
 import { LibraryHubScreen } from './library/LibraryHubScreen';
 import { LibraryTemplatesHubScreen } from './library/LibraryTemplatesHubScreen';
 import { LibraryScreen } from './library/LibraryScreen';
-import { colors, spacing, typography } from '../theme/tokens';
+import type { ExerciseTemplateRow } from '../types/exerciseTemplate';
+import { spacing } from '../theme/tokens';
 
 type Props = {
   /** Brand tap stays on / returns to Home when logged in */
@@ -58,6 +60,8 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
     screen: 'hub',
   });
   const [libraryRefreshKey, setLibraryRefreshKey] = useState(0);
+  const [recentTemplates, setRecentTemplates] = useState<ExerciseTemplateRow[]>([]);
+  const [recentError, setRecentError] = useState<string | null>(null);
 
   // Reset nested stacks when leaving those tabs
   useEffect(() => {
@@ -77,6 +81,41 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
     setLibraryStack({ screen: 'hub' });
     setAccountStack({ screen: 'hub' });
     onBrandPress?.();
+  };
+
+  const loadRecentTemplates = useCallback(async () => {
+    setRecentError(null);
+    const { data, error } = await listExerciseTemplates();
+    if (error) {
+      setRecentError(error);
+      setRecentTemplates([]);
+      return;
+    }
+    setRecentTemplates(data.slice(0, 4));
+  }, []);
+
+  useEffect(() => {
+    void loadRecentTemplates();
+  }, [loadRecentTemplates, libraryRefreshKey]);
+
+  const goBuildExercise = () => {
+    setCreateStack({ screen: 'exercise', templateId: null });
+    onChangeTab('create');
+  };
+
+  const goBrowseExercises = () => {
+    setLibraryStack({ screen: 'exercises' });
+    onChangeTab('library');
+  };
+
+  const goManageTaxonomy = () => {
+    setAccountStack({ screen: 'taxonomy' });
+    onChangeTab('account');
+  };
+
+  const goOpenRecentExercise = (id: string) => {
+    setLibraryStack({ screen: 'exercise', templateId: id });
+    onChangeTab('library');
   };
 
   const renderCreate = () => {
@@ -215,15 +254,16 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
   };
 
   const renderHome = () => (
-    <View style={styles.top}>
-      <BrandWordmark size="header" onPress={goHomeBrand} />
-      <Text style={styles.eyebrow}>Hey, {name}.</Text>
-      <Text style={styles.greeting}>Home</Text>
-      <Text style={styles.sub}>
-        Your starting point for recent sessions, saved templates, and training
-        context.
-      </Text>
-    </View>
+    <HomeDashboardScreen
+      name={name}
+      recentTemplates={recentTemplates}
+      recentError={recentError}
+      onBuildExercise={goBuildExercise}
+      onBrowseExercises={goBrowseExercises}
+      onManageTaxonomy={goManageTaxonomy}
+      onOpenExercise={goOpenRecentExercise}
+      onBrandPress={goHomeBrand}
+    />
   );
 
   const hideBottomNav =
@@ -266,29 +306,6 @@ const styles = StyleSheet.create({
   },
   main: {
     flex: 1,
-  },
-  top: {
-    flex: 1,
-    justifyContent: 'center',
-    gap: spacing.md,
-  },
-  eyebrow: {
-    fontFamily: typography.fontMedium,
-    fontSize: 15,
-    color: colors.textMuted,
-  },
-  greeting: {
-    fontFamily: typography.fontMedium,
-    fontSize: 30,
-    color: colors.text,
-    letterSpacing: -0.4,
-  },
-  sub: {
-    fontFamily: typography.font,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.textMuted,
-    maxWidth: 300,
   },
   bottom: {
     gap: spacing.md,
