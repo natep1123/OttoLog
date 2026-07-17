@@ -6,9 +6,15 @@ React Native (Expo) · Supabase · TypeScript
 
 ## Project Status
 
-This app is at the foundation stage. The current build includes the OttoLog visual system, a welcome screen, email/password auth, profile creation, session restore, and a placeholder signed-in Home screen.
+Foundation + first vertical slice are live:
 
-Next major areas are app navigation, the Create flow, template builders, session logging, and the Library.
+- OttoLog visual system, auth (welcome / log in / create account), session restore, Account + delete
+- Bottom tabs: Home · Create · Library · Account
+- Create hub → Template hub → **Exercise builder** (nestable form kit)
+- Save / reopen exercise templates in Supabase; Library browse
+- Searchable create-comboboxes for tools, primary analytics groups, and tags
+
+**Next:** cluster / block / session template builders, then session logging + denest/renest.
 
 ## Product Concept
 
@@ -26,12 +32,13 @@ The goal is a warm, journal-like training surface for designing and recording wo
 
 ## Documentation
 
-The product specs and prototype references live in [`docs/`](./docs/).
+Official project docs live in [`docs/`](./docs/). Concept / prototype material is under [`docs/original-concept/`](./docs/original-concept/).
 
-- [`docs/Overview.md`](./docs/Overview.md) — high-level product overview
-- [`docs/Frontend/UI_Design.md`](./docs/Frontend/UI_Design.md) — app shell and screen flow
-- [`docs/Frontend/Form Prototype/session-templator.html`](./docs/Frontend/Form%20Prototype/session-templator.html) — styling source of truth
-- [`docs/Backend/Database_Design.md`](./docs/Backend/Database_Design.md) — Supabase schema direction
+| Doc | Role |
+|-----|------|
+| [`docs/Database_Outline.md`](./docs/Database_Outline.md) | Official DB map + live vs planned (wins on naming) |
+| [`docs/Styling.md`](./docs/Styling.md) | Official visual system |
+| [`docs/original-concept/`](./docs/original-concept/) | Prototypes + deeper form/editor notes |
 
 ## Getting Started
 
@@ -58,33 +65,36 @@ Open the app with Expo Go on a phone.
 
 ## Supabase Setup
 
-Run the initial auth profile migration in the Supabase SQL Editor:
+Run migrations **in order** in the Supabase SQL Editor:
 
 ```text
 sql/001_users.sql
+sql/002_delete_own_account.sql
+sql/003_locked_atoms.sql
+sql/004_taxonomy.sql
+sql/005_analytics_taxonomy.sql
+sql/006_exercise_templates.sql
 ```
 
-This creates the app profile table, `public.users`, and a trigger that creates a matching profile row when a new Supabase Auth user signs up.
+Supabase Auth stores credentials in `auth.users`; OttoLog stores app profile data (e.g. `username`) in `public.users`. Global sentinels **No Tool** and **Uncategorized** are seeded in `004` (fixed UUIDs).
 
-Supabase Auth stores credentials in `auth.users`; OttoLog stores app profile data, like `username`, in `public.users`.
+## Current App Flow
 
-## Current App Flow (Auth -> Home Page)
-
-- Signed out users see the welcome screen.
-- Welcome links to Log in and Create account.
-- Create account writes to Supabase Auth and creates a matching OttoLog profile.
-- Existing sessions restore automatically.
-- Signed in users land on a simple placeholder Home screen with Log out.
+- Signed out: Welcome → Log in / Create account
+- Signed in: Home · Create · Library · Account
+- Create → Build templates → Exercise → save → Library reopen
+- Session / Block / Cluster template tiles and Log a session are stubs for now
 
 ## Project Structure
 
 ```text
-App.tsx                 Root app, font loading, auth/session routing
-src/auth/               Auth context and session state
-src/components/         Shared UI components
-src/lib/                Supabase client
-src/screens/            Welcome, auth, and placeholder Home screens
-src/theme/              OttoLog theme tokens
-sql/                    Supabase SQL setup
-docs/                   Product docs and prototype references
+App.tsx                      Root app, fonts, auth routing
+src/auth/                    Auth context + session
+src/components/              Shared UI + nestable forms kit (forms/)
+src/constants/               Locked-atom + sentinel IDs, targetShapeFields
+src/lib/                     Supabase client, exercise + taxonomy helpers
+src/screens/                 Auth, Home shell, create/, library/
+src/theme/                   OttoLog theme tokens
+sql/                         Supabase migrations (001–006)
+docs/                        Official + original-concept docs
 ```

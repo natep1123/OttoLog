@@ -25,3 +25,7 @@ export const DISTANCE_UNIT_IDS = {
   km: '30000000-0000-4000-8000-000000000002',
   m: '30000000-0000-4000-8000-000000000003',
 } as const;
+
+/** Display codes stored on targets (not the unit row UUIDs) */
+export const LOAD_UNIT_CODES = ['lbs', 'kg', 'BW'] as const;
+export const DISTANCE_UNIT_CODES = ['mi', 'km', 'm'] as const;

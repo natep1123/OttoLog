@@ -14,34 +14,38 @@ When outline, concept docs, and live SQL disagree, use this order:
 
 ## Current Status
 
-**Live today**
+**Live today** *(applied in Supabase)*
 
 | Layer | Objects |
 |-------|---------|
 | Auth | `auth.users` (Supabase Auth: email / password) |
 | Profile | `public.users` (`id = auth.uid()`, unique `username`) |
 | RPCs | `delete_own_account()` |
+| Locked atoms | `target_shapes`, `load_units`, `distance_units` |
+| Taxonomy | `tools`, `session_categories` + global No Tool / Uncategorized |
+| Analytics taxonomy | `analytics_primary_groups`, `analytics_tags` |
+| Exercise templates | `exercise_templates`, `analytics_tag_links` |
 
-**Not live yet** *(SQL ready to apply)*
+**App slice live**
 
-- Locked atoms — `sql/003_locked_atoms.sql`
-- Taxonomy tables (`tools`, `session_categories`) + global sentinels — `sql/004_taxonomy.sql`
-- Analytics tables
-- Template tables
+- Create hub → Template hub → Exercise builder (nestable `ExerciseEditor`)
+- Save / reopen exercise templates from Library
+- Searchable create-comboboxes for tools, primary groups, and tags
+
+**Not live yet**
+
+- Cluster / block / session templates
 - Log / relational session tables
 - Denest / renest functions
-
-The app can authenticate and manage profiles. Create, Library, and session logging have no backend tables yet.
 
 Applied migrations:
 
 - `sql/001_users.sql`
 - `sql/002_delete_own_account.sql`
-
-Pending (run in order in Supabase SQL Editor):
-
 - `sql/003_locked_atoms.sql`
 - `sql/004_taxonomy.sql`
+- `sql/005_analytics_taxonomy.sql`
+- `sql/006_exercise_templates.sql`
 
 ---
 
@@ -182,27 +186,27 @@ Use these names consistently in SQL, app code, and docs. Do not invent synonyms.
 auth.users
   └── public.users                         ← LIVE
 
-locked atoms (global, no user_id)          ← planned
+locked atoms (global, no user_id)          ← LIVE
   target_shapes
   load_units
   distance_units
 
-taxonomy                                   ← planned
-  tools
+taxonomy
+  tools                                    ← LIVE
     ├── global: No Tool (fixed UUID, user_id NULL)
     └── user rows (user_id = owner)
-  session_categories
+  session_categories                       ← LIVE
     ├── global: Uncategorized (fixed UUID, user_id NULL)
     └── user rows (user_id = owner)
-  analytics_primary_groups                 (user only)
-  analytics_tags                           (user only)
-  analytics_tag_links
+  analytics_primary_groups                 ← LIVE (user only)
+  analytics_tags                           ← LIVE (user only)
+  analytics_tag_links                      ← LIVE (via exercise_templates)
 
-templates (library / blueprints)           ← planned
-  exercise_templates
-  cluster_templates             (jsonb content)
-  block_templates               (jsonb content)
-  session_templates             (jsonb content)
+templates (library / blueprints)
+  exercise_templates                       ← LIVE
+  cluster_templates             (jsonb content)  ← planned
+  block_templates               (jsonb content)  ← planned
+  session_templates             (jsonb content)  ← planned
 
 logs (relational facts)                    ← planned
   session_logs
@@ -411,10 +415,10 @@ Do not create the full graph in one migration. Ship in dependency order:
 | Step | Ship | Unlocks |
 |------|------|---------|
 | 0 | `public.users` + delete RPC | Auth shell *(done)* |
-| 1 | Locked atoms (`target_shapes`, load/distance units) | Exercise set-input patterns |
-| 2 | `tools` + `session_categories` **including global No Tool / Uncategorized** | Valid FKs for templates/logs |
-| 3 | `analytics_primary_groups`, `analytics_tags`, `analytics_tag_links` | Optional exercise analytics |
-| 4 | `exercise_templates` | First Create → save → Library path |
+| 1 | Locked atoms (`target_shapes`, load/distance units) | Exercise set-input patterns *(done)* |
+| 2 | `tools` + `session_categories` **including global No Tool / Uncategorized** | Valid FKs for templates/logs *(done)* |
+| 3 | `analytics_primary_groups`, `analytics_tags`, `analytics_tag_links` | Optional exercise analytics *(done)* |
+| 4 | `exercise_templates` | First Create → save → Library path *(done)* |
 | 5 | `cluster_templates` / `block_templates` / `session_templates` | Full template library |
 | 6 | Log tables + denest/renest | Session logging + analytics facts |
 

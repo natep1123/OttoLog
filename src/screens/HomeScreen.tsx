@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
 import { BottomNav } from '../components/BottomNav';
@@ -7,6 +7,10 @@ import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Screen } from '../components/Screen';
 import { MainTab } from '../navigation/tabs';
+import { CreateHubScreen } from './create/CreateHubScreen';
+import { TemplateHubScreen } from './create/TemplateHubScreen';
+import { ExerciseBuilderScreen } from './create/ExerciseBuilderScreen';
+import { LibraryScreen } from './library/LibraryScreen';
 import { colors, radii, spacing, typography } from '../theme/tokens';
 
 type Props = {
@@ -16,34 +20,38 @@ type Props = {
   onChangeTab: (tab: MainTab) => void;
 };
 
-const tabCopy: Record<
-  Exclude<MainTab, 'account'>,
-  {
-    title: string;
-    body: string;
-  }
-> = {
-  home: {
-    title: 'Home',
-    body: 'Your starting point for recent sessions, saved templates, and training context.',
-  },
-  create: {
-    title: 'Create',
-    body: 'This will become the entry point for building templates and logging sessions.',
-  },
-  library: {
-    title: 'Library',
-    body: 'This will become the place to browse, search, and open saved sessions and templates.',
-  },
-};
+type CreateStack =
+  | { screen: 'hub' }
+  | { screen: 'templates' }
+  | { screen: 'exercise'; templateId?: string | null };
 
-/** Placeholder signed-in shell with bottom tabs. */
+type LibraryStack =
+  | { screen: 'list' }
+  | { screen: 'exercise'; templateId: string };
+
+/** Signed-in shell with bottom tabs + Create / Library stacks. */
 export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
   const { profile, user, signOut, deleteAccount } = useAuth();
   const name = profile?.username ?? user?.email ?? 'there';
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  const [createStack, setCreateStack] = useState<CreateStack>({ screen: 'hub' });
+  const [libraryStack, setLibraryStack] = useState<LibraryStack>({
+    screen: 'list',
+  });
+  const [libraryRefreshKey, setLibraryRefreshKey] = useState(0);
+
+  // Reset nested stacks when leaving those tabs
+  useEffect(() => {
+    if (activeTab !== 'create') {
+      setCreateStack({ screen: 'hub' });
+    }
+    if (activeTab !== 'library') {
+      setLibraryStack({ screen: 'list' });
+    }
+  }, [activeTab]);
 
   const onDeleteConfirm = async () => {
     setDeleteError(null);
@@ -58,39 +66,119 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
     setConfirmDelete(false);
   };
 
+  const goHomeBrand = () => {
+    setCreateStack({ screen: 'hub' });
+    setLibraryStack({ screen: 'list' });
+    onBrandPress?.();
+  };
+
+  const renderCreate = () => {
+    if (createStack.screen === 'exercise') {
+      return (
+        <ExerciseBuilderScreen
+          templateId={createStack.templateId}
+          onBrandPress={goHomeBrand}
+          onBack={() => setCreateStack({ screen: 'templates' })}
+          onSaved={(id) => {
+            setCreateStack({ screen: 'exercise', templateId: id });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+        />
+      );
+    }
+    if (createStack.screen === 'templates') {
+      return (
+        <TemplateHubScreen
+          onBrandPress={goHomeBrand}
+          onBack={() => setCreateStack({ screen: 'hub' })}
+          onExercise={() =>
+            setCreateStack({ screen: 'exercise', templateId: null })
+          }
+        />
+      );
+    }
+    return (
+      <CreateHubScreen
+        onBrandPress={goHomeBrand}
+        onBuildTemplates={() => setCreateStack({ screen: 'templates' })}
+        onLogSession={() => {}}
+      />
+    );
+  };
+
+  const renderLibrary = () => {
+    if (libraryStack.screen === 'exercise') {
+      return (
+        <ExerciseBuilderScreen
+          templateId={libraryStack.templateId}
+          onBrandPress={goHomeBrand}
+          onBack={() => {
+            setLibraryStack({ screen: 'list' });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+          onSaved={() => setLibraryRefreshKey((k) => k + 1)}
+        />
+      );
+    }
+    return (
+      <LibraryScreen
+        onBrandPress={goHomeBrand}
+        refreshKey={libraryRefreshKey}
+        onOpenExercise={(id) =>
+          setLibraryStack({ screen: 'exercise', templateId: id })
+        }
+      />
+    );
+  };
+
+  const renderHome = () => (
+    <View style={styles.top}>
+      <BrandWordmark size="header" onPress={goHomeBrand} />
+      <Text style={styles.eyebrow}>Hey, {name}.</Text>
+      <Text style={styles.greeting}>Home</Text>
+      <Text style={styles.sub}>
+        Your starting point for recent sessions, saved templates, and training
+        context.
+      </Text>
+    </View>
+  );
+
+  const renderAccount = () => (
+    <View style={styles.top}>
+      <BrandWordmark size="header" onPress={goHomeBrand} />
+      <Text style={styles.greeting}>Account</Text>
+
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>Username</Text>
+          <Text style={styles.rowValue}>{profile?.username ?? '—'}</Text>
+        </View>
+        <View style={styles.divider} />
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>Email</Text>
+          <Text style={styles.rowValue}>{user?.email ?? '—'}</Text>
+        </View>
+      </View>
+
+      {deleteError ? <Text style={styles.error}>{deleteError}</Text> : null}
+    </View>
+  );
+
+  const hideBottomNav =
+    (activeTab === 'create' && createStack.screen === 'exercise') ||
+    (activeTab === 'library' && libraryStack.screen === 'exercise');
+
   return (
     <Screen contentStyle={styles.content}>
-      {activeTab === 'account' ? (
-        <View style={styles.top}>
-          <BrandWordmark size="header" onPress={onBrandPress} />
-          <Text style={styles.greeting}>Account</Text>
-
-          <View style={styles.card}>
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Username</Text>
-              <Text style={styles.rowValue}>
-                {profile?.username ?? '—'}
-              </Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Email</Text>
-              <Text style={styles.rowValue}>{user?.email ?? '—'}</Text>
-            </View>
-          </View>
-
-          {deleteError ? (
-            <Text style={styles.error}>{deleteError}</Text>
-          ) : null}
-        </View>
-      ) : (
-        <View style={styles.top}>
-          <BrandWordmark size="header" onPress={onBrandPress} />
-          <Text style={styles.eyebrow}>Hey, {name}.</Text>
-          <Text style={styles.greeting}>{tabCopy[activeTab].title}</Text>
-          <Text style={styles.sub}>{tabCopy[activeTab].body}</Text>
-        </View>
-      )}
+      <View style={styles.main}>
+        {activeTab === 'home'
+          ? renderHome()
+          : activeTab === 'create'
+            ? renderCreate()
+            : activeTab === 'library'
+              ? renderLibrary()
+              : renderAccount()}
+      </View>
 
       <View style={styles.bottom}>
         {activeTab === 'account' ? (
@@ -106,7 +194,9 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
             />
           </View>
         ) : null}
-        <BottomNav activeTab={activeTab} onChangeTab={onChangeTab} />
+        {!hideBottomNav ? (
+          <BottomNav activeTab={activeTab} onChangeTab={onChangeTab} />
+        ) : null}
       </View>
 
       <ConfirmDialog
@@ -130,6 +220,9 @@ const styles = StyleSheet.create({
   content: {
     justifyContent: 'space-between',
     paddingBottom: spacing.md,
+  },
+  main: {
+    flex: 1,
   },
   top: {
     flex: 1,
