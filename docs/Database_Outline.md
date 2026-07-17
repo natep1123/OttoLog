@@ -25,10 +25,10 @@ When outline, concept docs, and live SQL disagree, use this order:
 **Not live yet**
 
 - Locked atoms
-- User taxonomy (`tools`, `session_categories`, analytics tables)
+- Taxonomy tables (`tools`, `session_categories`, analytics tables)
+- Global **No Tool** / **Uncategorized** sentinel rows
 - Template tables
 - Log / relational session tables
-- Signup seeds for **No Tool** and **Uncategorized**
 - Denest / renest functions
 
 The app can authenticate and manage profiles. Create, Library, and session logging have no backend tables yet.
@@ -49,14 +49,87 @@ OttoLog is an infinite workout canvas:
 - No fixed session category list beyond structural defaults
 - Only the *shape* of tracking is shared (composition categories, load units, distance units, cluster types)
 
-**Signup seeds only two structural defaults** (null-buckets, not starter content):
+**Structural defaults are global sentinels, not per-user copies:**
 
-1. **No Tool** in `tools`
-2. **Uncategorized** in `session_categories`
+1. **No Tool** — one global row in `tools`
+2. **Uncategorized** — one global row in `session_categories`
 
-Every user-owned table is RLS-scoped to `auth.uid()` (except `public.users`, keyed by `id = auth.uid()`).
+They are null-buckets (so FKs never need to be null), immutable, and shared by every account. They are **not** seeded on signup.
+
+User-created tools, categories, analytics groups/tags, templates, and logs remain per-user and RLS-scoped to `auth.uid()` (except `public.users`, keyed by `id = auth.uid()`).
 
 Array order in the editor is the source of truth. Persisted `*_order` / `set_number` columns on log rows are denormalized for query and renest. Coordinates like `1.2.3` are derived, not stored as source of truth.
+
+---
+
+## Design Decision — Global Sentinels (locked)
+
+**Decision:** **No Tool** and **Uncategorized** are single global rows with **known fixed UUID primary keys** and **`user_id IS NULL`**.
+
+This deliberately diverges from `docs/original-concept/Backend/Database_Design.md`, which seeded a copy of each default per user. Official project docs win.
+
+### Why global (not per-user copies)
+
+- These rows are structural system shape, not personal vocabulary.
+- Avoids N identical copies for N users.
+- Signup does not need to seed them.
+- Cannot be “accidentally different” per account.
+
+### Why fixed UUIDs (not “look up by name”)
+
+- App and SQL can use stable constants (`NO_TOOL_ID`, `UNCATEGORIZED_ID`).
+- Migrations stay idempotent (`INSERT … ON CONFLICT (id) DO NOTHING`).
+- FKs and client defaults never depend on a name string lookup.
+- Better DX than resolving “the No Tool row” at runtime.
+
+### Why `user_id IS NULL` (not a fake system-user UUID)
+
+Multi-tenant / RLS guidance generally prefers:
+
+- Real tenant/user rows with a real owner id
+- Shared/global rows modeled **explicitly**, not as a magic tenant
+
+A synthetic “system user” UUID is a footgun (looks like a real account, complicates deletes and audits). Nullable `user_id` plus an explicit `is_system_default` flag is clearer:
+
+| Signal | Meaning |
+|--------|---------|
+| `user_id IS NULL` + `is_system_default = true` | Global sentinel |
+| `user_id = auth.uid()` + `is_system_default = false` | Normal user vocabulary |
+
+### Intended row shape
+
+```text
+tools
+  id              uuid PK   -- FIXED known UUID for No Tool
+  user_id         uuid NULL -- NULL only for the global sentinel
+  name            text      -- 'No Tool' for the sentinel
+  is_system_default boolean -- true for the sentinel
+  archived_at     timestamptz NULL  -- always null for sentinel
+
+session_categories
+  id              uuid PK   -- FIXED known UUID for Uncategorized
+  user_id         uuid NULL
+  name            text      -- 'Uncategorized'
+  is_system_default boolean
+  archived_at     timestamptz NULL
+```
+
+Fixed UUIDs will be chosen and recorded in the taxonomy migration SQL (and mirrored as app constants). Until that migration ships, treat the *pattern* as locked and the literal UUID values as TBD in SQL.
+
+### RLS implications
+
+```text
+SELECT:  user_id = auth.uid()  OR  is_system_default = true
+INSERT:  user_id = auth.uid()  AND  is_system_default = false
+UPDATE:  user_id = auth.uid()  AND  is_system_default = false
+DELETE / archive: same as update — never on system defaults
+```
+
+Policies must use explicit `is_system_default` / `user_id IS NULL` checks. Do not rely on `user_id = auth.uid()` alone for SELECT, or globals vanish (NULL never equals `auth.uid()`).
+
+### What signup does *not* do
+
+Signup creates `auth.users` + `public.users` only. It does **not** insert No Tool or Uncategorized. Those rows exist once for the whole project.
 
 ---
 
@@ -71,11 +144,15 @@ locked atoms (global, no user_id)          ← planned
   load_units
   distance_units
 
-user taxonomy (per user)                   ← planned
-  tools                         (+ No Tool seed)
-  session_categories            (+ Uncategorized seed)
-  analytics_primary_groups
-  analytics_tags
+taxonomy                                   ← planned
+  tools
+    ├── global: No Tool (fixed UUID, user_id NULL)
+    └── user rows (user_id = owner)
+  session_categories
+    ├── global: Uncategorized (fixed UUID, user_id NULL)
+    └── user rows (user_id = owner)
+  analytics_primary_groups                 (user only)
+  analytics_tags                           (user only)
   analytics_tag_links
 
 templates (library / blueprints)           ← planned
@@ -114,7 +191,8 @@ On signup (intended full flow):
 
 1. Create `auth.users`
 2. Insert / trigger-create `public.users`
-3. Seed **No Tool** + **Uncategorized** for that user *(seeds not implemented yet)*
+
+No Tool and Uncategorized are **not** created here — they are global sentinels (see Design Decision).
 
 ---
 
@@ -134,26 +212,26 @@ Do not confuse **composition categories** (exercise measurement shape) with **se
 
 ---
 
-## 3. User Taxonomy (user-owned)
+## 3. Taxonomy (`tools`, `session_categories`, analytics)
 
-Owned by `user_id` → `public.users.id`.
+Mixed ownership on tools/categories; analytics groups/tags are user-only.
 
-| Table | Purpose |
-|-------|---------|
-| `tools` | Equipment vocabulary. Always includes **No Tool** (`is_system_default = true`). |
-| `session_categories` | Session / template labels. Always includes **Uncategorized** (`is_system_default = true`). |
-| `analytics_primary_groups` | Optional reporting bucket when analytics is on. |
-| `analytics_tags` | Optional free-form filters. |
-| `analytics_tag_links` | Many-to-many: exercise templates ↔ tags. |
+| Table | Ownership | Purpose |
+|-------|-----------|---------|
+| `tools` | Global sentinel + user rows | Equipment vocabulary. Global **No Tool**; users add their own tools. |
+| `session_categories` | Global sentinel + user rows | Session / template labels. Global **Uncategorized**; users add their own. |
+| `analytics_primary_groups` | User only | Optional reporting bucket when analytics is on. |
+| `analytics_tags` | User only | Optional free-form filters. |
+| `analytics_tag_links` | User only (via exercise template) | Many-to-many: exercise templates ↔ tags. |
 
-### Structural seeds
+### Structural sentinels (global)
 
-| Seed | Table | Why |
-|------|--------|-----|
-| **No Tool** | `tools` | Exercises always have a non-null `tool_id`. Unequipped work points here. UI may show “None”. |
-| **Uncategorized** | `session_categories` | Sessions/templates always have a non-null `category_id`. |
+| Sentinel | Table | Rules |
+|----------|--------|-------|
+| **No Tool** | `tools` | Fixed UUID PK, `user_id IS NULL`, `is_system_default = true`. Exercises always have a non-null `tool_id`; unequipped work points here. UI may show “None”. |
+| **Uncategorized** | `session_categories` | Fixed UUID PK, `user_id IS NULL`, `is_system_default = true`. Sessions/templates always have a non-null `category_id`. |
 
-System defaults cannot be archived or deleted. Other taxonomy rows may be soft-archived (`archived_at`). Hard delete is restricted while referenced.
+Sentinels cannot be renamed, archived, or deleted. User taxonomy rows may be soft-archived (`archived_at`). Hard delete is restricted while referenced.
 
 ### Analytics identity vs exercise name
 
@@ -225,11 +303,15 @@ Templates stay JSONB end-to-end and do not denest for analytics in v1.
 auth.users
   └── public.users
 
-tools, session_categories, analytics_primary_groups, analytics_tags
-  └── owned by public.users
+tools / session_categories
+  ├── global sentinels (No Tool, Uncategorized)
+  └── user-owned rows
   └── referenced by templates / log exercises
-  └── session_templates + session_logs require category_id
+  └── session_templates + session_logs require category_id (Uncategorized allowed)
   └── exercises require tool_id (No Tool allowed)
+
+analytics_primary_groups, analytics_tags
+  └── user-owned only
 
 exercise_templates ── analytics_tag_links ── analytics_tags
 
@@ -250,7 +332,8 @@ session_logs
 | Object | Access |
 |--------|--------|
 | `public.users` | Own row; username availability checks as needed |
-| User-owned tables | `user_id = auth.uid()` for select / insert / update; archive rules for delete |
+| `tools` / `session_categories` | SELECT own **or** system defaults; INSERT/UPDATE/archive only own non-default rows |
+| Other user-owned tables | `user_id = auth.uid()` for select / insert / update; archive rules for delete |
 | Locked atoms | Readable by authenticated users; not user-writable |
 | RPCs | Explicit grants (e.g. `delete_own_account` → `authenticated`) |
 
@@ -264,7 +347,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 |------|------|---------|
 | 0 | `public.users` + delete RPC | Auth shell *(done)* |
 | 1 | Locked atoms | Exercise measurement shape |
-| 2 | `tools` + `session_categories` + signup seeds (+ backfill existing users) | Valid FKs for templates/logs |
+| 2 | `tools` + `session_categories` **including global No Tool / Uncategorized** | Valid FKs for templates/logs |
 | 3 | Analytics taxonomy tables | Optional exercise analytics |
 | 4 | `exercise_templates` | First Create → save → Library path |
 | 5 | `cluster_templates` / `block_templates` / `session_templates` | Full template library |
@@ -280,16 +363,18 @@ Do not create the full graph in one migration. Ship in dependency order:
 - `log_sub_items (log_item_id, sub_item_order)`
 - `log_sets (log_item_id)`, `log_sets (log_sub_item_id)`
 - `log_items (primary_group_id)`, `log_sub_items (primary_group_id)` where not null
+- Partial unique: at most one `is_system_default` row per taxonomy table that uses sentinels
 
 ---
 
 ## Out of Scope for v1
 
 - Live-linked templates (editing a library block updates old sessions)
-- Seeded exercise libraries beyond structural defaults
+- Seeded exercise libraries or extra default categories/tools beyond the two global sentinels
 - Extra load units (`% 1RM`, etc.) or cluster types beyond `superset` / `circuit`
 - Soft propagation between template layers
 - Log-instance tag join tables beyond template defaults (revisit later)
+- Per-user copies of No Tool / Uncategorized (rejected; see Design Decision for global nulls)
 
 ---
 
@@ -298,7 +383,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 | Doc | Role |
 |-----|------|
 | `docs/Styling.md` | Official visual system |
-| `docs/original-concept/Backend/Database_Design.md` | Full field-level concept schema + canonical JSON tree |
+| `docs/original-concept/Backend/Database_Design.md` | Concept schema + JSON tree — **note:** still describes per-user seeds; this outline overrides that for sentinels |
 | `docs/original-concept/Frontend/Modular_Forms_Design.md` | Editor behavior that the schema supports |
 | `docs/original-concept/Frontend/UI_Design.md` | App shell / auth / tab structure |
 | `sql/` | Applied and pending migrations |
@@ -311,3 +396,4 @@ Do not create the full graph in one migration. Ship in dependency order:
 - Mark sections Live / Planned as SQL lands.
 - Keep field-level SQL in `sql/*.sql`, not duplicated here.
 - After each migration ships, update **Current Status** and the relevant layer notes.
+- Prefer this document over original-concept docs when they disagree on locked decisions.
