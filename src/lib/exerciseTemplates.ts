@@ -151,6 +151,24 @@ export async function saveExerciseTemplate(
   const name = draft.name.trim();
   if (!name) return { id: null, error: 'Name is required.' };
 
+  // Enforce unique active template names per user (case-insensitive).
+  let dupeQuery = supabase
+    .from('exercise_templates')
+    .select('id')
+    .eq('user_id', userId)
+    .is('archived_at', null)
+    .ilike('name', name);
+  if (templateId) dupeQuery = dupeQuery.neq('id', templateId);
+
+  const { data: dupes, error: dupeError } = await dupeQuery.limit(1);
+  if (dupeError) return { id: null, error: dupeError.message };
+  if (dupes && dupes.length > 0) {
+    return {
+      id: null,
+      error: `An exercise template named “${name}” already exists.`,
+    };
+  }
+
   let primary_group_id: string | null = null;
   let tagIds: string[] = [];
 
@@ -201,4 +219,19 @@ export async function saveExerciseTemplate(
   if (links.error) return { id: null, error: links.error };
 
   return { id, error: null };
+}
+
+/** Permanently remove an exercise template (tag links cascade). */
+export async function deleteExerciseTemplate(
+  id: string,
+  userId: string,
+): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from('exercise_templates')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId);
+
+  if (error) return { error: error.message };
+  return { error: null };
 }

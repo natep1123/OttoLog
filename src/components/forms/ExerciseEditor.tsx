@@ -16,6 +16,8 @@ import {
   listAnalyticsTags,
   listPrimaryGroups,
   listTools,
+  mergeTaxonomyOptions,
+  resolveTaxonomyOptions,
   type TaxonomyOption,
 } from '../../lib/taxonomy';
 import type { ExerciseTemplateRow } from '../../types/exerciseTemplate';
@@ -53,8 +55,8 @@ type Props = {
  * Nestable exercise leaf — matches session-templator exercise anatomy:
  * coord → header (tool, name search, shape, sets, ⋯) → more panel → targets grid.
  *
- * Tools / primary groups / tags are searchable create-comboboxes —
- * the only place users add those taxonomy rows for now.
+ * Tools / primary groups / tags are searchable create-comboboxes.
+ * Full rename / archive / delete lives under Account → Taxonomy.
  */
 export function ExerciseEditor({
   value,
@@ -88,10 +90,27 @@ export function ExerciseEditor({
       listPrimaryGroups(),
       listAnalyticsTags(),
     ]);
-    if (!t.error) setTools(t.data);
-    if (!g.error) setGroups(g.data);
-    if (!a.error) setTags(a.data);
-  }, []);
+
+    const selectedToolIds = value.tool_id ? [value.tool_id] : [];
+    const selectedGroupIds = value.primary_group_id
+      ? [value.primary_group_id]
+      : [];
+    const selectedTagIds = value.analytics_tag_ids ?? [];
+
+    const [rt, rg, ra] = await Promise.all([
+      resolveTaxonomyOptions('tool', selectedToolIds),
+      resolveTaxonomyOptions('primary_group', selectedGroupIds),
+      resolveTaxonomyOptions('analytics_tag', selectedTagIds),
+    ]);
+
+    if (!t.error) setTools(mergeTaxonomyOptions(t.data, rt.data));
+    if (!g.error) setGroups(mergeTaxonomyOptions(g.data, rg.data));
+    if (!a.error) setTags(mergeTaxonomyOptions(a.data, ra.data));
+  }, [
+    value.analytics_tag_ids,
+    value.primary_group_id,
+    value.tool_id,
+  ]);
 
   useEffect(() => {
     void refreshTaxonomy();

@@ -4,14 +4,21 @@ import { useAuth } from '../auth/AuthContext';
 import { BottomNav } from '../components/BottomNav';
 import { BrandWordmark } from '../components/BrandWordmark';
 import { Button } from '../components/Button';
-import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Screen } from '../components/Screen';
+import type { TaxonomyKind } from '../lib/taxonomy';
 import { MainTab } from '../navigation/tabs';
+import { AccountDangerScreen } from './account/AccountDangerScreen';
+import { AccountHubScreen } from './account/AccountHubScreen';
+import { AccountSettingsScreen } from './account/AccountSettingsScreen';
+import { TaxonomyHubScreen } from './account/TaxonomyHubScreen';
+import { TaxonomyListScreen } from './account/TaxonomyListScreen';
 import { CreateHubScreen } from './create/CreateHubScreen';
 import { TemplateHubScreen } from './create/TemplateHubScreen';
 import { ExerciseBuilderScreen } from './create/ExerciseBuilderScreen';
+import { LibraryHubScreen } from './library/LibraryHubScreen';
+import { LibraryTemplatesHubScreen } from './library/LibraryTemplatesHubScreen';
 import { LibraryScreen } from './library/LibraryScreen';
-import { colors, radii, spacing, typography } from '../theme/tokens';
+import { colors, spacing, typography } from '../theme/tokens';
 
 type Props = {
   /** Brand tap stays on / returns to Home when logged in */
@@ -26,20 +33,29 @@ type CreateStack =
   | { screen: 'exercise'; templateId?: string | null };
 
 type LibraryStack =
-  | { screen: 'list' }
+  | { screen: 'hub' }
+  | { screen: 'templates' }
+  | { screen: 'exercises' }
   | { screen: 'exercise'; templateId: string };
 
-/** Signed-in shell with bottom tabs + Create / Library stacks. */
+type AccountStack =
+  | { screen: 'hub' }
+  | { screen: 'taxonomy' }
+  | { screen: 'taxonomyList'; kind: TaxonomyKind }
+  | { screen: 'settings' }
+  | { screen: 'danger' };
+
+/** Signed-in shell with bottom tabs + Create / Library / Account stacks. */
 export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
-  const { profile, user, signOut, deleteAccount } = useAuth();
+  const { profile, user, signOut } = useAuth();
   const name = profile?.username ?? user?.email ?? 'there';
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [createStack, setCreateStack] = useState<CreateStack>({ screen: 'hub' });
   const [libraryStack, setLibraryStack] = useState<LibraryStack>({
-    screen: 'list',
+    screen: 'hub',
+  });
+  const [accountStack, setAccountStack] = useState<AccountStack>({
+    screen: 'hub',
   });
   const [libraryRefreshKey, setLibraryRefreshKey] = useState(0);
 
@@ -49,26 +65,17 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
       setCreateStack({ screen: 'hub' });
     }
     if (activeTab !== 'library') {
-      setLibraryStack({ screen: 'list' });
+      setLibraryStack({ screen: 'hub' });
+    }
+    if (activeTab !== 'account') {
+      setAccountStack({ screen: 'hub' });
     }
   }, [activeTab]);
 
-  const onDeleteConfirm = async () => {
-    setDeleteError(null);
-    setDeleting(true);
-    const { error } = await deleteAccount();
-    setDeleting(false);
-    if (error) {
-      setConfirmDelete(false);
-      setDeleteError(error);
-      return;
-    }
-    setConfirmDelete(false);
-  };
-
   const goHomeBrand = () => {
     setCreateStack({ screen: 'hub' });
-    setLibraryStack({ screen: 'list' });
+    setLibraryStack({ screen: 'hub' });
+    setAccountStack({ screen: 'hub' });
     onBrandPress?.();
   };
 
@@ -81,6 +88,10 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
           onBack={() => setCreateStack({ screen: 'templates' })}
           onSaved={(id) => {
             setCreateStack({ screen: 'exercise', templateId: id });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+          onDeleted={() => {
+            setCreateStack({ screen: 'templates' });
             setLibraryRefreshKey((k) => k + 1);
           }}
         />
@@ -113,20 +124,92 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
           templateId={libraryStack.templateId}
           onBrandPress={goHomeBrand}
           onBack={() => {
-            setLibraryStack({ screen: 'list' });
+            setLibraryStack({ screen: 'exercises' });
             setLibraryRefreshKey((k) => k + 1);
           }}
           onSaved={() => setLibraryRefreshKey((k) => k + 1)}
+          onDeleted={() => {
+            setLibraryStack({ screen: 'exercises' });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+        />
+      );
+    }
+    if (libraryStack.screen === 'exercises') {
+      return (
+        <LibraryScreen
+          onBrandPress={goHomeBrand}
+          onBack={() => setLibraryStack({ screen: 'templates' })}
+          refreshKey={libraryRefreshKey}
+          onOpenExercise={(id) =>
+            setLibraryStack({ screen: 'exercise', templateId: id })
+          }
+        />
+      );
+    }
+    if (libraryStack.screen === 'templates') {
+      return (
+        <LibraryTemplatesHubScreen
+          onBrandPress={goHomeBrand}
+          onBack={() => setLibraryStack({ screen: 'hub' })}
+          onExercises={() => setLibraryStack({ screen: 'exercises' })}
         />
       );
     }
     return (
-      <LibraryScreen
+      <LibraryHubScreen
         onBrandPress={goHomeBrand}
-        refreshKey={libraryRefreshKey}
-        onOpenExercise={(id) =>
-          setLibraryStack({ screen: 'exercise', templateId: id })
-        }
+        onTemplates={() => setLibraryStack({ screen: 'templates' })}
+        onLogs={() => {}}
+      />
+    );
+  };
+
+  const renderAccount = () => {
+    if (accountStack.screen === 'taxonomyList') {
+      return (
+        <TaxonomyListScreen
+          kind={accountStack.kind}
+          onBrandPress={goHomeBrand}
+          onBack={() => setAccountStack({ screen: 'taxonomy' })}
+        />
+      );
+    }
+    if (accountStack.screen === 'taxonomy') {
+      return (
+        <TaxonomyHubScreen
+          onBrandPress={goHomeBrand}
+          onBack={() => setAccountStack({ screen: 'hub' })}
+          onOpenList={(kind) =>
+            setAccountStack({ screen: 'taxonomyList', kind })
+          }
+        />
+      );
+    }
+    if (accountStack.screen === 'danger') {
+      return (
+        <AccountDangerScreen
+          onBrandPress={goHomeBrand}
+          onBack={() => setAccountStack({ screen: 'settings' })}
+        />
+      );
+    }
+    if (accountStack.screen === 'settings') {
+      return (
+        <AccountSettingsScreen
+          onBrandPress={goHomeBrand}
+          onBack={() => setAccountStack({ screen: 'hub' })}
+          onDangerZone={() => setAccountStack({ screen: 'danger' })}
+        />
+      );
+    }
+    return (
+      <AccountHubScreen
+        username={profile?.username ?? ''}
+        email={user?.email ?? ''}
+        onBrandPress={goHomeBrand}
+        onTaxonomy={() => setAccountStack({ screen: 'taxonomy' })}
+        onSettings={() => setAccountStack({ screen: 'settings' })}
       />
     );
   };
@@ -143,30 +226,12 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
     </View>
   );
 
-  const renderAccount = () => (
-    <View style={styles.top}>
-      <BrandWordmark size="header" onPress={goHomeBrand} />
-      <Text style={styles.greeting}>Account</Text>
-
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>Username</Text>
-          <Text style={styles.rowValue}>{profile?.username ?? '—'}</Text>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>Email</Text>
-          <Text style={styles.rowValue}>{user?.email ?? '—'}</Text>
-        </View>
-      </View>
-
-      {deleteError ? <Text style={styles.error}>{deleteError}</Text> : null}
-    </View>
-  );
-
   const hideBottomNav =
     (activeTab === 'create' && createStack.screen === 'exercise') ||
     (activeTab === 'library' && libraryStack.screen === 'exercise');
+
+  const showAccountActions =
+    activeTab === 'account' && accountStack.screen === 'hub';
 
   return (
     <Screen contentStyle={styles.content}>
@@ -181,37 +246,15 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
       </View>
 
       <View style={styles.bottom}>
-        {activeTab === 'account' ? (
+        {showAccountActions ? (
           <View style={styles.accountActions}>
             <Button label="Log out" variant="ghost" onPress={() => signOut()} />
-            <Button
-              label="Delete account"
-              variant="danger"
-              onPress={() => {
-                setDeleteError(null);
-                setConfirmDelete(true);
-              }}
-            />
           </View>
         ) : null}
         {!hideBottomNav ? (
           <BottomNav activeTab={activeTab} onChangeTab={onChangeTab} />
         ) : null}
       </View>
-
-      <ConfirmDialog
-        visible={confirmDelete}
-        title="Delete account?"
-        message={`This permanently deletes ${profile?.username ?? 'this account'} and cannot be undone. Use this for clearing test accounts.`}
-        confirmLabel="Delete forever"
-        cancelLabel="Keep account"
-        destructive
-        busy={deleting}
-        onConfirm={onDeleteConfirm}
-        onCancel={() => {
-          if (!deleting) setConfirmDelete(false);
-        }}
-      />
     </Screen>
   );
 }
@@ -246,40 +289,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: colors.textMuted,
     maxWidth: 300,
-  },
-  card: {
-    marginTop: spacing.sm,
-    backgroundColor: colors.bgPanel,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  row: {
-    paddingVertical: spacing.md,
-    gap: 4,
-  },
-  rowLabel: {
-    fontFamily: typography.fontSemiBold,
-    fontSize: 11,
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
-    color: colors.textDim,
-  },
-  rowValue: {
-    fontFamily: typography.fontMedium,
-    fontSize: 16,
-    color: colors.text,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  error: {
-    fontFamily: typography.font,
-    fontSize: 14,
-    color: colors.sunset,
   },
   bottom: {
     gap: spacing.md,

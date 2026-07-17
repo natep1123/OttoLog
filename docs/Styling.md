@@ -330,19 +330,24 @@ Auth screens use:
 
 Users navigate to Welcome by pressing the wordmark. They move directly between Log in and Create account through the link beneath the form button.
 
-## Signed-In Placeholder Screens
+## Signed-In Screens
 
-The current Home, Create, Library, and Account placeholders share one layout:
+### Shell
+
+Home keeps a simple welcome layout. Create, Library, and Account use hub / list / builder screens with:
 
 - Header-sized wordmark
-- Muted username greeting
-- Primary screen title
-- Muted descriptive copy
-- Bottom navigation
+- Screen title + muted subtitle via `ScreenHeader`
+- Bottom navigation (hidden on the exercise builder)
 
-Account additionally includes the Log out action.
+### Account
 
-This shared placeholder structure is temporary. Future screens may evolve their content while keeping the same tokens, shell, hierarchy, and navigation treatment.
+Account hub shows profile (username / email), then:
+
+- **Taxonomy** — Tools, Primary groups, Analytics tags (create / rename / archive / hard-delete when unused). **Show archived** toggle; pickers stay active-only. Global **None** (No Tool) is System-locked. Session categories ship later.
+- **Settings** — Profile / Preferences (**Soon**), **Danger zone** (live)
+
+Danger zone holds **Delete account** with confirmation. **Log out** stays on the Account hub footer.
 
 ## Native Implementation Notes
 

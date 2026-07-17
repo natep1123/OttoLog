@@ -31,6 +31,7 @@ When outline, concept docs, and live SQL disagree, use this order:
 - Create hub → Template hub → Exercise builder (nestable `ExerciseEditor`)
 - Save / reopen exercise templates from Library
 - Searchable create-comboboxes for tools, primary groups, and tags
+- Account → Taxonomy management (tools, primary groups, tags: create / rename / archive / hard-delete when unused)
 
 **Not live yet**
 
@@ -46,6 +47,7 @@ Applied migrations:
 - `sql/004_taxonomy.sql`
 - `sql/005_analytics_taxonomy.sql`
 - `sql/006_exercise_templates.sql`
+- `sql/007_template_name_uniqueness.sql`
 
 ---
 
@@ -299,6 +301,13 @@ Mixed ownership on tools / session categories; analytics tables are user-only.
 
 Sentinels cannot be renamed, archived, or deleted. User taxonomy rows may be soft-archived (`archived_at`). Hard delete is restricted while referenced.
 
+**App behavior**
+
+- Pickers (`listTools` / `listPrimaryGroups` / `listAnalyticsTags`) return **active** rows only.
+- Account → Taxonomy lists can include archived rows; prefer archive over hard delete.
+- Existing templates keep FKs to archived rows; editors resolve those labels via id lookup so reopen still shows the name.
+- Hard delete is offered in UI only when usage count is zero (templates for tools/groups; tag links for tags).
+
 ### Analytics identity vs exercise name
 
 - Exercise **display `name`** is free text and is not the analytics identity.
@@ -315,7 +324,7 @@ Personal library objects for Create → Build templates.
 
 | Table | Storage style | Notes |
 |-------|---------------|--------|
-| `exercise_templates` | Columns + `default_target_shape` jsonb | Presets. Always `tool_id` + `target_shape_id`. Optional `track_analytics` + `primary_group_id` (required iff tracking). Tags via `analytics_tag_links`, not a column on this table. `default_target_shape` holds the targets[] payload for that shape. |
+| `exercise_templates` | Columns + `default_target_shape` jsonb | Presets. Always `tool_id` + `target_shape_id`. Optional `track_analytics` + `primary_group_id` (required iff tracking). Tags via `analytics_tag_links`, not a column on this table. `default_target_shape` holds the targets[] payload for that shape. Active names are unique per user (case-insensitive), enforced app-side and by a partial unique index (`sql/007`). |
 | `cluster_templates` | `content` jsonb | Standalone cluster blob. `cluster_type` ∈ `superset` \| `circuit`. |
 | `block_templates` | `content` jsonb | Standalone block blob. |
 | `session_templates` | `content` jsonb + `category_id` | Full session tree. `category_id` never null; default = global Uncategorized. |
@@ -325,6 +334,11 @@ Personal library objects for Create → Build templates.
 `session_templates`, `block_templates`, and `cluster_templates` do **not** FK each other. Inserting a saved block/cluster into a session **copies JSON**. Editing a library row later does not propagate. Accepted v1 tradeoff.
 
 `exercise_templates` are the first real save path and the recommended vertical slice after taxonomy exists.
+
+**Naming + copy-from-template**
+
+- Active template names are unique per user, per layer (case-insensitive). Archived rows free the name. Logs, by contrast, may repeat names.
+- In the exercise builder, picking a match from the name search **copies that template's editable state into the current draft** — it does not navigate to or switch the template being saved. The user must give the copy a new name before saving (duplicate names are rejected).
 
 ---
 

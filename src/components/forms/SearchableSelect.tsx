@@ -44,7 +44,11 @@ type Props = SharedProps & (SingleProps | MultiProps);
 
 function labelsForIds(options: TaxonomyOption[], ids: string[]): string {
   return ids
-    .map((id) => options.find((o) => o.id === id)?.label)
+    .map((id) => {
+      const hit = options.find((o) => o.id === id);
+      if (!hit) return null;
+      return hit.isArchived ? `${hit.label} (archived)` : hit.label;
+    })
     .filter(Boolean)
     .join(', ');
 }
@@ -87,20 +91,31 @@ export function SearchableSelect(props: Props) {
       const text = labelsForIds(options, selectedIds);
       return text || emptyLabel;
     }
-    return options.find((o) => o.id === selectedIds[0])?.label ?? emptyLabel;
+    const hit = options.find((o) => o.id === selectedIds[0]);
+    if (!hit) return emptyLabel;
+    return hit.isArchived ? `${hit.label} (archived)` : hit.label;
   }, [emptyLabel, multi, options, selectedIds]);
+
+  /** Active rows + currently selected archived (so labels resolve / multi can deselect). */
+  const pickerOptions = useMemo(
+    () =>
+      options.filter(
+        (o) => !o.isArchived || selectedIds.includes(o.id),
+      ),
+    [options, selectedIds],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter((o) => o.label.toLowerCase().includes(q));
-  }, [options, query]);
+    if (!q) return pickerOptions;
+    return pickerOptions.filter((o) => o.label.toLowerCase().includes(q));
+  }, [pickerOptions, query]);
 
   const exactMatch = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
-    return options.some((o) => o.label.toLowerCase() === q);
-  }, [options, query]);
+    return pickerOptions.some((o) => o.label.toLowerCase() === q);
+  }, [pickerOptions, query]);
 
   const canCreate = query.trim().length > 0 && !exactMatch;
 
@@ -256,6 +271,9 @@ export function SearchableSelect(props: Props) {
 
               {filtered.map((opt) => {
                 const selected = selectedIds.includes(opt.id);
+                const label = opt.isArchived
+                  ? `${opt.label} (archived)`
+                  : opt.label;
                 return (
                   <Pressable
                     key={opt.id}
@@ -272,7 +290,7 @@ export function SearchableSelect(props: Props) {
                       numberOfLines={1}
                     >
                       {multi ? (selected ? '✓  ' : '    ') : ''}
-                      {opt.label}
+                      {label}
                     </Text>
                   </Pressable>
                 );

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { ListSearchBar } from '../../components/ListSearchBar';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { listExerciseTemplates } from '../../lib/exerciseTemplates';
 import type { ExerciseTemplateRow } from '../../types/exerciseTemplate';
@@ -16,6 +17,7 @@ import { colors, radii, spacing, typography } from '../../theme/tokens';
 
 type Props = {
   onBrandPress?: () => void;
+  onBack?: () => void;
   onOpenExercise: (id: string) => void;
   /** Bump to refetch when returning from editor */
   refreshKey?: number;
@@ -23,6 +25,7 @@ type Props = {
 
 export function LibraryScreen({
   onBrandPress,
+  onBack,
   onOpenExercise,
   refreshKey = 0,
 }: Props) {
@@ -30,6 +33,7 @@ export function LibraryScreen({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -49,12 +53,26 @@ export function LibraryScreen({
     void load();
   }, [load, refreshKey]);
 
+  const filteredRows = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((row) => row.name.toLowerCase().includes(q));
+  }, [rows, searchQuery]);
+
   return (
     <View style={styles.root}>
       <ScreenHeader
-        title="Library"
-        subtitle="Saved exercise templates. Open one to edit."
+        title="Exercises"
+        subtitle="Open one to edit or delete. Create new ones under Create."
+        onBack={onBack}
         onBrandPress={onBrandPress}
+      />
+
+      <ListSearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Search exercises…"
+        accessibilityLabel="Search exercises"
       />
 
       {loading ? (
@@ -79,7 +97,12 @@ export function LibraryScreen({
               No exercise templates yet. Create → Build templates → Exercise.
             </Text>
           ) : null}
-          {rows.map((row) => (
+          {!error && rows.length > 0 && filteredRows.length === 0 ? (
+            <Text style={styles.empty}>
+              No templates match “{searchQuery.trim()}”.
+            </Text>
+          ) : null}
+          {filteredRows.map((row) => (
             <Pressable
               key={row.id}
               onPress={() => onOpenExercise(row.id)}
@@ -112,6 +135,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContent: {
+    flexGrow: 1,
+    alignItems: 'stretch',
     gap: spacing.sm,
     paddingBottom: spacing.xl,
   },

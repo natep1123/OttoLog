@@ -8,6 +8,8 @@ type Props = {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Shown on the confirm button while `busy` (defaults to confirmLabel + “…”) */
+  busyLabel?: string;
   destructive?: boolean;
   busy?: boolean;
   onConfirm: () => void;
@@ -21,11 +23,16 @@ export function ConfirmDialog({
   message,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
+  busyLabel,
   destructive = false,
   busy = false,
   onConfirm,
   onCancel,
 }: Props) {
+  const confirmText = busy
+    ? (busyLabel ?? `${confirmLabel.replace(/\.*$/, '')}…`)
+    : confirmLabel;
+
   return (
     <Modal
       visible={visible}
@@ -40,7 +47,7 @@ export function ConfirmDialog({
 
           <View style={styles.actions}>
             <Button
-              label={busy ? 'Deleting…' : confirmLabel}
+              label={confirmText}
               variant={destructive ? 'danger' : 'primary'}
               onPress={onConfirm}
               disabled={busy}

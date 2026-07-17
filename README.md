@@ -13,6 +13,7 @@ Foundation + first vertical slice are live:
 - Create hub → Template hub → **Exercise builder** (nestable form kit)
 - Save / reopen exercise templates in Supabase; Library browse
 - Searchable create-comboboxes for tools, primary analytics groups, and tags
+- **Account → Taxonomy** management (create / rename / archive / hard-delete when unused)
 
 **Next:** cluster / block / session template builders, then session logging + denest/renest.
 
@@ -74,6 +75,7 @@ sql/003_locked_atoms.sql
 sql/004_taxonomy.sql
 sql/005_analytics_taxonomy.sql
 sql/006_exercise_templates.sql
+sql/007_template_name_uniqueness.sql
 ```
 
 Supabase Auth stores credentials in `auth.users`; OttoLog stores app profile data (e.g. `username`) in `public.users`. Global sentinels **No Tool** and **Uncategorized** are seeded in `004` (fixed UUIDs).
@@ -83,7 +85,9 @@ Supabase Auth stores credentials in `auth.users`; OttoLog stores app profile dat
 - Signed out: Welcome → Log in / Create account
 - Signed in: Home · Create · Library · Account
 - Create → Build templates → Exercise → save → Library reopen
-- Session / Block / Cluster template tiles and Log a session are stubs for now
+- Library → Templates → Exercise (open / edit saved templates); Logs is a stub
+- Account → Taxonomy → Tools / Primary groups / Analytics tags
+- Session / Block / Cluster tiles (Create + Library) and Log a session are stubs for now
 
 ## Project Structure
 
@@ -93,8 +97,8 @@ src/auth/                    Auth context + session
 src/components/              Shared UI + nestable forms kit (forms/)
 src/constants/               Locked-atom + sentinel IDs, targetShapeFields
 src/lib/                     Supabase client, exercise + taxonomy helpers
-src/screens/                 Auth, Home shell, create/, library/
+src/screens/                 Auth, Home shell, account/, create/, library/
 src/theme/                   OttoLog theme tokens
-sql/                         Supabase migrations (001–006)
+sql/                         Supabase migrations (001–007)
 docs/                        Official + original-concept docs
 ```
