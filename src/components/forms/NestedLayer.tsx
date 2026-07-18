@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 import { layer as layerTokens, spacing } from '../../theme/tokens';
-import { CoordRow } from './CoordRow';
+import { CoordRow, type CoordChip } from './CoordRow';
 import {
   FormNodeKind,
   nodeBorderWidth,
@@ -27,16 +27,25 @@ type Props = {
   /** Controlled expand. When set, overrides internal state. */
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
-  title: ReactNode;
-  /** Tinted summary chips that scroll between the name and overflow button. */
-  metaChips?: string[];
+  /** Session/Block/Sequence: mandatory Label selector on line 1. */
+  label?: ReactNode;
+  /** Session/Block/Sequence: Name/Brief editor on line 2 when expanded (optional). */
+  brief?: ReactNode;
+  /** Resolved title on line 2 when collapsed. */
+  collapsedBrief?: string | null;
+  /**
+   * Exercise (or legacy): single-line title. Ignored when `label` is set.
+   */
+  title?: ReactNode;
+  /** Tinted summary chips under the brief/title. */
+  metaChips?: Array<string | CoordChip>;
   trailing?: ReactNode | ((api: ExpandApi) => ReactNode);
   children?: ReactNode;
   style?: ViewStyle;
 };
 
 /**
- * Shared chrome for Session / Block / Cluster / Exercise cards:
+ * Shared chrome for Session / Block / Sequence / Exercise cards:
  * monotonic bg, tinted border, left rail, per-layer radius, optional collapse.
  */
 export function NestedLayer({
@@ -45,6 +54,9 @@ export function NestedLayer({
   defaultCollapsed = false,
   expanded: controlledExpanded,
   onExpandedChange,
+  label,
+  brief,
+  collapsedBrief,
   title,
   metaChips,
   trailing,
@@ -140,6 +152,9 @@ export function NestedLayer({
         metaChips={metaChips}
         expanded={collapsible ? expanded : undefined}
         onToggleExpand={collapsible ? api.toggle : undefined}
+        label={label}
+        brief={brief}
+        collapsedBrief={collapsedBrief}
         title={title}
         trailing={trailingNode}
       />

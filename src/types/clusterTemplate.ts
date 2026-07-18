@@ -1,7 +1,11 @@
 /**
- * Cluster template row + editor draft.
+ * Sequence template row + editor draft.
+ * Internal identifiers retain "Cluster" for database compatibility.
  * content jsonb: rounds + per-round items + sparse overrides.
  * Expanded individual sets live only in session logs after denest.
+ *
+ * label_id is the mandatory taxonomy label; name is optional Name/Brief.
+ * cluster_type is retained for SQL compatibility (dual-write).
  */
 
 import type {
@@ -12,11 +16,13 @@ import type {
 
 export type ClusterType = 'superset' | 'circuit';
 
+/** @deprecated Prefer label taxonomy; kept for dual-write / legacy rows. */
 export const CLUSTER_TYPE_OPTIONS: { id: ClusterType; label: string }[] = [
   { id: 'superset', label: 'Superset' },
   { id: 'circuit', label: 'Circuit' },
 ];
 
+/** @deprecated Prefer label_name / displayTitles. */
 export const CLUSTER_TYPE_LABELS: Record<ClusterType, string> = {
   superset: 'Superset',
   circuit: 'Circuit',
@@ -27,8 +33,11 @@ export type ClusterExerciseItem = {
   kind: 'exercise';
   /** Stable id within the blob (React keys / overrides / reorder) */
   id: string;
+  /** Optional; blank resolves to tool/order title */
   name: string;
   tool_id: string;
+  /** Snapshot for display when name is blank */
+  tool_name?: string | null;
   target_shape_id: string;
   track_analytics: boolean;
   primary_group_id: string | null;
@@ -80,7 +89,12 @@ export type ClusterContent = {
 export type ClusterTemplateRow = {
   id: string;
   user_id: string;
-  name: string;
+  /** Optional Name/Brief; null when using generated title */
+  name: string | null;
+  label_id: string;
+  /** Resolved label word when joined/fetched */
+  label_name?: string | null;
+  /** Legacy dual-write column */
   cluster_type: ClusterType;
   content: ClusterContent;
   archived_at: string | null;
@@ -89,7 +103,12 @@ export type ClusterTemplateRow = {
 };
 
 export type ClusterTemplateInput = {
+  /** Optional Name/Brief */
   name: string;
+  label_id: string;
+  /** Display snapshot; kept in nested JSON blobs */
+  label_name?: string | null;
+  /** Dual-write / legacy; derived from label when saving */
   cluster_type: ClusterType;
   notes: string | null;
   track_duration: boolean;

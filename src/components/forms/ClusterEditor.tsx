@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -13,13 +13,12 @@ import {
 } from '../../constants/lockedAtoms';
 import { fieldsForTargetShape } from '../../constants/targetShapeFields';
 import { ChoiceChips } from '../ChoiceChips';
-import {
-  CLUSTER_TYPE_OPTIONS,
-  type ClusterExerciseItem,
-  type ClusterOverridePatch,
-  type ClusterRoundOverride,
-  type ClusterTemplateInput,
-  type ClusterTemplateRow,
+import type {
+  ClusterExerciseItem,
+  ClusterOverridePatch,
+  ClusterRoundOverride,
+  ClusterTemplateInput,
+  ClusterTemplateRow,
 } from '../../types/clusterTemplate';
 import type {
   DistanceUnitCode,
@@ -51,24 +50,25 @@ import {
   buildTargets,
   getExerciseTemplate,
 } from '../../lib/exerciseTemplates';
+import { clusterTitle } from '../../lib/displayTitles';
 import { summarizeClusterChips } from '../../lib/targetSummaries';
+import { AddChildButton } from './AddChildButton';
 import { ClusterSequenceDiagram } from './ClusterSequenceDiagram';
 import { Disclosure } from './Disclosure';
 import { ExerciseEditor } from './ExerciseEditor';
 import { FormSelect } from './FormSelect';
 import { IconButton } from './IconButton';
+import { LayerLabelSelect } from './LayerLabelSelect';
 import { MorePanel } from './MorePanel';
 import { NestedLayer } from './NestedLayer';
 import { RoundStepper } from './RoundStepper';
-import { TemplateNameSearch } from './TemplateNameSearch';
+import {
+  TemplateNameSearch,
+  type TemplateNameSearchHandle,
+} from './TemplateNameSearch';
 import { TimePartsInput } from './TimePartsInput';
 import { ToggleChip } from './ToggleChip';
-import {
-  addLayerButtonColors,
-  clusterItemsLayout,
-} from './formTokens';
-
-const addExerciseColors = addLayerButtonColors('exercise');
+import { clusterItemsLayout } from './formTokens';
 const overrideControlAccent = {
   color: overrideTheme.color,
   border: overrideTheme.border,
@@ -80,6 +80,8 @@ type Props = {
   value: ClusterTemplateInput;
   onChange: (next: ClusterTemplateInput) => void;
   nested?: boolean;
+  /** 0-based index among sequences in the parent block */
+  orderIndex?: number;
   onDelete?: () => void;
   showDelete?: boolean;
 };
@@ -260,13 +262,14 @@ function seedMetricFromBaseline(
 
 
 /**
- * Nestable cluster editor — rounds (each) model with sequence strip,
+ * Nestable sequence editor — rounds (each) model with sequence strip,
  * per-round ExerciseEditor subitems, and sparse round-range overrides.
  */
 export function ClusterEditor({
   value,
   onChange,
   nested = false,
+  orderIndex = 0,
   onDelete,
   showDelete = false,
 }: Props) {
@@ -275,7 +278,19 @@ export function ClusterEditor({
   const [visualizeOpen, setVisualizeOpen] = useState(false);
   const [overridesOpen, setOverridesOpen] = useState(false);
   const [notesFocused, setNotesFocused] = useState(false);
+  const [nameFocused, setNameFocused] = useState(false);
+  const [focusNamePending, setFocusNamePending] = useState(false);
+  const nameSearchRef = useRef<TemplateNameSearchHandle>(null);
   const [addingOverride, setAddingOverride] = useState(false);
+
+  useEffect(() => {
+    if (!moreOpen || !focusNamePending) return;
+    const id = requestAnimationFrame(() => {
+      nameSearchRef.current?.focus();
+      setFocusNamePending(false);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [moreOpen, focusNamePending]);
   const [editingOverrideId, setEditingOverrideId] = useState<string | null>(
     null,
   );
@@ -356,7 +371,7 @@ export function ClusterEditor({
     const perRound =
       targets.length > 1 ? [targets[0]] : targets.length ? targets : buildTargets(1);
     updateItem(index, {
-      name: data.name,
+      name: data.name ?? '',
       tool_id: data.tool_id,
       target_shape_id: data.target_shape_id,
       track_analytics: data.track_analytics,
@@ -415,7 +430,7 @@ export function ClusterEditor({
     }
     const item = value.items.find((i) => i.id === overrideDraft.exercise_id);
     if (!item) {
-      setOverrideError('Pick an exercise in this cluster.');
+      setOverrideError('Pick an exercise in this sequence.');
       return;
     }
 
@@ -538,7 +553,7 @@ export function ClusterEditor({
     });
   }, [selectedOverrideItem?.id, selectedOverrideItem?.target_shape_id]);
 
-  // Keep override range inside the current cluster rounds.
+  // Keep override range inside the current sequence rounds.
   useEffect(() => {
     setOverrideDraft((prev) => {
       if (!prev) return prev;
@@ -616,65 +631,80 @@ export function ClusterEditor({
         setExpanded(next);
         if (!next) setMoreOpen(false);
       }}
-      metaChips={summarizeClusterChips(value)}
-      title={
-        <TemplateNameSearch
-          kind="cluster"
-          value={value.name}
-          onChangeText={(name) => patch({ name })}
-          listTemplates={listClusterTemplates}
-          onPickTemplate={(row) => {
-            void onPickClusterTemplate(row);
-          }}
-          placeholder="Cluster name"
-          accessibilityLabel="Cluster name"
-          style={styles.titleField}
+      metaChips={summarizeClusterChips(value).map((label) => ({
+        label,
+        kind: 'exercise',
+      }))}
+      label={
+        <LayerLabelSelect
+          kind="cluster_label"
+          value={value.label_id}
+          labelName={value.label_name}
+          onChange={(label_id, label_name) =>
+            patch({
+              label_id,
+              label_name,
+              cluster_type:
+                label_name.trim().toLowerCase() === 'circuit'
+                  ? 'circuit'
+                  : 'superset',
+            })
+          }
+          accessibilityLabel="Sequence label"
         />
       }
+      collapsedBrief={clusterTitle(
+        value.label_id,
+        value.label_name,
+        value.name,
+        orderIndex,
+      )}
       trailing={({ expand }) => (
-        <IconButton
-          kind="cluster"
-          active={moreOpen}
-          onPress={() => {
-            expand();
-            setMoreOpen((o) => !o);
-          }}
-        />
+        <>
+          <IconButton
+            kind="cluster"
+            icon="search"
+            active={moreOpen && (nameFocused || focusNamePending)}
+            accessibilityLabel="Name, brief, or search library"
+            onPress={() => {
+              expand();
+              setMoreOpen(true);
+              setFocusNamePending(true);
+            }}
+          />
+          <IconButton
+            kind="cluster"
+            active={moreOpen}
+            onPress={() => {
+              expand();
+              setMoreOpen((o) => !o);
+            }}
+          />
+        </>
       )}
     >
-          <View style={styles.header}>
-            <View style={styles.controlsRow}>
-              <View style={styles.controlBlock}>
-                <Text style={styles.controlLabel}>Type</Text>
-                <FormSelect
-                  options={CLUSTER_TYPE_OPTIONS}
-                  value={value.cluster_type}
-                  onChange={(cluster_type) =>
-                    patch({
-                      cluster_type:
-                        cluster_type as ClusterTemplateInput['cluster_type'],
-                    })
-                  }
-                  fill
-                  accessibilityLabel="Cluster type"
-                />
-              </View>
-              <View style={styles.controlBlock}>
-                <Text style={styles.controlLabel}>Rounds</Text>
-                <RoundStepper
-                  value={rounds}
-                  onChange={setRounds}
-                  min={1}
-                  max={MAX_ROUNDS}
-                  compact
-                  accessibilityLabel="Number of rounds"
-                />
-              </View>
+          <MorePanel open={moreOpen} kind="cluster">
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Name / Brief</Text>
+              <TemplateNameSearch
+                ref={nameSearchRef}
+                kind="cluster"
+                value={value.name}
+                onChangeText={(name) => patch({ name })}
+                listTemplates={listClusterTemplates}
+                getDisplayTitle={(row) =>
+                  clusterTitle(row.label_id, row.label_name, row.name, 0)
+                }
+                onPickTemplate={(row) => {
+                  void onPickClusterTemplate(row);
+                }}
+                onFocusChange={setNameFocused}
+                placeholder="Search library or type a brief…"
+                accessibilityLabel="Sequence name or brief"
+                style={styles.nameField}
+              />
             </View>
 
-          </View>
-
-          <MorePanel open={moreOpen} kind="cluster">
             <View style={styles.durationRow}>
               <ToggleChip
                 label={
@@ -730,14 +760,16 @@ export function ClusterEditor({
                   pressed && styles.deletePressed,
                 ]}
               >
-                <Text style={styles.deleteText}>Delete cluster</Text>
+                <Text style={styles.deleteText}>Delete sequence</Text>
               </Pressable>
             ) : null}
           </MorePanel>
 
           <View style={styles.eachRoundHeader}>
             <View style={styles.eachRoundTitleRow}>
-              <Text style={styles.sectionTitle}>Exercises per-round</Text>
+              <View style={styles.eachRoundSide}>
+                <Text style={styles.sectionTitle}>Exercises</Text>
+              </View>
               <Pressable
                 onPress={() => setVisualizeOpen((open) => !open)}
                 accessibilityRole="button"
@@ -761,8 +793,27 @@ export function ClusterEditor({
                   {visualizeOpen ? 'MAP ON' : 'MAP OFF'}
                 </Text>
               </Pressable>
+              <View style={[styles.eachRoundSide, styles.eachRoundSideRight]}>
+                <View style={styles.roundsInline}>
+                  <Text style={styles.roundsInlineLabel}>ROUNDS</Text>
+                  <TextInput
+                    value={String(rounds)}
+                    onChangeText={(raw) =>
+                      setRounds(
+                        Math.max(
+                          1,
+                          Math.min(MAX_ROUNDS, Number.parseInt(raw, 10) || 1),
+                        ),
+                      )
+                    }
+                    keyboardType="number-pad"
+                    selectTextOnFocus
+                    style={styles.roundsInput}
+                    accessibilityLabel="Number of rounds"
+                  />
+                </View>
+              </View>
             </View>
-            <Text style={styles.sectionHint}>Repeated each round.</Text>
           </View>
 
           {visualizeOpen ? (
@@ -777,6 +828,7 @@ export function ClusterEditor({
                   onChange={(draft) => updateItem(index, draft)}
                   nested
                   subitem
+                  orderIndex={index}
                   showDelete
                   onDelete={() => removeItem(index)}
                   onPickTemplate={(row) => {
@@ -786,26 +838,17 @@ export function ClusterEditor({
             ))}
           </View>
 
-          <Pressable
+          <AddChildButton
+            childKind="exercise"
+            parentTitle={clusterTitle(
+              value.label_id,
+              value.label_name,
+              value.name,
+              orderIndex,
+            )}
             onPress={addItem}
-            style={({ pressed }) => [
-              styles.addBtn,
-              {
-                borderColor: addExerciseColors.border,
-                backgroundColor: addExerciseColors.wash,
-              },
-              pressed && {
-                borderColor: addExerciseColors.label,
-                backgroundColor: addExerciseColors.wash,
-              },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Add exercise"
-          >
-            <Text style={[styles.addText, { color: addExerciseColors.label }]}>
-              + Add exercise
-            </Text>
-          </Pressable>
+            style={styles.addBtn}
+          />
 
           <View
             style={[
@@ -1179,13 +1222,34 @@ export function ClusterEditor({
           <Pressable
             onPress={startAddOverride}
             disabled={value.items.length === 0}
+            accessibilityRole="button"
+            accessibilityLabel={`Add override to ${clusterTitle(
+              value.label_id,
+              value.label_name,
+              value.name,
+              orderIndex,
+            )}`}
             style={({ pressed }) => [
               styles.addOverrideBtn,
               pressed && styles.overridePressed,
               value.items.length === 0 && styles.addDisabled,
             ]}
           >
-            <Text style={styles.addOverrideText}>+ Add override</Text>
+            <View style={styles.addOverrideContent}>
+              <Text style={styles.addOverrideText}>+ Add override</Text>
+              <Text style={styles.addOverrideArrow}>→</Text>
+              <Text
+                style={styles.addOverrideReference}
+                numberOfLines={1}
+              >
+                {clusterTitle(
+                  value.label_id,
+                  value.label_name,
+                  value.name,
+                  orderIndex,
+                )}
+              </Text>
+            </View>
           </Pressable>
         )}
             </Disclosure>
@@ -1195,31 +1259,13 @@ export function ClusterEditor({
 }
 
 const styles = StyleSheet.create({
-  header: {
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
   titleField: {
     flex: 1,
     minWidth: 0,
   },
-  controlsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-  },
-  controlBlock: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 6,
-  },
-  controlLabel: {
-    fontFamily: typography.fontSemiBold,
-    fontSize: 11,
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
-    color: colors.textDim,
-    textAlign: 'center',
+  nameField: {
+    width: '100%',
+    minWidth: 0,
   },
   durationRow: {
     width: '100%',
@@ -1285,7 +1331,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   notesFocused: {
-    borderColor: colors.sunrise,
+    borderColor: layerTheme.cluster.chip.color,
   },
   deleteBtn: {
     alignSelf: 'center',
@@ -1305,16 +1351,55 @@ const styles = StyleSheet.create({
     color: colors.sunset,
   },
   eachRoundHeader: {
-    gap: 2,
-    marginTop: spacing.sm,
+    marginTop: 0,
     marginBottom: 0,
+    paddingTop: 16,
   },
   eachRoundTitleRow: {
-    minHeight: 32,
+    minHeight: 34,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.sm,
+  },
+  eachRoundSide: {
+    flex: 1,
+    minWidth: 0,
+  },
+  eachRoundSideRight: {
+    alignItems: 'flex-end',
+  },
+  roundsInline: {
+    position: 'relative',
+    width: 56,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roundsInlineLabel: {
+    position: 'absolute',
+    top: -16,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    fontFamily: typography.fontSemiBold,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: colors.textDim,
+  },
+  roundsInput: {
+    width: 44,
+    textAlign: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 4,
+    fontFamily: typography.font,
+    fontSize: 14,
+    color: colors.text,
+    backgroundColor: colors.bgInset,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.sm,
   },
   mapToggle: {
     height: 32,
@@ -1339,12 +1424,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: colors.textMuted,
   },
-  sectionHint: {
-    fontFamily: typography.font,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.textDim,
-  },
   items: {
     gap: spacing.sm,
     marginTop: 0,
@@ -1352,11 +1431,6 @@ const styles = StyleSheet.create({
   },
   addBtn: {
     marginTop: spacing.sm,
-    alignSelf: 'flex-start',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderRadius: radii.sm,
   },
   addPressed: {
     borderColor: colors.borderStrong,
@@ -1364,10 +1438,6 @@ const styles = StyleSheet.create({
   },
   addDisabled: {
     opacity: 0.4,
-  },
-  addText: {
-    fontFamily: typography.fontMedium,
-    fontSize: 14,
   },
   overrides: {
     // Space after + Add exercise before the divider
@@ -1572,17 +1642,47 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
   addOverrideBtn: {
-    alignSelf: 'flex-start',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    width: '92%',
+    height: 32,
+    alignSelf: 'center',
+    paddingHorizontal: 10,
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: overrideTheme.color,
     borderRadius: radii.sm,
-    backgroundColor: overrideTheme.wash,
+    backgroundColor: colors.bgInset,
+  },
+  addOverrideContent: {
+    width: '100%',
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   addOverrideText: {
+    width: 104,
+    flexShrink: 0,
     fontFamily: typography.fontMedium,
-    fontSize: 14,
+    fontSize: 13,
     color: overrideTheme.color,
+    textAlign: 'left',
+  },
+  addOverrideArrow: {
+    width: 16,
+    flexShrink: 0,
+    fontFamily: typography.font,
+    fontSize: 13,
+    color: colors.textDim,
+    textAlign: 'center',
+  },
+  addOverrideReference: {
+    minWidth: 0,
+    flex: 1,
+    flexShrink: 1,
+    fontFamily: typography.fontMedium,
+    fontSize: 13,
+    color: overrideTheme.color,
+    opacity: 0.62,
+    textAlign: 'left',
   },
 });

@@ -1,5 +1,6 @@
 /**
- * Session template — ordered list of nested block blobs + category.
+ * Session template — ordered list of nested block blobs + label (category_id).
+ * category_id is the session label FK; name is optional Name/Brief.
  */
 
 import type {
@@ -25,8 +26,10 @@ export type SessionContent = {
 export type SessionTemplateRow = {
   id: string;
   user_id: string;
-  name: string;
+  name: string | null;
+  /** Session label (session_categories.id) — presented as Label in UI */
   category_id: string;
+  label_name?: string | null;
   content: SessionContent;
   archived_at: string | null;
   created_at: string;
@@ -34,8 +37,10 @@ export type SessionTemplateRow = {
 };
 
 export type SessionTemplateInput = {
+  /** Optional Name/Brief */
   name: string;
   category_id: string;
+  label_name?: string | null;
   notes: string | null;
   track_duration: boolean;
   duration: string | null;

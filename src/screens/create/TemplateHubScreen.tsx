@@ -31,16 +31,16 @@ export function TemplateHubScreen({
       <View style={styles.actions}>
         <HubAction
           title="Session"
-          body="Full session tree of blocks and clusters."
+          body="Full session tree of blocks and sequences."
           onPress={onSession}
         />
         <HubAction
           title="Block"
-          body="Ordered exercises and clusters."
+          body="Ordered exercises and sequences."
           onPress={onBlock}
         />
         <HubAction
-          title="Cluster"
+          title="Sequence"
           body="Superset or circuit with nested exercises."
           onPress={onCluster}
         />

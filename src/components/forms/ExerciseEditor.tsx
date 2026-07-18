@@ -12,6 +12,7 @@ import {
   buildTargets,
   migrateTargetsForShapeChange,
 } from '../../lib/exerciseTemplates';
+import { exerciseTitle } from '../../lib/displayTitles';
 import {
   createAnalyticsTag,
   createPrimaryGroup,
@@ -25,12 +26,10 @@ import {
 } from '../../lib/taxonomy';
 import { summarizeExerciseChips } from '../../lib/targetSummaries';
 import type { ExerciseTemplateRow } from '../../types/exerciseTemplate';
-import type {
-  ExerciseTarget,
-  ExerciseTemplateInput,
-} from '../../types/exerciseTemplate';
-import { colors, radii, typography } from '../../theme/tokens';
+import type { ExerciseTemplateInput } from '../../types/exerciseTemplate';
+import { colors, layer, radii, typography } from '../../theme/tokens';
 import { ExerciseNameSearch } from './ExerciseNameSearch';
+import { useExpansionController } from './ExpansionController';
 import { FormSelect } from './FormSelect';
 import { IconButton } from './IconButton';
 import { MorePanel } from './MorePanel';
@@ -40,16 +39,24 @@ import { TargetsGrid } from './TargetsGrid';
 import { TimePartsInput } from './TimePartsInput';
 import { ToggleChip } from './ToggleChip';
 
+const exerciseControlAccent = {
+  color: layer.exercise.chip.color,
+  border: layer.exercise.border,
+  background: layer.exercise.chip.background,
+};
+
 type Props = {
   value: ExerciseTemplateInput;
   onChange: (next: ExerciseTemplateInput) => void;
-  /** Nesting context for cluster/block hosts */
+  /** Nesting context for sequence/block hosts */
   nested?: boolean;
   /**
-   * Cluster/block subitem: targets are per-round (or per-block) prescription,
-   * not consecutive solo sets. Relabels Sets → Per round.
+   * Sequence subitem: one prescription per round. Sets multiplier locked to 1;
+   * the parent `rounds` count repeats the sequence.
    */
   subitem?: boolean;
+  /** 0-based index among exercises in the direct parent */
+  orderIndex?: number;
   onDelete?: () => void;
   showDelete?: boolean;
   deleteLabel?: string;
@@ -59,16 +66,18 @@ type Props = {
 
 /**
  * Nestable exercise leaf — matches session-templator exercise anatomy:
- * coord → header (tool, name search, shape, sets, ⋯) → more panel → targets grid.
+ * coord → header (tool, name search, shape, ⋯) → more panel → targets grid.
  *
  * Tools / primary groups / tags are searchable create-comboboxes.
  * Full rename / archive / delete lives under Account → Taxonomy.
+ * Sets multipliers live in the targets grid Sets column (group counts).
  */
 export function ExerciseEditor({
   value,
   onChange,
   nested = false,
   subitem = false,
+  orderIndex = 0,
   onDelete,
   showDelete = false,
   deleteLabel,
@@ -76,6 +85,9 @@ export function ExerciseEditor({
 }: Props) {
   const { user } = useAuth();
   const userId = user?.id;
+  const expansion = useExpansionController();
+  const collapseSignal = expansion?.collapseSignal ?? 0;
+  const expandSignal = expansion?.expandSignal ?? 0;
 
   const [moreOpen, setMoreOpen] = useState(false);
   const [expanded, setExpanded] = useState(true);
@@ -84,8 +96,28 @@ export function ExerciseEditor({
   const [groups, setGroups] = useState<TaxonomyOption[]>([]);
   const [tags, setTags] = useState<TaxonomyOption[]>([]);
 
-  const setCount = value.default_target_shape.length || 1;
-  const metaChips = summarizeExerciseChips(value);
+  // Tools → Collapse/Expand exercises (signals start at 0; skip initial).
+  useEffect(() => {
+    if (collapseSignal === 0) return;
+    setExpanded(false);
+    setMoreOpen(false);
+  }, [collapseSignal]);
+
+  useEffect(() => {
+    if (expandSignal === 0) return;
+    setExpanded(true);
+  }, [expandSignal]);
+
+  const metaChips = summarizeExerciseChips(value).map((label) => ({
+    label,
+    kind: 'set' as const,
+  }));
+  const resolvedExerciseTitle = exerciseTitle(
+    value.tool_id,
+    tools.find((tool) => tool.id === value.tool_id)?.label,
+    value.name,
+    orderIndex + 1,
+  );
 
   const patch = (partial: Partial<ExerciseTemplateInput>) => {
     onChange({ ...value, ...partial });
@@ -123,16 +155,11 @@ export function ExerciseEditor({
     void refreshTaxonomy();
   }, [refreshTaxonomy]);
 
-  const onChangeTarget = (index: number, targetPatch: Partial<ExerciseTarget>) => {
-    const next = [...value.default_target_shape];
-    next[index] = { ...next[index], ...targetPatch };
-    patch({ default_target_shape: next });
-  };
-
-  const onChangeSetCount = (raw: string) => {
-    const n = Math.max(1, Math.min(50, Number.parseInt(raw, 10) || 1));
+  const onChangeTargets = (next: ExerciseTemplateInput['default_target_shape']) => {
     patch({
-      default_target_shape: buildTargets(n, value.default_target_shape),
+      default_target_shape: subitem
+        ? buildTargets(1, next)
+        : next,
     });
   };
 
@@ -192,7 +219,7 @@ export function ExerciseEditor({
             <View style={styles.controlCol}>
               <Text style={styles.controlLabel}>Tool</Text>
               <SearchableSelect
-                variant="tool"
+                accent={exerciseControlAccent}
                 fill
                 options={tools}
                 onOptionsChange={setTools}
@@ -212,6 +239,7 @@ export function ExerciseEditor({
             <View style={styles.controlCol}>
               <Text style={styles.controlLabel}>Shape</Text>
               <FormSelect
+                accent={exerciseControlAccent}
                 fill
                 options={TARGET_SHAPE_OPTIONS.map((o) => ({
                   id: o.id,
@@ -230,28 +258,6 @@ export function ExerciseEditor({
                 }}
                 accessibilityLabel="Target shape"
               />
-            </View>
-            <View style={styles.setsCol}>
-              <Text style={styles.controlLabel}>
-                {subitem ? 'Round' : 'Sets'}
-              </Text>
-              {subitem ? (
-                <View
-                  style={[styles.setsInput, styles.setsInputLocked]}
-                  accessibilityLabel="One target per round (locked)"
-                >
-                  <Text style={styles.setsLockedText}>1</Text>
-                </View>
-              ) : (
-                <TextInput
-                  value={String(setCount)}
-                  onChangeText={onChangeSetCount}
-                  keyboardType="number-pad"
-                  selectTextOnFocus
-                  style={styles.setsInput}
-                  accessibilityLabel="Prescribed sets"
-                />
-              )}
             </View>
           </View>
 
@@ -296,6 +302,7 @@ export function ExerciseEditor({
                     </Text>
                     <View style={styles.comboFull}>
                       <SearchableSelect
+                        accent={exerciseControlAccent}
                         options={groups}
                         onOptionsChange={setGroups}
                         value={value.primary_group_id}
@@ -318,6 +325,7 @@ export function ExerciseEditor({
                     <Text style={styles.fieldLabel}>Analytics tags</Text>
                     <View style={styles.comboFull}>
                       <SearchableSelect
+                        accent={exerciseControlAccent}
                         mode="multi"
                         options={tags}
                         onOptionsChange={setTags}
@@ -368,7 +376,7 @@ export function ExerciseEditor({
               >
                 <Text style={styles.deleteText}>
                   {deleteLabel ??
-                    (subitem ? 'Remove from cluster' : 'Delete exercise')}
+                    (subitem ? 'Remove from sequence' : 'Delete exercise')}
                 </Text>
               </Pressable>
             ) : null}
@@ -378,7 +386,9 @@ export function ExerciseEditor({
             targetShapeId={value.target_shape_id}
             targets={value.default_target_shape}
             trackAnalytics={value.track_analytics}
-            onChangeTarget={onChangeTarget}
+            referenceTitle={resolvedExerciseTitle}
+            onChangeTargets={onChangeTargets}
+            lockedSingle={subitem}
           />
     </NestedLayer>
   );
@@ -400,7 +410,7 @@ const styles = StyleSheet.create({
   controlCol: {
     flex: 1,
     minWidth: 0,
-    gap: 6,
+    gap: 3,
     alignItems: 'stretch',
   },
   controlLabel: {
@@ -410,37 +420,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: colors.textDim,
     textAlign: 'center',
-  },
-  setsCol: {
-    width: 52,
-    flexShrink: 0,
-    gap: 6,
-    alignItems: 'center',
-  },
-  setsInput: {
-    width: 44,
-    textAlign: 'center',
-    paddingVertical: 7,
-    paddingHorizontal: 4,
-    fontFamily: typography.font,
-    fontSize: 14,
-    color: colors.text,
-    backgroundColor: colors.bgInset,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.sm,
-  },
-  setsInputLocked: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    opacity: 0.45,
-    backgroundColor: colors.bgElevated,
-    borderColor: 'rgba(255, 180, 120, 0.08)',
-  },
-  setsLockedText: {
-    fontFamily: typography.fontMedium,
-    fontSize: 14,
-    color: colors.textDim,
   },
   durationRow: {
     width: '100%',
@@ -524,7 +503,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   notesFocused: {
-    borderColor: colors.sunrise,
+    borderColor: layer.exercise.chip.color,
   },
   deleteBtn: {
     alignSelf: 'center',

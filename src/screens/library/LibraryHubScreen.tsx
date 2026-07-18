@@ -25,7 +25,7 @@ export function LibraryHubScreen({
       <View style={styles.actions}>
         <HubAction
           title="Templates"
-          body="Exercise, cluster, block, and session blueprints."
+          body="Exercise, sequence, block, and session blueprints."
           onPress={onTemplates}
         />
         <HubAction

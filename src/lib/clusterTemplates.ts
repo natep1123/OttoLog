@@ -1,3 +1,8 @@
+import { CLUSTER_LABEL_NULL_ID } from '../constants/sentinelIds';
+import {
+  legacyClusterTypeFromLabel,
+  normalizeBrief,
+} from './displayTitles';
 import { supabase } from './supabase';
 import {
   buildTargets,
@@ -72,6 +77,8 @@ export function defaultClusterExerciseItem(): ClusterExerciseItem {
 export function defaultClusterDraft(): ClusterTemplateInput {
   return {
     name: '',
+    label_id: CLUSTER_LABEL_NULL_ID,
+    label_name: 'Standard',
     cluster_type: 'superset',
     notes: null,
     track_duration: false,
@@ -82,13 +89,15 @@ export function defaultClusterDraft(): ClusterTemplateInput {
   };
 }
 
-/** Copy a library cluster into an editable draft (does not change save identity). */
+/** Copy a library sequence into an editable draft (does not change save identity). */
 export function clusterTemplateToDraft(
   row: ClusterTemplateRow,
 ): ClusterTemplateInput {
   const content = row.content;
   return {
-    name: row.name,
+    name: row.name ?? '',
+    label_id: row.label_id || CLUSTER_LABEL_NULL_ID,
+    label_name: row.label_name ?? null,
     cluster_type: row.cluster_type,
     notes: content.notes,
     track_duration: content.track_duration,
@@ -241,11 +250,21 @@ function normalizeContent(raw: unknown): ClusterContent {
 }
 
 function rowFromDb(row: Record<string, unknown>): ClusterTemplateRow {
+  const labelJoin = row.cluster_labels as
+    | { name?: string }
+    | { name?: string }[]
+    | null
+    | undefined;
+  const joinedName = Array.isArray(labelJoin)
+    ? labelJoin[0]?.name
+    : labelJoin?.name;
   return {
     id: row.id as string,
     user_id: row.user_id as string,
-    name: row.name as string,
-    cluster_type: row.cluster_type as ClusterType,
+    name: typeof row.name === 'string' ? row.name : null,
+    label_id: (row.label_id as string) || CLUSTER_LABEL_NULL_ID,
+    label_name: typeof joinedName === 'string' ? joinedName : null,
+    cluster_type: (row.cluster_type as ClusterType) || 'superset',
     content: normalizeContent(row.content),
     archived_at: (row.archived_at as string | null) ?? null,
     created_at: row.created_at as string,
@@ -296,7 +315,7 @@ function applyPatch(
 }
 
 /**
- * Expand compact cluster programming into per-round sets.
+ * Expand compact sequence programming into per-round sets.
  * Used when denesting session logs later. Skipped slots are marked, not
  * turned into zero-rep performed sets.
  */
@@ -395,7 +414,7 @@ export async function listClusterTemplates(): Promise<{
 }> {
   const { data, error } = await supabase
     .from('cluster_templates')
-    .select('*')
+    .select('*, cluster_labels(name)')
     .is('archived_at', null)
     .order('updated_at', { ascending: false });
 
@@ -411,7 +430,7 @@ export async function getClusterTemplate(
 ): Promise<{ data: ClusterTemplateRow | null; error: string | null }> {
   const { data: row, error } = await supabase
     .from('cluster_templates')
-    .select('*')
+    .select('*, cluster_labels(name)')
     .eq('id', id)
     .maybeSingle();
 
@@ -427,11 +446,7 @@ export type SaveClusterArgs = {
 };
 
 function validateDraft(draft: ClusterTemplateInput): string | null {
-  const name = draft.name.trim();
-  if (!name) return 'Name is required.';
-  if (draft.cluster_type !== 'superset' && draft.cluster_type !== 'circuit') {
-    return 'Cluster type must be Superset or Circuit.';
-  }
+  if (!draft.label_id) return 'Sequence label is required.';
   if (!Number.isFinite(draft.rounds) || draft.rounds < 1) {
     return 'Rounds must be at least 1.';
   }
@@ -440,11 +455,8 @@ function validateDraft(draft: ClusterTemplateInput): string | null {
   }
   for (let i = 0; i < draft.items.length; i += 1) {
     const item = draft.items[i];
-    if (!item.name.trim()) {
-      return `Exercise ${i + 1} needs a name.`;
-    }
     if (item.track_analytics && !item.primary_group_id) {
-      return `Exercise “${item.name.trim()}” needs a primary analytics group.`;
+      return `Exercise ${i + 1} needs a primary analytics group.`;
     }
   }
 
@@ -489,24 +501,34 @@ export async function saveClusterTemplate(
   const validationError = validateDraft(normalized);
   if (validationError) return { id: null, error: validationError };
 
-  const name = normalized.name.trim();
+  const name = normalizeBrief(normalized.name);
 
-  let dupeQuery = supabase
-    .from('cluster_templates')
-    .select('id')
-    .eq('user_id', userId)
-    .is('archived_at', null)
-    .ilike('name', name);
-  if (templateId) dupeQuery = dupeQuery.neq('id', templateId);
+  if (name) {
+    let dupeQuery = supabase
+      .from('cluster_templates')
+      .select('id')
+      .eq('user_id', userId)
+      .is('archived_at', null)
+      .ilike('name', name);
+    if (templateId) dupeQuery = dupeQuery.neq('id', templateId);
 
-  const { data: dupes, error: dupeError } = await dupeQuery.limit(1);
-  if (dupeError) return { id: null, error: dupeError.message };
-  if (dupes && dupes.length > 0) {
-    return {
-      id: null,
-      error: `A cluster template named “${name}” already exists.`,
-    };
+    const { data: dupes, error: dupeError } = await dupeQuery.limit(1);
+    if (dupeError) return { id: null, error: dupeError.message };
+    if (dupes && dupes.length > 0) {
+      return {
+        id: null,
+        error: `A sequence template named “${name}” already exists.`,
+      };
+    }
   }
+
+  const label_id = normalized.label_id || CLUSTER_LABEL_NULL_ID;
+  const label_name = normalized.label_name?.trim() || null;
+  const cluster_type = label_name
+    ? legacyClusterTypeFromLabel(label_name)
+    : normalized.cluster_type === 'circuit'
+      ? 'circuit'
+      : 'superset';
 
   const track_duration = normalized.track_duration;
   const content: ClusterContent = {
@@ -538,7 +560,8 @@ export async function saveClusterTemplate(
   const payload = {
     user_id: userId,
     name,
-    cluster_type: normalized.cluster_type,
+    label_id,
+    cluster_type,
     content,
     updated_at: new Date().toISOString(),
   };
@@ -598,7 +621,7 @@ export async function deleteClusterTemplate(
   if (referenced) {
     return {
       error:
-        'This cluster is still referenced. Archive it instead of deleting.',
+        'This sequence is still referenced. Archive it instead of deleting.',
     };
   }
 

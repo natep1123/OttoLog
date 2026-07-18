@@ -1,5 +1,6 @@
 /**
  * Block template — ordered mixed list of exercise/cluster blobs (copied, no FK).
+ * label_id is mandatory; name is optional Name/Brief.
  */
 
 import type {
@@ -31,7 +32,9 @@ export type BlockContent = {
 export type BlockTemplateRow = {
   id: string;
   user_id: string;
-  name: string;
+  name: string | null;
+  label_id: string;
+  label_name?: string | null;
   content: BlockContent;
   archived_at: string | null;
   created_at: string;
@@ -39,7 +42,10 @@ export type BlockTemplateRow = {
 };
 
 export type BlockTemplateInput = {
+  /** Optional Name/Brief */
   name: string;
+  label_id: string;
+  label_name?: string | null;
   notes: string | null;
   track_duration: boolean;
   duration: string | null;

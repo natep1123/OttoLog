@@ -25,7 +25,7 @@ ottolog-app/
     ├── navigation/         Tab type definitions
     ├── screens/            Full screens and tab stacks
     ├── theme/              Design tokens
-    └── types/              Shared TS types (exercise / cluster / block / session)
+    └── types/              Shared TS types (exercise / sequence / block / session; cluster internally)
 ```
 
 ## Navigation model
@@ -35,13 +35,13 @@ No React Navigation yet. **`HomeScreen`** holds four bottom tabs and a nested st
 | Tab | Hub | Live drill-in | Stubs |
 |-----|-----|---------------|-------|
 | **Home** | Dashboard | (none) | Week → sessions (Soon) |
-| **Create** | Create hub | Templates → Session / Block / Cluster / Exercise builders | Log session |
-| **Library** | Library hub | Templates → Sessions / Blocks / Clusters / Exercises → editor | Logs |
+| **Create** | Create hub | Templates → Session / Block / Sequence / Exercise builders | Log session |
+| **Library** | Library hub | Templates → Sessions / Blocks / Sequences / Exercises → editor | Logs |
 | **Account** | Account hub | Taxonomy → lists; Settings → Danger zone | Profile, Preferences |
 
 Tapping the brand wordmark resets nested stacks.
 
-Bottom nav hides on Session / Block / Cluster / Exercise builders (Create or Library drill-in).
+Bottom nav hides on Session / Block / Sequence / Exercise builders (Create or Library drill-in).
 
 ## Key directories
 
@@ -55,18 +55,19 @@ Bottom nav hides on Session / Block / Cluster / Exercise builders (Create or Lib
 |------|------|
 | `supabase.ts` | Supabase client |
 | `exerciseTemplates.ts` | List, get, save, delete exercise templates; default draft |
-| `clusterTemplates.ts` | List, get, save, archive / hard-delete; rounds + overrides; `clusterTemplateToDraft`; `expandClusterRounds` for future denest |
-| `blockTemplates.ts` | List, get, save, archive / hard-delete; mixed exercise/cluster items; `blockTemplateToDraft` |
+| `clusterTemplates.ts` | Sequence persistence (legacy internal name): list, get, save, archive / hard-delete; rounds + overrides; `clusterTemplateToDraft`; `expandClusterRounds` for future denest |
+| `blockTemplates.ts` | List, get, save, archive / hard-delete; mixed exercise/sequence items; `blockTemplateToDraft` |
 | `sessionTemplates.ts` | List, get, save, archive / hard-delete; nested blocks; `sessionTemplateToDraft`; default Uncategorized |
-| `taxonomy.ts` | Picker lists and Account taxonomy CRUD |
+| `taxonomy.ts` | Picker lists and Account taxonomy CRUD (tools, analytics, session/block/sequence labels) |
 | `localTime.ts` | Local greeting and week strip (`dayjs`) |
+| `displayTitles.ts` | Resolved titles from label/tool + optional Name/Brief |
 | `targetSummaries.ts` | Compress/expand set groups; coach-shorthand summaries for all layers |
 
 ### `src/components/`
 
 Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `ConfirmDialog`, `ListSearchBar`, `BottomNav`, `BrandWordmark`.
 
-**`components/forms/`**: Nestable editors — `SessionEditor` → `BlockEditor` → `ClusterEditor` → `ExerciseEditor`, plus `NestedLayer`, `TemplateNameSearch` / `ExerciseNameSearch`, `MorePanel`, `Disclosure`, `ClusterSequenceDiagram`, `CoordRow`, etc. Behavior is documented in `docs/Template_Builders.md`.
+**`components/forms/`**: Nestable editors — Session → Block → Sequence → Exercise (`ClusterEditor` remains the internal component name), plus `NestedLayer`, `TemplateNameSearch` / `ExerciseNameSearch`, `MorePanel`, `Disclosure`, `ClusterSequenceDiagram`, `CoordRow`, etc. Behavior is documented in `docs/Template_Builders.md`.
 
 ### `src/screens/`
 
@@ -75,18 +76,18 @@ Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `Co
 | `WelcomeScreen`, `SignInScreen`, `SignUpScreen` | Auth flow |
 | `HomeScreen.tsx` | Tab shell and stack routing |
 | `home/HomeDashboardScreen.tsx` | Home tab UI |
-| `create/` | Create hub, template hub, session / block / cluster / exercise builders |
-| `library/` | Library hub, templates hub, session / block / cluster / exercise lists |
+| `create/` | Create hub, template hub, session / block / sequence / exercise builders |
+| `library/` | Library hub, templates hub, session / block / sequence / exercise lists |
 | `account/` | Account hub, settings, danger zone, taxonomy hub and lists |
 
 ### `src/constants/` and `src/types/`
 
-- **`sentinelIds.ts`**: `NO_TOOL_ID`, `UNCATEGORIZED_ID` (must match `sql/004`)
+- **`sentinelIds.ts`**: `NO_TOOL_ID`, `UNCATEGORIZED_ID`, `GENERAL_BLOCK_LABEL_ID`, `CLUSTER_LABEL_NULL_ID` (must match `sql/004` / `sql/011`)
 - **`lockedAtoms.ts`**: Target shape UUIDs from `sql/003`
 - **`targetShapeFields.ts`**: Which columns each shape shows in the targets grid
 - **`types/exerciseTemplate.ts`**: Exercise template row and editor input types
-- **`types/clusterTemplate.ts`**: Cluster template row, content blob, and editor input types
-- **`types/blockTemplate.ts`**: Block template row and mixed exercise/cluster items
+- **`types/clusterTemplate.ts`**: Sequence template row, content blob, and editor input types (legacy internal name)
+- **`types/blockTemplate.ts`**: Block template row and mixed exercise/sequence items
 - **`types/sessionTemplate.ts`**: Session template row and nested blocks
 
 ## Data flow (templates)
@@ -96,7 +97,7 @@ ExerciseBuilderScreen
   → ExerciseEditor (draft state)
   → saveExerciseTemplate() → exercise_templates + analytics_tag_links
 
-ClusterBuilderScreen
+Sequence (internal ClusterBuilderScreen)
   → ClusterEditor → nested ExerciseEditor leaves
   → saveClusterTemplate() → cluster_templates (content jsonb)
 
@@ -117,4 +118,4 @@ Account TaxonomyListScreen
 
 ## Forms layer accents
 
-See `formTokens.ts` / `docs/Styling.md`. Session → Block → Cluster → Exercise each own a background + accent rail used by `NestedLayer`, `IconButton`, and `MorePanel`. Name fields use `TemplateNameSearch` (Exercise wraps it) to copy library templates into the current draft without changing save identity. Card headers show scrollable summary chips from `targetSummaries.ts`.
+See `formTokens.ts` / `docs/Styling.md`. Session → Block → Sequence → Exercise each own a background + accent rail used by `NestedLayer`, `IconButton`, and `MorePanel`. Session/Block/Sequence headers are label-first with optional Name/Brief; Exercise keeps name search. Cards show scrollable summary chips from `targetSummaries.ts` under the brief/title.

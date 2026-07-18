@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -15,7 +15,13 @@ import type {
   ExerciseTemplateInput,
   ExerciseTemplateRow,
 } from '../../types/exerciseTemplate';
-import { colors, radii, spacing, typography } from '../../theme/tokens';
+import {
+  colors,
+  layer,
+  radii,
+  spacing,
+  typography,
+} from '../../theme/tokens';
 import {
   blockTemplateToDraft,
   defaultBlockClusterItem,
@@ -27,45 +33,60 @@ import {
   clusterItemToExerciseDraft,
   exerciseDraftToClusterItem,
 } from '../../lib/clusterTemplates';
+import { blockTitle } from '../../lib/displayTitles';
 import { getExerciseTemplate } from '../../lib/exerciseTemplates';
 import { summarizeBlockChips } from '../../lib/targetSummaries';
+import { AddChildButton } from './AddChildButton';
 import { ClusterEditor } from './ClusterEditor';
 import { ExerciseEditor } from './ExerciseEditor';
 import { IconButton } from './IconButton';
+import { LayerLabelSelect } from './LayerLabelSelect';
 import { MorePanel } from './MorePanel';
 import { NestedLayer } from './NestedLayer';
-import { TemplateNameSearch } from './TemplateNameSearch';
+import {
+  TemplateNameSearch,
+  type TemplateNameSearchHandle,
+} from './TemplateNameSearch';
 import { TimePartsInput } from './TimePartsInput';
 import { ToggleChip } from './ToggleChip';
-import {
-  addLayerButtonColors,
-  blockItemsLayout,
-} from './formTokens';
-
-const addClusterColors = addLayerButtonColors('cluster');
-const addExerciseColors = addLayerButtonColors('exercise');
+import { blockItemsLayout } from './formTokens';
 
 type Props = {
   value: BlockTemplateInput;
   onChange: (next: BlockTemplateInput) => void;
   nested?: boolean;
+  /** 0-based index among blocks in the parent session */
+  orderIndex?: number;
   showDelete?: boolean;
   onDelete?: () => void;
 };
 
 /**
- * Block editor — hosts an ordered mix of ExerciseEditors and ClusterEditors.
+ * Block editor — hosts an ordered mix of exercises and sequences.
  */
 export function BlockEditor({
   value,
   onChange,
   nested = false,
+  orderIndex = 0,
   showDelete = false,
   onDelete,
 }: Props) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const [notesFocused, setNotesFocused] = useState(false);
+  const [nameFocused, setNameFocused] = useState(false);
+  const [focusNamePending, setFocusNamePending] = useState(false);
+  const nameSearchRef = useRef<TemplateNameSearchHandle>(null);
+
+  useEffect(() => {
+    if (!moreOpen || !focusNamePending) return;
+    const id = requestAnimationFrame(() => {
+      nameSearchRef.current?.focus();
+      setFocusNamePending(false);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [moreOpen, focusNamePending]);
 
   const patch = (partial: Partial<BlockTemplateInput>) => {
     onChange({ ...value, ...partial });
@@ -114,7 +135,7 @@ export function BlockEditor({
     const { data, error } = await getExerciseTemplate(row.id);
     if (error || !data) return;
     updateExercise(index, {
-      name: data.name,
+      name: data.name ?? '',
       tool_id: data.tool_id,
       target_shape_id: data.target_shape_id,
       track_analytics: data.track_analytics,
@@ -135,6 +156,12 @@ export function BlockEditor({
     });
   };
 
+  const openMoreToName = (expand: () => void) => {
+    expand();
+    setMoreOpen(true);
+    setFocusNamePending(true);
+  };
+
   return (
     <NestedLayer
       layer="block"
@@ -144,33 +171,67 @@ export function BlockEditor({
         setExpanded(next);
         if (!next) setMoreOpen(false);
       }}
-      metaChips={summarizeBlockChips(value)}
-      title={
-        <TemplateNameSearch
-          kind="block"
-          value={value.name}
-          onChangeText={(name) => patch({ name })}
-          listTemplates={listBlockTemplates}
-          onPickTemplate={(row) => {
-            void onPickBlockTemplate(row);
-          }}
-          placeholder="Block name"
-          accessibilityLabel="Block name"
-          style={styles.titleField}
+      metaChips={summarizeBlockChips(value).map((label, index) => ({
+        label,
+        kind:
+          value.items[index]?.kind === 'cluster' ? 'cluster' : 'exercise',
+      }))}
+      label={
+        <LayerLabelSelect
+          kind="block_label"
+          value={value.label_id}
+          labelName={value.label_name}
+          onChange={(label_id, label_name) => patch({ label_id, label_name })}
+          accessibilityLabel="Block label"
         />
       }
+      collapsedBrief={blockTitle(
+        value.label_name,
+        value.name,
+        orderIndex + 1,
+      )}
       trailing={({ expand }) => (
-        <IconButton
-          kind="block"
-          active={moreOpen}
-          onPress={() => {
-            expand();
-            setMoreOpen((o) => !o);
-          }}
-        />
+        <>
+          <IconButton
+            kind="block"
+            icon="search"
+            active={moreOpen && (nameFocused || focusNamePending)}
+            accessibilityLabel="Name, brief, or search library"
+            onPress={() => openMoreToName(expand)}
+          />
+          <IconButton
+            kind="block"
+            active={moreOpen}
+            onPress={() => {
+              expand();
+              setMoreOpen((o) => !o);
+            }}
+          />
+        </>
       )}
     >
       <MorePanel open={moreOpen} kind="block">
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Name / Brief</Text>
+          <TemplateNameSearch
+            ref={nameSearchRef}
+            kind="block"
+            value={value.name}
+            onChangeText={(name) => patch({ name })}
+            listTemplates={listBlockTemplates}
+            getDisplayTitle={(row) =>
+              blockTitle(row.label_name, row.name, 1)
+            }
+            onPickTemplate={(row) => {
+              void onPickBlockTemplate(row);
+            }}
+            onFocusChange={setNameFocused}
+            placeholder="Search library or type a brief…"
+            accessibilityLabel="Block name or brief"
+            style={styles.nameField}
+          />
+        </View>
+
         <View style={styles.durationRow}>
           <ToggleChip
             label={
@@ -232,19 +293,20 @@ export function BlockEditor({
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Items</Text>
-        <Text style={styles.sectionHint}>
-          Exercises and clusters in this block.
-        </Text>
       </View>
       <View style={styles.items}>
         {value.items.map((item, index) => {
           if (item.kind === 'exercise') {
+            const exerciseOrder = value.items
+              .slice(0, index)
+              .filter((i) => i.kind === 'exercise').length;
             return (
               <ExerciseEditor
                 key={item.id}
                 value={clusterItemToExerciseDraft(item)}
                 onChange={(draft) => updateExercise(index, draft)}
                 nested
+                orderIndex={exerciseOrder}
                 showDelete={value.items.length > 1}
                 onDelete={() => removeItem(index)}
                 deleteLabel="Remove from block"
@@ -254,6 +316,9 @@ export function BlockEditor({
               />
             );
           }
+          const clusterOrder = value.items
+            .slice(0, index)
+            .filter((i) => i.kind === 'cluster').length;
           const { kind: _k, id: _id, ...clusterDraft } = item;
           return (
             <ClusterEditor
@@ -261,6 +326,7 @@ export function BlockEditor({
               value={clusterDraft}
               onChange={(draft) => updateCluster(index, draft)}
               nested
+              orderIndex={clusterOrder}
               showDelete={value.items.length > 1}
               onDelete={() => removeItem(index)}
             />
@@ -269,47 +335,31 @@ export function BlockEditor({
       </View>
 
       <View style={styles.addActions}>
-        <Pressable
+        <AddChildButton
+          childKind="cluster"
+          parentTitle={blockTitle(
+            value.label_name,
+            value.name,
+            orderIndex + 1,
+          )}
           onPress={addCluster}
-          style={({ pressed }) => [
-            styles.addBtn,
-            {
-              borderColor: addClusterColors.border,
-              backgroundColor: addClusterColors.wash,
-            },
-            pressed && { borderColor: addClusterColors.label },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Add cluster"
-        >
-          <Text style={[styles.addText, { color: addClusterColors.label }]}>
-            + Add cluster
-          </Text>
-        </Pressable>
-        <Pressable
+        />
+        <AddChildButton
+          childKind="exercise"
+          parentTitle={blockTitle(
+            value.label_name,
+            value.name,
+            orderIndex + 1,
+          )}
           onPress={addExercise}
-          style={({ pressed }) => [
-            styles.addBtn,
-            {
-              borderColor: addExerciseColors.border,
-              backgroundColor: addExerciseColors.wash,
-            },
-            pressed && { borderColor: addExerciseColors.label },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="Add exercise"
-        >
-          <Text style={[styles.addText, { color: addExerciseColors.label }]}>
-            + Add exercise
-          </Text>
-        </Pressable>
+        />
       </View>
     </NestedLayer>
   );
 }
 
 const styles = StyleSheet.create({
-  titleField: { flex: 1, minWidth: 0 },
+  nameField: { width: '100%', minWidth: 0 },
   durationRow: {
     width: '100%',
     flexDirection: 'row',
@@ -363,7 +413,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   notes: { minHeight: 64, textAlignVertical: 'top' },
-  notesFocused: { borderColor: colors.sunrise },
+  notesFocused: { borderColor: layer.block.chip.color },
   deleteBtn: {
     alignSelf: 'center',
     paddingVertical: 8,
@@ -393,28 +443,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: colors.textMuted,
   },
-  sectionHint: {
-    fontFamily: typography.font,
-    fontSize: 12,
-    lineHeight: 17,
-    color: colors.textDim,
-  },
   items: { gap: spacing.sm, ...blockItemsLayout },
   addActions: {
     marginTop: spacing.sm,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: spacing.sm,
-  },
-  addBtn: {
-    alignSelf: 'flex-start',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderRadius: radii.sm,
-  },
-  addText: {
-    fontFamily: typography.fontMedium,
-    fontSize: 14,
   },
 });

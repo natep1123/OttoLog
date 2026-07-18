@@ -10,6 +10,7 @@ import { ListCard } from '../../components/ListCard';
 import { ListSearchBar } from '../../components/ListSearchBar';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { StatusText } from '../../components/StatusText';
+import { sessionTemplateTitle } from '../../lib/displayTitles';
 import { listSessionTemplates } from '../../lib/sessionTemplates';
 import type { SessionTemplateRow } from '../../types/sessionTemplate';
 import { colors, spacing } from '../../theme/tokens';
@@ -20,6 +21,10 @@ type Props = {
   onOpenSession: (id: string) => void;
   refreshKey?: number;
 };
+
+function titleOf(row: SessionTemplateRow): string {
+  return sessionTemplateTitle(row.label_name, row.name);
+}
 
 export function LibrarySessionsScreen({
   onBrandPress,
@@ -54,7 +59,12 @@ export function LibrarySessionsScreen({
   const filteredRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter((row) => row.name.toLowerCase().includes(q));
+    return rows.filter((row) => {
+      const title = titleOf(row).toLowerCase();
+      const brief = row.name?.toLowerCase() ?? '';
+      const label = row.label_name?.toLowerCase() ?? '';
+      return title.includes(q) || brief.includes(q) || label.includes(q);
+    });
   }, [rows, searchQuery]);
 
   return (
@@ -101,8 +111,10 @@ export function LibrarySessionsScreen({
             return (
               <ListCard
                 key={row.id}
-                title={row.name}
-                meta={`${blockCount} ${blockCount === 1 ? 'block' : 'blocks'}`}
+                title={titleOf(row)}
+                meta={`${row.label_name ?? 'Uncategorized'} · ${blockCount} ${
+                  blockCount === 1 ? 'block' : 'blocks'
+                }`}
                 onPress={() => onOpenSession(row.id)}
               />
             );

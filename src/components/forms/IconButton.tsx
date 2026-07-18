@@ -1,9 +1,15 @@
+import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { layer, radii, typography } from '../../theme/tokens';
 import { FormNodeKind } from './formTokens';
 
+type FeatherName = ComponentProps<typeof Feather>['name'];
+
 type Props = {
   label?: string;
+  /** Prefer over `label` when set — matches other form iconography. */
+  icon?: FeatherName;
   onPress: () => void;
   active?: boolean;
   accessibilityLabel?: string;
@@ -11,15 +17,17 @@ type Props = {
   kind?: FormNodeKind;
 };
 
-/** Prototype `.btn-icon` — used for ⋯ more menus. */
+/** Prototype `.btn-icon` — used for ⋯ more menus and header shortcuts. */
 export function IconButton({
   label = '⋯',
+  icon,
   onPress,
   active,
   accessibilityLabel = 'More options',
   kind = 'exercise',
 }: Props) {
   const token = layer[kind];
+  const tint = token.chip.color;
 
   return (
     <Pressable
@@ -29,15 +37,17 @@ export function IconButton({
       style={({ pressed }) => [
         styles.btn,
         {
-          borderColor: token.chip.color,
+          borderColor: tint,
           backgroundColor: active ? token.chip.background : token.bg,
         },
         pressed && styles.btnPressed,
       ]}
     >
-      <Text style={[styles.text, { color: token.chip.color }]}>
-        {label}
-      </Text>
+      {icon ? (
+        <Feather name={icon} size={15} color={tint} />
+      ) : (
+        <Text style={[styles.text, { color: tint }]}>{label}</Text>
+      )}
     </Pressable>
   );
 }

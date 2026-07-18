@@ -1,4 +1,8 @@
-import { UNCATEGORIZED_ID } from '../constants/sentinelIds';
+import {
+  GENERAL_BLOCK_LABEL_ID,
+  UNCATEGORIZED_ID,
+} from '../constants/sentinelIds';
+import { normalizeBrief } from './displayTitles';
 import { supabase } from './supabase';
 import {
   defaultBlockDraft,
@@ -43,8 +47,9 @@ export function sessionTemplateToDraft(
 ): SessionTemplateInput {
   const content = row.content;
   return {
-    name: row.name,
+    name: row.name ?? '',
     category_id: row.category_id || UNCATEGORIZED_ID,
+    label_name: row.label_name ?? null,
     notes: content.notes,
     track_duration: content.track_duration,
     duration: content.duration,
@@ -83,6 +88,9 @@ function normalizeBlockItem(raw: unknown): SessionBlockItem {
   const r = raw as Record<string, unknown>;
   const draft: BlockTemplateInput = {
     name: typeof r.name === 'string' ? r.name : '',
+    label_id:
+      typeof r.label_id === 'string' ? r.label_id : GENERAL_BLOCK_LABEL_ID,
+    label_name: typeof r.label_name === 'string' ? r.label_name : 'General',
     notes: typeof r.notes === 'string' ? r.notes : null,
     track_duration: Boolean(r.track_duration),
     duration:
@@ -130,11 +138,20 @@ function normalizeContent(raw: unknown): SessionContent {
 }
 
 function rowFromDb(row: Record<string, unknown>): SessionTemplateRow {
+  const labelJoin = row.session_categories as
+    | { name?: string }
+    | { name?: string }[]
+    | null
+    | undefined;
+  const joinedName = Array.isArray(labelJoin)
+    ? labelJoin[0]?.name
+    : labelJoin?.name;
   return {
     id: row.id as string,
     user_id: row.user_id as string,
-    name: row.name as string,
+    name: typeof row.name === 'string' ? row.name : null,
     category_id: (row.category_id as string) || UNCATEGORIZED_ID,
+    label_name: typeof joinedName === 'string' ? joinedName : null,
     content: normalizeContent(row.content),
     archived_at: (row.archived_at as string | null) ?? null,
     created_at: row.created_at as string,
@@ -148,7 +165,7 @@ export async function listSessionTemplates(): Promise<{
 }> {
   const { data, error } = await supabase
     .from('session_templates')
-    .select('*')
+    .select('*, session_categories(name)')
     .is('archived_at', null)
     .order('updated_at', { ascending: false });
 
@@ -164,7 +181,7 @@ export async function getSessionTemplate(
 ): Promise<{ data: SessionTemplateRow | null; error: string | null }> {
   const { data: row, error } = await supabase
     .from('session_templates')
-    .select('*')
+    .select('*, session_categories(name)')
     .eq('id', id)
     .maybeSingle();
 
@@ -180,22 +197,20 @@ export type SaveSessionArgs = {
 };
 
 function validateDraft(draft: SessionTemplateInput): string | null {
-  if (!draft.name.trim()) return 'Name is required.';
-  if (!draft.category_id) return 'Session category is required.';
+  if (!draft.category_id) return 'Session label is required.';
   if (draft.blocks.length === 0) return 'Add at least one block.';
   for (let i = 0; i < draft.blocks.length; i += 1) {
     const block = draft.blocks[i];
-    if (!block.name.trim()) {
-      return `Block ${i + 1} needs a name.`;
+    if (!block.label_id) {
+      return `Block ${i + 1} needs a label.`;
     }
     if (block.items.length === 0) {
-      return `Block ${i + 1} needs at least one cluster or exercise.`;
+      return `Block ${i + 1} needs at least one sequence or exercise.`;
     }
     for (let j = 0; j < block.items.length; j += 1) {
       const item = block.items[j];
-      if (!item.name.trim()) {
-        const kind = item.kind === 'cluster' ? 'Cluster' : 'Exercise';
-        return `${kind} ${j + 1} in Block ${i + 1} needs a name.`;
+      if (item.kind === 'cluster' && !item.label_id) {
+        return `Sequence ${j + 1} in Block ${i + 1} needs a label.`;
       }
       if (
         item.kind === 'exercise' &&
@@ -216,22 +231,24 @@ export async function saveSessionTemplate(
   const validationError = validateDraft(draft);
   if (validationError) return { id: null, error: validationError };
 
-  const name = draft.name.trim();
-  let dupeQuery = supabase
-    .from('session_templates')
-    .select('id')
-    .eq('user_id', userId)
-    .is('archived_at', null)
-    .ilike('name', name);
-  if (templateId) dupeQuery = dupeQuery.neq('id', templateId);
+  const name = normalizeBrief(draft.name);
+  if (name) {
+    let dupeQuery = supabase
+      .from('session_templates')
+      .select('id')
+      .eq('user_id', userId)
+      .is('archived_at', null)
+      .ilike('name', name);
+    if (templateId) dupeQuery = dupeQuery.neq('id', templateId);
 
-  const { data: dupes, error: dupeError } = await dupeQuery.limit(1);
-  if (dupeError) return { id: null, error: dupeError.message };
-  if (dupes && dupes.length > 0) {
-    return {
-      id: null,
-      error: `A session template named “${name}” already exists.`,
-    };
+    const { data: dupes, error: dupeError } = await dupeQuery.limit(1);
+    if (dupeError) return { id: null, error: dupeError.message };
+    if (dupes && dupes.length > 0) {
+      return {
+        id: null,
+        error: `A session template named “${name}” already exists.`,
+      };
+    }
   }
 
   const track_duration = draft.track_duration;
@@ -243,6 +260,8 @@ export async function saveSessionTemplate(
       ...block,
       kind: 'block' as const,
       name: block.name.trim(),
+      label_id: block.label_id || GENERAL_BLOCK_LABEL_ID,
+      label_name: block.label_name?.trim() || null,
       notes: block.notes?.trim() || null,
       items: block.items.map(prepareBlockItemForSave),
     })),

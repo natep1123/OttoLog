@@ -22,33 +22,31 @@ When outline, archived docs, and live SQL disagree, use this order:
 | Profile | `public.users` (`id = auth.uid()`, unique `username`) |
 | RPCs | `delete_own_account()` |
 | Locked atoms | `target_shapes`, `load_units`, `distance_units` |
-| Taxonomy | `tools`, `session_categories` + global No Tool / Uncategorized |
+| Taxonomy | `tools`, `session_categories`, `block_labels`, `cluster_labels` + global nulls |
 | Analytics taxonomy | `analytics_primary_groups`, `analytics_tags` |
 | Exercise templates | `exercise_templates`, `analytics_tag_links` |
-| Cluster templates | `cluster_templates` |
+| Sequence templates | `cluster_templates` (legacy internal name) |
 | Block templates | `block_templates` |
 | Session templates | `session_templates` |
 
 **App slice live**
 
 - **Home**: dashboard with quick actions, recent exercise templates, local week preview
-- **Create** → Template hub → Session / Block / Cluster / Exercise builders; save to Supabase
-- **Library** → Templates → Sessions / Blocks / Clusters / Exercises: browse, search, edit, archive/delete
+- **Create** → Template hub → Session / Block / Sequence / Exercise builders; save to Supabase
+- **Library** → Templates → Sessions / Blocks / Sequences / Exercises: browse, search, edit, archive/delete
 - Searchable create-comboboxes for tools, primary groups, and tags in the exercise builder
 - **Account** → Taxonomy: tools, primary groups, tags (create, rename, archive, hard-delete when unused)
 - **Account** → Settings → Danger zone: delete account
-- Name search on Session / Block / Cluster / Exercise builders can copy another template's fields into the current draft without switching which template you are editing
+- Name search on Session / Block / Sequence / Exercise builders can copy another template's fields into the current draft without switching which template you are editing
 - Active template names are unique per user per layer, case-insensitive (`sql/007`–`010`)
-- Cluster delete prefers soft archive; hard delete only when unreferenced (v1: always allowed — no FK references yet)
-- Clusters use **rounds (each)** programming: sequence of nested exercises × `rounds`, with sparse round-range overrides; individual sets expand only when logging
-- Blocks nest an ordered mix of exercise and cluster blobs; sessions nest ordered block blobs (copied JSON, no cross-template FKs). Session `category_id` defaults to Uncategorized
+- Sequence delete prefers soft archive; hard delete only when unreferenced (v1: always allowed — no FK references yet)
+- Sequences use **rounds (each)** programming: ordered nested exercises × `rounds`, with sparse round-range overrides; individual sets expand only when logging
+- Blocks nest an ordered mix of exercise and sequence blobs; sessions nest ordered block blobs (copied JSON, no cross-template FKs). Session/Block/Sequence use mandatory labels (`category_id` / `label_id`); names are optional Name/Brief
 
 **Not live yet**
 
 - Log / relational session tables
 - Denest / renest functions
-- Session category picker UI (templates still default to Uncategorized)
-
 Applied migrations:
 
 - `sql/001_users.sql`
@@ -61,6 +59,8 @@ Applied migrations:
 - `sql/008_cluster_templates.sql`
 - `sql/009_block_templates.sql`
 - `sql/010_session_templates.sql`
+- `sql/011_layer_labels.sql` — block/sequence labels, nullable names, seed RPC
+- `sql/012_standard_sequence_label.sql` — rename the sequence system-null row and keep editable defaults stable
 
 ---
 
@@ -77,6 +77,7 @@ OttoLog is an infinite workout canvas:
 
 1. **No Tool**: one global row in `tools`
 2. **Uncategorized**: one global row in `session_categories`
+2b. **General** / **Standard**: global null rows in `block_labels` / `cluster_labels`
 
 They are null-buckets (so FKs never need to be null), immutable, and shared by every account. They are **not** seeded on signup.
 
@@ -144,6 +145,8 @@ Fixed UUIDs (locked; must match `sql/003_locked_atoms.sql`, `sql/004_taxonomy.sq
 |----------|------|-----|
 | `NO_TOOL_ID` | `40000000-0000-4000-8000-000000000001` | tools → No Tool |
 | `UNCATEGORIZED_ID` | `40000000-0000-4000-8000-000000000002` | session_categories → Uncategorized |
+| `GENERAL_BLOCK_LABEL_ID` | `50000000-0000-4000-8000-000000000001` | block_labels → General |
+| `CLUSTER_LABEL_NULL_ID` | `60000000-0000-4000-8000-000000000001` | cluster_labels → Standard sequence |
 
 Locked-atom IDs are listed at the top of `sql/003_locked_atoms.sql` and in `src/constants/lockedAtoms.ts`.
 
@@ -338,23 +341,23 @@ Personal library objects for Create → Build templates.
 | Table | Storage style | Notes |
 |-------|---------------|--------|
 | `exercise_templates` | Columns + `default_target_shape` jsonb | Presets. Always `tool_id` + `target_shape_id`. Optional `track_analytics` + `primary_group_id` (required iff tracking). Tags via `analytics_tag_links`, not a column on this table. `default_target_shape` holds the targets[] payload for that shape. Active names are unique per user (case-insensitive), enforced app-side and by a partial unique index (`sql/007`). |
-| `cluster_templates` | Columns + `content` jsonb | Standalone cluster blob. `cluster_type` ∈ `superset` \| `circuit`. `name` + `cluster_type` are columns. `content` holds `{ rounds, notes, track_duration, duration, items[], overrides[] }`. Nested `items` are **per-round** prescriptions locked to one target row each (set count UI is locked). `rounds` repeats the sequence. Sparse `overrides` may skip, patch fields **within the exercise’s existing target_shape** (not change shape), and/or attach `notes` (notes-only allowed). Templates stay compact; session logs expand to individual `log_sets` on denest. Active names unique per user (`sql/008`). Soft-archive preferred; hard delete when unreferenced. |
-| `block_templates` | `content` jsonb | Standalone block blob. `name` is a column; `content` holds `{ notes, track_duration, duration, items[] }` where each item is an **exercise** (`kind: 'exercise'`, with `targets[]`) or **cluster** (`kind: 'cluster'`) blob. Active names unique per user (`sql/009`). Soft-archive preferred. |
-| `session_templates` | `content` jsonb + `category_id` | Full session tree. `category_id` never null; default = global Uncategorized. `content` holds `{ notes, track_duration, duration, blocks[] }` where each block embeds an ordered mix of exercise and cluster items. Active names unique per user (`sql/010`). Soft-archive preferred. |
+| `cluster_templates` | Columns + `content` jsonb | Standalone Sequence blob (internal legacy table name). Mandatory `label_id` → `cluster_labels` (system null **Standard**). Optional `name` (Name/Brief). Legacy `cluster_type` kept for dual-write. `content` holds `{ rounds, notes, track_duration, duration, items[], overrides[] }`. Nested items are per-round prescriptions. Active **nonblank** names unique per user. Soft-archive preferred. |
+| `block_templates` | Columns + `content` jsonb | Mandatory `label_id` → `block_labels` (system null **General**). Optional `name`. `content` holds mixed exercise/sequence items (`kind = 'cluster'` internally). Active **nonblank** names unique per user. Soft-archive preferred. |
+| `session_templates` | `content` jsonb + `category_id` | Full session tree. `category_id` is the session **label** (never null; default Uncategorized). Optional `name` (Name/Brief). `content` holds `{ notes, track_duration, duration, blocks[] }`. Active **nonblank** names unique per user. Soft-archive preferred. |
 
 ### Independence rule (v1)
 
-`session_templates`, `block_templates`, and `cluster_templates` do **not** FK each other. Inserting a saved block/cluster into a session **copies JSON**. Editing a library row later does not propagate. Accepted v1 tradeoff.
+`session_templates`, `block_templates`, and `cluster_templates` do **not** FK each other. Inserting a saved block/sequence into a session **copies JSON**. Editing a library row later does not propagate. Accepted v1 tradeoff.
 
 `exercise_templates` are the first real save path and the recommended vertical slice after taxonomy exists.
 
 **Naming + copy-from-template**
 
 - Active template names are unique per user, per layer (case-insensitive). Archiving frees the name. Log session names may repeat later.
-- On Session, Block, Cluster, and Exercise builders (including nested cards), picking a name from search copies that library template's editable fields into the current draft or card. It does not switch which template is being saved, and nested cards keep their outer id. Save under a new name if you are creating a standalone copy.
+- On Session, Block, Sequence, and Exercise builders (including nested cards), picking a name from search copies that library template's editable fields into the current draft or card. It does not switch which template is being saved, and nested cards keep their outer id. Save under a new name if you are creating a standalone copy.
 - New Blocks default to one Exercise. New Sessions default to one Block containing one Exercise.
-- Cluster templates: soft archive removes them from library lists and frees the name; hard delete is available when unreferenced.
-- Cluster programming is compact (`rounds` + per-round subitem targets + overrides). Performed sets are expanded only into session logs (not stored as N duplicate rows on the template).
+- Sequence templates: soft archive removes them from library lists and frees the name; hard delete is available when unreferenced.
+- Sequence programming is compact (`rounds` + per-round subitem targets + overrides). Performed sets are expanded only into session logs (not stored as N duplicate rows on the template).
 
 ---
 
@@ -449,7 +452,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 | 2 | `tools` + `session_categories` **including global No Tool / Uncategorized** | Valid FKs for templates/logs *(done)* |
 | 3 | `analytics_primary_groups`, `analytics_tags`, `analytics_tag_links` | Optional exercise analytics *(done)* |
 | 4 | `exercise_templates` | First Create → save → Library path *(done)* |
-| 5 | `cluster_templates` | Cluster Create → save → Library *(done)* |
+| 5 | `cluster_templates` | Sequence Create → save → Library *(done)* |
 | 5b | `block_templates` / `session_templates` | Full template library *(done — run `sql/009`, `sql/010`)* |
 | 6 | Log tables + denest/renest | Session logging + analytics facts |
 
@@ -474,7 +477,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 - Extra load units (`% 1RM`, etc.) or cluster types beyond `superset` / `circuit`
 - Soft propagation between template layers
 - Log-instance tag join tables beyond template defaults (revisit later)
-- Per-user copies of No Tool / Uncategorized (rejected; see Design Decision: Global Sentinels)
+- Per-user copies of system nulls (No Tool / Uncategorized / General / Standard) — rejected; see Global Sentinels. Editable **seeded defaults** (Strength, Warmup, Superset, Circuit, …) are ordinary user-owned rows via `ensure_default_template_labels()`.
 
 ---
 
@@ -482,7 +485,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 
 | Doc | Role |
 |-----|------|
-| `docs/Template_Builders.md` | Shipped builder behavior (Session / Block / Cluster / Exercise) |
+| `docs/Template_Builders.md` | Shipped builder behavior (Session / Block / Sequence / Exercise) |
 | `docs/Styling.md` | Official visual system |
 | `docs/Project_Structure.md` | Folders, navigation, key files |
 | `docs/deprecated/original-concept/Backend/Database_Design.md` | Historical schema + JSON tree. Retired names (`composition_categories`), retired seeding model. Keep only for the log-layer sketch |

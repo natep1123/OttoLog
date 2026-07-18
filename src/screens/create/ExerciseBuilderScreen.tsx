@@ -11,7 +11,7 @@ import {
 import { useAuth } from '../../auth/AuthContext';
 import { Button } from '../../components/Button';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { ExerciseEditor } from '../../components/forms';
+import { EditorChrome, ExerciseEditor } from '../../components/forms';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import {
   buildTargets,
@@ -80,7 +80,7 @@ export function ExerciseBuilderScreen({
       ? data.default_target_shape
       : [];
     setDraft({
-      name: data.name,
+      name: data.name ?? '',
       tool_id: data.tool_id,
       target_shape_id: data.target_shape_id,
       track_analytics: data.track_analytics,
@@ -111,7 +111,7 @@ export function ExerciseBuilderScreen({
       : [];
     // Copy editable state only — does not change which template we're saving into.
     setDraft({
-      name: data.name,
+      name: data.name ?? '',
       tool_id: data.tool_id,
       target_shape_id: data.target_shape_id,
       track_analytics: data.track_analytics,
@@ -191,18 +191,20 @@ export function ExerciseBuilderScreen({
       >
         <ScreenHeader
           title={savedId ? 'Edit exercise' : 'Exercise'}
-          subtitle="Reusable exercise blueprint. Same editor nests in clusters and blocks."
+          subtitle="Reusable exercise blueprint. Same editor nests in sequences and blocks."
           onBack={onBack}
           onBrandPress={onBrandPress}
         />
 
-        <ExerciseEditor
-          value={draft}
-          onChange={setDraft}
-          onPickTemplate={(row) => {
-            void onPickTemplate(row.id);
-          }}
-        />
+        <EditorChrome>
+          <ExerciseEditor
+            value={draft}
+            onChange={setDraft}
+            onPickTemplate={(row) => {
+              void onPickTemplate(row.id);
+            }}
+          />
+        </EditorChrome>
 
         <View style={styles.footer}>
           {error ? <Text style={styles.error}>{error}</Text> : null}

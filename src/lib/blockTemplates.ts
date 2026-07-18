@@ -1,3 +1,8 @@
+import {
+  CLUSTER_LABEL_NULL_ID,
+  GENERAL_BLOCK_LABEL_ID,
+} from '../constants/sentinelIds';
+import { normalizeBrief } from './displayTitles';
 import { supabase } from './supabase';
 import {
   defaultClusterDraft,
@@ -40,6 +45,8 @@ export function defaultBlockExerciseItem(): BlockExerciseItem {
 export function defaultBlockDraft(): BlockTemplateInput {
   return {
     name: '',
+    label_id: GENERAL_BLOCK_LABEL_ID,
+    label_name: 'General',
     notes: null,
     track_duration: false,
     duration: null,
@@ -53,7 +60,9 @@ export function blockTemplateToDraft(
 ): BlockTemplateInput {
   const content = row.content;
   return {
-    name: row.name,
+    name: row.name ?? '',
+    label_id: row.label_id || GENERAL_BLOCK_LABEL_ID,
+    label_name: row.label_name ?? null,
     notes: content.notes,
     track_duration: content.track_duration,
     duration: content.duration,
@@ -87,8 +96,21 @@ export function normalizeClusterItem(raw: unknown): BlockClusterItem {
     return { kind: 'cluster', id: newClusterId(), ...base };
   }
   const r = raw as Record<string, unknown>;
+  const labelId =
+    typeof r.label_id === 'string' ? r.label_id : base.label_id;
+  const storedLabel =
+    typeof r.label_name === 'string' ? r.label_name : base.label_name ?? null;
+  const labelName =
+    labelId === CLUSTER_LABEL_NULL_ID &&
+    (!storedLabel ||
+      storedLabel.trim().toLowerCase() === 'cluster' ||
+      storedLabel.trim().toLowerCase() === 'untyped cluster')
+      ? 'Standard'
+      : storedLabel;
   const draft: ClusterTemplateInput = {
     name: typeof r.name === 'string' ? r.name : '',
+    label_id: labelId,
+    label_name: labelName,
     cluster_type:
       r.cluster_type === 'circuit' || r.cluster_type === 'superset'
         ? r.cluster_type
@@ -142,6 +164,8 @@ export function normalizeExerciseItem(raw: unknown): BlockExerciseItem {
     id: typeof r.id === 'string' ? r.id : base.id,
     name: typeof r.name === 'string' ? r.name : '',
     tool_id: typeof r.tool_id === 'string' ? r.tool_id : base.tool_id,
+    tool_name:
+      typeof r.tool_name === 'string' ? r.tool_name : base.tool_name ?? null,
     target_shape_id,
     track_analytics,
     primary_group_id:
@@ -162,7 +186,7 @@ export function normalizeExerciseItem(raw: unknown): BlockExerciseItem {
   return item;
 }
 
-/** Missing/legacy kind defaults to Cluster for backward compatibility. */
+/** Missing/legacy kind defaults to Sequence for backward compatibility. */
 export function normalizeBlockItem(raw: unknown): BlockItem {
   if (
     raw &&
@@ -201,10 +225,20 @@ function normalizeContent(raw: unknown): BlockContent {
 }
 
 function rowFromDb(row: Record<string, unknown>): BlockTemplateRow {
+  const labelJoin = row.block_labels as
+    | { name?: string }
+    | { name?: string }[]
+    | null
+    | undefined;
+  const joinedName = Array.isArray(labelJoin)
+    ? labelJoin[0]?.name
+    : labelJoin?.name;
   return {
     id: row.id as string,
     user_id: row.user_id as string,
-    name: row.name as string,
+    name: typeof row.name === 'string' ? row.name : null,
+    label_id: (row.label_id as string) || GENERAL_BLOCK_LABEL_ID,
+    label_name: typeof joinedName === 'string' ? joinedName : null,
     content: normalizeContent(row.content),
     archived_at: (row.archived_at as string | null) ?? null,
     created_at: row.created_at as string,
@@ -218,7 +252,7 @@ export async function listBlockTemplates(): Promise<{
 }> {
   const { data, error } = await supabase
     .from('block_templates')
-    .select('*')
+    .select('*, block_labels(name)')
     .is('archived_at', null)
     .order('updated_at', { ascending: false });
 
@@ -234,7 +268,7 @@ export async function getBlockTemplate(
 ): Promise<{ data: BlockTemplateRow | null; error: string | null }> {
   const { data: row, error } = await supabase
     .from('block_templates')
-    .select('*')
+    .select('*, block_labels(name)')
     .eq('id', id)
     .maybeSingle();
 
@@ -267,18 +301,19 @@ export function prepareBlockItemForSave(item: BlockItem): BlockItem {
     ...item,
     kind: 'cluster',
     name: item.name.trim(),
+    label_id: item.label_id || CLUSTER_LABEL_NULL_ID,
+    label_name: item.label_name?.trim() || null,
     notes: item.notes?.trim() || null,
   };
 }
 
 function validateDraft(draft: BlockTemplateInput): string | null {
-  if (!draft.name.trim()) return 'Name is required.';
-  if (draft.items.length === 0) return 'Add at least one cluster or exercise.';
+  if (!draft.label_id) return 'Block label is required.';
+  if (draft.items.length === 0) return 'Add at least one sequence or exercise.';
   for (let i = 0; i < draft.items.length; i += 1) {
     const item = draft.items[i];
-    if (!item.name.trim()) {
-      const kind = item.kind === 'cluster' ? 'Cluster' : 'Exercise';
-      return `${kind} ${i + 1} needs a name.`;
+    if (item.kind === 'cluster' && !item.label_id) {
+      return `Sequence ${i + 1} needs a label.`;
     }
     if (item.kind === 'exercise' && item.track_analytics && !item.primary_group_id) {
       return `Exercise ${i + 1} needs a primary analytics group.`;
@@ -294,22 +329,24 @@ export async function saveBlockTemplate(
   const validationError = validateDraft(draft);
   if (validationError) return { id: null, error: validationError };
 
-  const name = draft.name.trim();
-  let dupeQuery = supabase
-    .from('block_templates')
-    .select('id')
-    .eq('user_id', userId)
-    .is('archived_at', null)
-    .ilike('name', name);
-  if (templateId) dupeQuery = dupeQuery.neq('id', templateId);
+  const name = normalizeBrief(draft.name);
+  if (name) {
+    let dupeQuery = supabase
+      .from('block_templates')
+      .select('id')
+      .eq('user_id', userId)
+      .is('archived_at', null)
+      .ilike('name', name);
+    if (templateId) dupeQuery = dupeQuery.neq('id', templateId);
 
-  const { data: dupes, error: dupeError } = await dupeQuery.limit(1);
-  if (dupeError) return { id: null, error: dupeError.message };
-  if (dupes && dupes.length > 0) {
-    return {
-      id: null,
-      error: `A block template named “${name}” already exists.`,
-    };
+    const { data: dupes, error: dupeError } = await dupeQuery.limit(1);
+    if (dupeError) return { id: null, error: dupeError.message };
+    if (dupes && dupes.length > 0) {
+      return {
+        id: null,
+        error: `A block template named “${name}” already exists.`,
+      };
+    }
   }
 
   const track_duration = draft.track_duration;
@@ -323,6 +360,7 @@ export async function saveBlockTemplate(
   const payload = {
     user_id: userId,
     name,
+    label_id: draft.label_id || GENERAL_BLOCK_LABEL_ID,
     content,
     updated_at: new Date().toISOString(),
   };

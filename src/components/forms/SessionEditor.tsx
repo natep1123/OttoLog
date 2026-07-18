@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -11,7 +10,14 @@ import type {
   SessionTemplateInput,
   SessionTemplateRow,
 } from '../../types/sessionTemplate';
-import { colors, radii, spacing, typography } from '../../theme/tokens';
+import {
+  colors,
+  layer,
+  radii,
+  spacing,
+  typography,
+} from '../../theme/tokens';
+import { sessionTemplateTitle } from '../../lib/displayTitles';
 import {
   defaultSessionBlockItem,
   getSessionTemplate,
@@ -19,33 +25,42 @@ import {
   sessionTemplateToDraft,
 } from '../../lib/sessionTemplates';
 import { summarizeSessionChips } from '../../lib/targetSummaries';
+import { AddChildButton } from './AddChildButton';
 import { BlockEditor } from './BlockEditor';
 import { IconButton } from './IconButton';
+import { LayerLabelSelect } from './LayerLabelSelect';
 import { MorePanel } from './MorePanel';
 import { NestedLayer } from './NestedLayer';
-import { TemplateNameSearch } from './TemplateNameSearch';
+import {
+  TemplateNameSearch,
+  type TemplateNameSearchHandle,
+} from './TemplateNameSearch';
 import { TimePartsInput } from './TimePartsInput';
 import { ToggleChip } from './ToggleChip';
-import {
-  addLayerButtonColors,
-  sessionItemsLayout,
-} from './formTokens';
-
-const addBlockColors = addLayerButtonColors('block');
+import { sessionItemsLayout } from './formTokens';
 
 type Props = {
   value: SessionTemplateInput;
   onChange: (next: SessionTemplateInput) => void;
 };
 
-/**
- * Session editor — hosts nested BlockEditors.
- * Category stays Uncategorized for v1 (picker later).
- */
+/** Session editor — label-first header, hosts nested BlockEditors. */
 export function SessionEditor({ value, onChange }: Props) {
   const [moreOpen, setMoreOpen] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const [notesFocused, setNotesFocused] = useState(false);
+  const [nameFocused, setNameFocused] = useState(false);
+  const [focusNamePending, setFocusNamePending] = useState(false);
+  const nameSearchRef = useRef<TemplateNameSearchHandle>(null);
+
+  useEffect(() => {
+    if (!moreOpen || !focusNamePending) return;
+    const id = requestAnimationFrame(() => {
+      nameSearchRef.current?.focus();
+      setFocusNamePending(false);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [moreOpen, focusNamePending]);
 
   const patch = (partial: Partial<SessionTemplateInput>) => {
     onChange({ ...value, ...partial });
@@ -82,6 +97,12 @@ export function SessionEditor({ value, onChange }: Props) {
     onChange(sessionTemplateToDraft(data));
   };
 
+  const openMoreToName = (expand: () => void) => {
+    expand();
+    setMoreOpen(true);
+    setFocusNamePending(true);
+  };
+
   return (
     <NestedLayer
       layer="session"
@@ -90,33 +111,64 @@ export function SessionEditor({ value, onChange }: Props) {
         setExpanded(next);
         if (!next) setMoreOpen(false);
       }}
-      metaChips={summarizeSessionChips(value)}
-      title={
-        <TemplateNameSearch
-          kind="session"
-          value={value.name}
-          onChangeText={(name) => patch({ name })}
-          listTemplates={listSessionTemplates}
-          onPickTemplate={(row) => {
-            void onPickSessionTemplate(row);
-          }}
-          placeholder="Session name"
-          accessibilityLabel="Session name"
-          style={styles.titleField}
+      metaChips={summarizeSessionChips(value).map((label) => ({
+        label,
+        kind: 'block',
+      }))}
+      label={
+        <LayerLabelSelect
+          kind="session_label"
+          value={value.category_id}
+          labelName={value.label_name}
+          onChange={(category_id, label_name) =>
+            patch({ category_id, label_name })
+          }
+          accessibilityLabel="Session label"
         />
       }
+      collapsedBrief={sessionTemplateTitle(value.label_name, value.name)}
       trailing={({ expand }) => (
-        <IconButton
-          kind="session"
-          active={moreOpen}
-          onPress={() => {
-            expand();
-            setMoreOpen((o) => !o);
-          }}
-        />
+        <>
+          <IconButton
+            kind="session"
+            icon="search"
+            active={moreOpen && (nameFocused || focusNamePending)}
+            accessibilityLabel="Name, brief, or search library"
+            onPress={() => openMoreToName(expand)}
+          />
+          <IconButton
+            kind="session"
+            active={moreOpen}
+            onPress={() => {
+              expand();
+              setMoreOpen((o) => !o);
+            }}
+          />
+        </>
       )}
     >
       <MorePanel open={moreOpen} kind="session">
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Name / Brief</Text>
+          <TemplateNameSearch
+            ref={nameSearchRef}
+            kind="session"
+            value={value.name}
+            onChangeText={(name) => patch({ name })}
+            listTemplates={listSessionTemplates}
+            getDisplayTitle={(row) =>
+              sessionTemplateTitle(row.label_name, row.name)
+            }
+            onPickTemplate={(row) => {
+              void onPickSessionTemplate(row);
+            }}
+            onFocusChange={setNameFocused}
+            placeholder="Search library or type a brief…"
+            accessibilityLabel="Session name or brief"
+            style={styles.nameField}
+          />
+        </View>
+
         <View style={styles.durationRow}>
           <ToggleChip
             label={
@@ -164,9 +216,6 @@ export function SessionEditor({ value, onChange }: Props) {
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Blocks</Text>
-        <Text style={styles.sectionHint}>
-          Ordered sections within this session.
-        </Text>
       </View>
       <View style={styles.items}>
         {value.blocks.map((block, index) => {
@@ -177,6 +226,7 @@ export function SessionEditor({ value, onChange }: Props) {
               value={blockDraft}
               onChange={(draft) => updateBlock(index, draft)}
               nested
+              orderIndex={index}
               showDelete={value.blocks.length > 1}
               onDelete={() => removeBlock(index)}
             />
@@ -184,32 +234,18 @@ export function SessionEditor({ value, onChange }: Props) {
         })}
       </View>
 
-      <Pressable
+      <AddChildButton
+        childKind="block"
+        parentTitle={sessionTemplateTitle(value.label_name, value.name)}
         onPress={addBlock}
-        style={({ pressed }) => [
-          styles.addBtn,
-          {
-            borderColor: addBlockColors.border,
-            backgroundColor: addBlockColors.wash,
-          },
-          pressed && {
-            borderColor: addBlockColors.label,
-            backgroundColor: addBlockColors.wash,
-          },
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel="Add block"
-      >
-        <Text style={[styles.addText, { color: addBlockColors.label }]}>
-          + Add block
-        </Text>
-      </Pressable>
+        style={styles.addBtn}
+      />
     </NestedLayer>
   );
 }
 
 const styles = StyleSheet.create({
-  titleField: { flex: 1, minWidth: 0 },
+  nameField: { width: '100%', minWidth: 0 },
   durationRow: {
     width: '100%',
     flexDirection: 'row',
@@ -263,7 +299,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   notes: { minHeight: 64, textAlignVertical: 'top' },
-  notesFocused: { borderColor: colors.sunrise },
+  notesFocused: { borderColor: layer.session.chip.color },
   sectionHeader: {
     gap: 2,
     marginTop: spacing.sm,
@@ -276,23 +312,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: colors.textMuted,
   },
-  sectionHint: {
-    fontFamily: typography.font,
-    fontSize: 12,
-    lineHeight: 17,
-    color: colors.textDim,
-  },
   items: { gap: spacing.sm, ...sessionItemsLayout },
   addBtn: {
     marginTop: spacing.sm,
-    alignSelf: 'flex-start',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderRadius: radii.sm,
-  },
-  addText: {
-    fontFamily: typography.fontMedium,
-    fontSize: 14,
   },
 });

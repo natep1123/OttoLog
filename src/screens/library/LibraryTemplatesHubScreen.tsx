@@ -32,16 +32,16 @@ export function LibraryTemplatesHubScreen({
       <View style={styles.actions}>
         <HubAction
           title="Session"
-          body="Full session tree of blocks and clusters."
+          body="Full session tree of blocks and sequences."
           onPress={onSessions}
         />
         <HubAction
           title="Block"
-          body="Ordered exercises and clusters."
+          body="Ordered exercises and sequences."
           onPress={onBlocks}
         />
         <HubAction
-          title="Cluster"
+          title="Sequence"
           body="Superset or circuit with nested exercises."
           onPress={onClusters}
         />

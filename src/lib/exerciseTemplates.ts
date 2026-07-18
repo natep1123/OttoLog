@@ -201,25 +201,27 @@ export async function saveExerciseTemplate(
   args: SaveExerciseArgs,
 ): Promise<{ id: string | null; error: string | null }> {
   const { userId, templateId, draft } = args;
-  const name = draft.name.trim();
-  if (!name) return { id: null, error: 'Name is required.' };
+  const trimmed = draft.name.trim();
+  const name = trimmed.length > 0 ? trimmed : null;
 
-  // Enforce unique active template names per user (case-insensitive).
-  let dupeQuery = supabase
-    .from('exercise_templates')
-    .select('id')
-    .eq('user_id', userId)
-    .is('archived_at', null)
-    .ilike('name', name);
-  if (templateId) dupeQuery = dupeQuery.neq('id', templateId);
+  // Unique only among custom nonblank names.
+  if (name) {
+    let dupeQuery = supabase
+      .from('exercise_templates')
+      .select('id')
+      .eq('user_id', userId)
+      .is('archived_at', null)
+      .ilike('name', name);
+    if (templateId) dupeQuery = dupeQuery.neq('id', templateId);
 
-  const { data: dupes, error: dupeError } = await dupeQuery.limit(1);
-  if (dupeError) return { id: null, error: dupeError.message };
-  if (dupes && dupes.length > 0) {
-    return {
-      id: null,
-      error: `An exercise template named “${name}” already exists.`,
-    };
+    const { data: dupes, error: dupeError } = await dupeQuery.limit(1);
+    if (dupeError) return { id: null, error: dupeError.message };
+    if (dupes && dupes.length > 0) {
+      return {
+        id: null,
+        error: `An exercise template named “${name}” already exists.`,
+      };
+    }
   }
 
   let primary_group_id: string | null = null;

@@ -10,6 +10,7 @@ import { ListCard } from '../../components/ListCard';
 import { ListSearchBar } from '../../components/ListSearchBar';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { StatusText } from '../../components/StatusText';
+import { exerciseTitle } from '../../lib/displayTitles';
 import { listExerciseTemplates } from '../../lib/exerciseTemplates';
 import type { ExerciseTemplateRow } from '../../types/exerciseTemplate';
 import { TARGET_SHAPE_LABELS } from '../../constants/targetShapeFields';
@@ -22,6 +23,10 @@ type Props = {
   /** Bump to refetch when returning from editor */
   refreshKey?: number;
 };
+
+function titleOf(row: ExerciseTemplateRow, index: number): string {
+  return exerciseTitle(row.tool_id, null, row.name, index + 1);
+}
 
 export function LibraryScreen({
   onBrandPress,
@@ -55,8 +60,14 @@ export function LibraryScreen({
 
   const filteredRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((row) => row.name.toLowerCase().includes(q));
+    if (!q) return rows.map((row, index) => ({ row, index }));
+    return rows
+      .map((row, index) => ({ row, index }))
+      .filter(({ row, index }) => {
+        const title = titleOf(row, index).toLowerCase();
+        const brief = row.name?.toLowerCase() ?? '';
+        return title.includes(q) || brief.includes(q);
+      });
   }, [rows, searchQuery]);
 
   return (
@@ -100,10 +111,10 @@ export function LibraryScreen({
               No templates match “{searchQuery.trim()}”.
             </StatusText>
           ) : null}
-          {filteredRows.map((row) => (
+          {filteredRows.map(({ row, index }) => (
             <ListCard
               key={row.id}
-              title={row.name}
+              title={titleOf(row, index)}
               meta={`${TARGET_SHAPE_LABELS[row.target_shape_id] ?? 'Exercise'}${
                 row.track_analytics ? ' · Analytics on' : ''
               }`}

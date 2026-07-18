@@ -21,7 +21,8 @@ export type ExerciseTarget = {
 export type ExerciseTemplateRow = {
   id: string;
   user_id: string;
-  name: string;
+  /** Optional; blank resolves to tool/order title */
+  name: string | null;
   tool_id: string;
   target_shape_id: string;
   track_analytics: boolean;
@@ -36,6 +37,7 @@ export type ExerciseTemplateRow = {
 };
 
 export type ExerciseTemplateInput = {
+  /** Optional Name; blank resolves to tool/order title */
   name: string;
   tool_id: string;
   target_shape_id: string;

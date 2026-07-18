@@ -19,5 +19,10 @@ export { SessionEditor } from './SessionEditor';
 export { ClusterSequenceDiagram } from './ClusterSequenceDiagram';
 export { Disclosure } from './Disclosure';
 export { RoundStepper } from './RoundStepper';
+export {
+  ExpansionControllerProvider,
+  useExpansionController,
+} from './ExpansionController';
+export { EditorChrome, EditorTools } from './EditorTools';
 export { formRadii } from './formTokens';
 export type { FormNodeKind } from './formTokens';

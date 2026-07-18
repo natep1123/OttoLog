@@ -10,11 +10,9 @@ import { ListCard } from '../../components/ListCard';
 import { ListSearchBar } from '../../components/ListSearchBar';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { StatusText } from '../../components/StatusText';
+import { clusterTitle } from '../../lib/displayTitles';
 import { listClusterTemplates } from '../../lib/clusterTemplates';
-import {
-  CLUSTER_TYPE_LABELS,
-  type ClusterTemplateRow,
-} from '../../types/clusterTemplate';
+import type { ClusterTemplateRow } from '../../types/clusterTemplate';
 import { colors, spacing } from '../../theme/tokens';
 
 type Props = {
@@ -24,7 +22,11 @@ type Props = {
   refreshKey?: number;
 };
 
-/** Library → Templates → Clusters list with name search. */
+function titleOf(row: ClusterTemplateRow, index: number): string {
+  return clusterTitle(row.label_id, row.label_name, row.name, index);
+}
+
+/** Library → Templates → Sequences list with name search. */
 export function LibraryClustersScreen({
   onBrandPress,
   onBack,
@@ -57,14 +59,21 @@ export function LibraryClustersScreen({
 
   const filteredRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((row) => row.name.toLowerCase().includes(q));
+    if (!q) return rows.map((row, index) => ({ row, index }));
+    return rows
+      .map((row, index) => ({ row, index }))
+      .filter(({ row, index }) => {
+        const title = titleOf(row, index).toLowerCase();
+        const brief = row.name?.toLowerCase() ?? '';
+        const label = row.label_name?.toLowerCase() ?? '';
+        return title.includes(q) || brief.includes(q) || label.includes(q);
+      });
   }, [rows, searchQuery]);
 
   return (
     <View style={styles.root}>
       <ScreenHeader
-        title="Clusters"
+        title="Sequences"
         subtitle="Open one to edit. Create new ones under Create."
         onBack={onBack}
         onBrandPress={onBrandPress}
@@ -73,8 +82,8 @@ export function LibraryClustersScreen({
       <ListSearchBar
         value={searchQuery}
         onChangeText={setSearchQuery}
-        placeholder="Search clusters…"
-        accessibilityLabel="Search clusters"
+        placeholder="Search sequences…"
+        accessibilityLabel="Search sequences"
       />
 
       {loading ? (
@@ -95,21 +104,21 @@ export function LibraryClustersScreen({
         >
           {error ? <StatusText tone="error">{error}</StatusText> : null}
           {!error && rows.length === 0 ? (
-            <StatusText>No cluster templates yet.</StatusText>
+            <StatusText>No sequence templates yet.</StatusText>
           ) : null}
           {!error && rows.length > 0 && filteredRows.length === 0 ? (
             <StatusText>
               No templates match “{searchQuery.trim()}”.
             </StatusText>
           ) : null}
-          {filteredRows.map((row) => {
+          {filteredRows.map(({ row, index }) => {
             const exerciseCount = row.content.items?.length ?? 0;
             const rounds = row.content.rounds ?? 1;
             return (
               <ListCard
                 key={row.id}
-                title={row.name}
-                meta={`${CLUSTER_TYPE_LABELS[row.cluster_type] ?? row.cluster_type} · ${rounds} ${
+                title={titleOf(row, index)}
+                meta={`${row.label_name ?? 'Standard'} · ${rounds} ${
                   rounds === 1 ? 'round' : 'rounds'
                 } · ${exerciseCount} ${
                   exerciseCount === 1 ? 'exercise' : 'exercises'

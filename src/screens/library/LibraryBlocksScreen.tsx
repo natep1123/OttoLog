@@ -10,6 +10,7 @@ import { ListCard } from '../../components/ListCard';
 import { ListSearchBar } from '../../components/ListSearchBar';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { StatusText } from '../../components/StatusText';
+import { blockTitle } from '../../lib/displayTitles';
 import { listBlockTemplates } from '../../lib/blockTemplates';
 import type { BlockTemplateRow } from '../../types/blockTemplate';
 import { colors, spacing } from '../../theme/tokens';
@@ -20,6 +21,10 @@ type Props = {
   onOpenBlock: (id: string) => void;
   refreshKey?: number;
 };
+
+function titleOf(row: BlockTemplateRow, index: number): string {
+  return blockTitle(row.label_name, row.name, index + 1);
+}
 
 export function LibraryBlocksScreen({
   onBrandPress,
@@ -53,8 +58,15 @@ export function LibraryBlocksScreen({
 
   const filteredRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((row) => row.name.toLowerCase().includes(q));
+    if (!q) return rows.map((row, index) => ({ row, index }));
+    return rows
+      .map((row, index) => ({ row, index }))
+      .filter(({ row, index }) => {
+        const title = titleOf(row, index).toLowerCase();
+        const brief = row.name?.toLowerCase() ?? '';
+        const label = row.label_name?.toLowerCase() ?? '';
+        return title.includes(q) || brief.includes(q) || label.includes(q);
+      });
   }, [rows, searchQuery]);
 
   return (
@@ -96,13 +108,15 @@ export function LibraryBlocksScreen({
               No templates match “{searchQuery.trim()}”.
             </StatusText>
           ) : null}
-          {filteredRows.map((row) => {
+          {filteredRows.map(({ row, index }) => {
             const itemCount = row.content.items?.length ?? 0;
             return (
               <ListCard
                 key={row.id}
-                title={row.name}
-                meta={`${itemCount} ${itemCount === 1 ? 'item' : 'items'}`}
+                title={titleOf(row, index)}
+                meta={`${row.label_name ?? 'General'} · ${itemCount} ${
+                  itemCount === 1 ? 'item' : 'items'
+                }`}
                 onPress={() => onOpenBlock(row.id)}
               />
             );

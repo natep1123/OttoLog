@@ -27,11 +27,11 @@ OttoLog uses a warm dusk visual language that should feel personal, focused, and
 The interface should not feel like a dashboard unless the content truly requires one. Prefer one clear purpose per screen.
 
 The nested template hierarchy is one intentional, tightly scoped exception to
-the warm-only direction: Block and Cluster may use cool blue/violet accents
+the warm-only direction: Block and Sequence may use cool blue/violet accents
 only for their structural rails, card borders, chips, and overflow icons.
 Session and Exercise bookend them with warm accents. Cool colors must not spread
 to general buttons, CTAs, ambient washes, or the brand gradient. The narrow
-exception is the solid-outline “Add cluster” control, which uses the Cluster
+exception is the solid-outline “Add sequence” control, which uses the Sequence
 token because add controls identify the layer they create.
 
 ## Implementation Rules
@@ -346,7 +346,7 @@ Home now uses a dashboard layout. Create, Library, and Account use hub / list / 
 
 - Header-sized wordmark
 - Screen title + muted subtitle via `ScreenHeader`
-- Bottom navigation (hidden on Session / Block / Cluster / Exercise builders)
+- Bottom navigation (hidden on Session / Block / Sequence / Exercise builders)
 
 ### Home
 
@@ -374,8 +374,8 @@ Danger zone has **Delete account** with confirmation. **Log out** is on the Acco
 
 Same hub pattern: `ScreenHeader` plus stacked `HubAction` rows.
 
-- **Create**: Build templates (live), Log a session (Soon) → Templates hub → Session / Block / Cluster / Exercise builders (live)
-- **Library**: Templates (live), Logs (Soon) → Templates hub → Session / Block / Cluster / Exercise lists with name search (live)
+- **Create**: Build templates (live), Log a session (Soon) → Templates hub → Session / Block / Sequence / Exercise builders (live)
+- **Library**: Templates (live), Logs (Soon) → Templates hub → Session / Block / Sequence / Exercise lists with name search (live)
 
 All four template builders hide bottom nav. Library lists are top-aligned with `ListSearchBar`.
 
@@ -390,7 +390,7 @@ hardcoding per-component colors.
 |-------|------------|-------------------|------|
 | Session | `#0c0a0e` | muted warm red `#d65b4b` | solid 4px |
 | Block | `#0d0b0f` | cool blue `#4a7fb5` | solid 4px |
-| Cluster | `#0f0d11` | cool violet `#7a6bc9` | solid 4px |
+| Sequence | `#0f0d11` | cool violet `#7a6bc9` | solid 4px |
 | Exercise | `#100e12` | muted warm gold `#d6aa66` | solid 4px with glow |
 
 The backgrounds are solid and progress monotonically from Session to Exercise;
@@ -410,19 +410,19 @@ uses the same 1-point dashed outline as the card hairline, on all sides, with
 centered option content.
 
 Nesting is constrained by role: Session adds Blocks; Block adds an ordered mix
-of Clusters and standalone Exercises; Cluster adds Exercises only. Each
+of Sequences and standalone Exercises; Sequence adds Exercises only. Each
 solid-outline add control uses the shared color token of the layer it creates.
 New blocks start with one Exercise, and new Sessions start with one Block
 containing one Exercise.
-Cluster round overrides retain a dusk-pink semantic accent across their add
+Sequence round overrides retain a dusk-pink semantic accent across their add
 button, disclosure, editable panels, selectors, steppers, and save controls.
 
-Clusters show a circuit-style sequence diagram (chips left→right, wrap onto the
+Sequences show a circuit-style diagram (chips left→right, wrap onto the
 next line, dashed return loop), per-round subitem editors, and an overrides list
-for round-range exceptions. Its blueprint grid uses the Cluster structural
-color; gold arrows and chips remain warm. Cluster Type uses a two-option
-non-searchable selector and defaults to Superset. A compact, violet Map on/off
-toggle shares the Exercises per-round heading row and mounts the diagram
+for round-range exceptions. Its blueprint grid uses the Sequence structural
+color; gold arrows and chips remain warm. Sequence labels replace the old
+non-searchable Type selector; Standard is the system default. A compact violet Map on/off
+toggle shares the Exercises heading row with the ROUNDS box and mounts the diagram
 directly below it. Overrides continues to use a tight `Disclosure`.
 
 More-panel duration controls stay left-aligned. All four layers reserve the

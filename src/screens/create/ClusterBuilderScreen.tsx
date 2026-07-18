@@ -11,10 +11,11 @@ import {
 import { useAuth } from '../../auth/AuthContext';
 import { Button } from '../../components/Button';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { ClusterEditor } from '../../components/forms';
+import { ClusterEditor, EditorChrome } from '../../components/forms';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import {
   archiveClusterTemplate,
+  clusterTemplateToDraft,
   defaultClusterDraft,
   deleteClusterTemplate,
   getClusterTemplate,
@@ -35,7 +36,7 @@ type Props = {
 type RemoveMode = 'archive' | 'hard' | null;
 
 /**
- * Solo cluster template builder — hosts nestable ClusterEditor (ExerciseEditor leaves).
+ * Solo sequence template builder — hosts the internal ClusterEditor.
  * Footer actions live outside the form. Prefer soft archive; hard delete when unreferenced.
  */
 export function ClusterBuilderScreen({
@@ -78,18 +79,7 @@ export function ClusterBuilderScreen({
       setError(loadError ?? 'Could not load template.');
       return;
     }
-    setDraft({
-      name: data.name,
-      cluster_type: data.cluster_type,
-      notes: data.content.notes,
-      track_duration: data.content.track_duration,
-      duration: data.content.duration,
-      rounds: data.content.rounds ?? 1,
-      items: data.content.items.length
-        ? data.content.items
-        : defaultClusterDraft().items,
-      overrides: data.content.overrides ?? [],
-    });
+    setDraft(clusterTemplateToDraft(data));
     setSavedId(data.id);
 
     const { referenced } = await isClusterTemplateReferenced(data.id);
@@ -168,13 +158,15 @@ export function ClusterBuilderScreen({
         nestedScrollEnabled
       >
         <ScreenHeader
-          title={savedId ? 'Edit cluster' : 'Cluster'}
+          title={savedId ? 'Edit sequence' : 'Sequence'}
           subtitle="Rounds through a sequence of exercises. Sets expand when you log."
           onBack={onBack}
           onBrandPress={onBrandPress}
         />
 
-        <ClusterEditor value={draft} onChange={setDraft} />
+        <EditorChrome>
+          <ClusterEditor value={draft} onChange={setDraft} />
+        </EditorChrome>
 
         <View style={styles.footer}>
           {error ? <Text style={styles.error}>{error}</Text> : null}

@@ -24,7 +24,7 @@ export function CreateHubScreen({
       <View style={styles.actions}>
         <HubAction
           title="Build templates"
-          body="Exercise, cluster, block, and session blueprints."
+          body="Exercise, sequence, block, and session blueprints."
           onPress={onBuildTemplates}
         />
         <HubAction

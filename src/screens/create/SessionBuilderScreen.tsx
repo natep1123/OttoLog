@@ -11,7 +11,7 @@ import {
 import { useAuth } from '../../auth/AuthContext';
 import { Button } from '../../components/Button';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { SessionEditor } from '../../components/forms';
+import { EditorChrome, SessionEditor } from '../../components/forms';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import {
   archiveSessionTemplate,
@@ -19,6 +19,7 @@ import {
   deleteSessionTemplate,
   getSessionTemplate,
   saveSessionTemplate,
+  sessionTemplateToDraft,
 } from '../../lib/sessionTemplates';
 import type { SessionTemplateInput } from '../../types/sessionTemplate';
 import { colors, spacing, typography } from '../../theme/tokens';
@@ -70,16 +71,7 @@ export function SessionBuilderScreen({
       setError(loadError ?? 'Could not load template.');
       return;
     }
-    setDraft({
-      name: data.name,
-      category_id: data.category_id,
-      notes: data.content.notes,
-      track_duration: data.content.track_duration,
-      duration: data.content.duration,
-      blocks: data.content.blocks.length
-        ? data.content.blocks
-        : defaultSessionDraft().blocks,
-    });
+    setDraft(sessionTemplateToDraft(data));
     setSavedId(data.id);
   }, [templateId]);
 
@@ -153,12 +145,14 @@ export function SessionBuilderScreen({
       >
         <ScreenHeader
           title={savedId ? 'Edit session' : 'Session'}
-          subtitle="Full day blueprint of blocks and clusters. Category defaults to Uncategorized."
+          subtitle="Full day blueprint of blocks and sequences. Category defaults to Uncategorized."
           onBack={onBack}
           onBrandPress={onBrandPress}
         />
 
-        <SessionEditor value={draft} onChange={setDraft} />
+        <EditorChrome>
+          <SessionEditor value={draft} onChange={setDraft} />
+        </EditorChrome>
 
         <View style={styles.footer}>
           {error ? <Text style={styles.error}>{error}</Text> : null}

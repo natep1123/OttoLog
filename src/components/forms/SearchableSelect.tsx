@@ -40,6 +40,12 @@ type SharedProps = {
   disabled?: boolean;
   /** Fill parent width instead of fixed tool width (dense control rows). */
   fill?: boolean;
+  /** Owning layer's focus/selection colors. */
+  accent?: {
+    color: string;
+    border: string;
+    background: string;
+  };
 };
 
 type Props = SharedProps & (SingleProps | MultiProps);
@@ -72,6 +78,7 @@ export function SearchableSelect(props: Props) {
     clearable = false,
     disabled = false,
     fill = false,
+    accent,
   } = props;
 
   const multi = props.mode === 'multi';
@@ -211,6 +218,7 @@ export function SearchableSelect(props: Props) {
             styles.trigger,
             variant === 'tool' && styles.triggerTool,
             open && styles.triggerOpen,
+            open && accent ? { borderColor: accent.color } : null,
             pressed && !disabled && styles.triggerPressed,
             disabled && styles.triggerDisabled,
           ]}
@@ -240,6 +248,7 @@ export function SearchableSelect(props: Props) {
           <View
             style={[
               styles.menu,
+              accent ? { borderColor: accent.border } : null,
               {
                 top: anchor.y + anchor.h + 4,
                 left: menuLeft,
@@ -256,7 +265,7 @@ export function SearchableSelect(props: Props) {
               autoCapitalize="words"
               autoCorrect={false}
               style={styles.search}
-              selectionColor={colors.sunrise}
+              selectionColor={accent?.color ?? colors.sunrise}
             />
 
             <ScrollView
@@ -284,12 +293,19 @@ export function SearchableSelect(props: Props) {
                     onPress={() =>
                       multi ? toggleMulti(opt.id) : selectSingle(opt.id)
                     }
-                    style={[styles.option, selected && styles.optionOn]}
+                    style={[
+                      styles.option,
+                      selected && styles.optionOn,
+                      selected && accent
+                        ? { backgroundColor: accent.background }
+                        : null,
+                    ]}
                   >
                     <Text
                       style={[
                         styles.optionText,
                         selected && styles.optionTextOn,
+                        selected && accent ? { color: accent.color } : null,
                       ]}
                       numberOfLines={1}
                     >

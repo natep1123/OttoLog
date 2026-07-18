@@ -9,7 +9,7 @@ type Props = {
   showLabels?: boolean;
   /**
    * When true (default), 00:00:00 commits as null — “unset”, same as distance 0.
-   * Set false for exercise/cluster duration while track_duration is on.
+   * Set false for exercise/sequence duration while track_duration is on.
    */
   emptyAsNull?: boolean;
 };

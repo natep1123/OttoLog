@@ -18,6 +18,11 @@ import type {
   ExerciseTemplateInput,
 } from '../types/exerciseTemplate';
 import type { SessionTemplateInput } from '../types/sessionTemplate';
+import {
+  blockTitle,
+  clusterTitle,
+  exerciseTitle,
+} from './displayTitles';
 import { emptyTarget } from './exerciseTemplates';
 
 export type TargetGroup = {
@@ -90,6 +95,24 @@ export function compressTargets(
     }
   }
   return groups;
+}
+
+/** Expand groups into sequentially numbered set rows. */
+export function expandTargetGroups(groups: TargetGroup[]): ExerciseTarget[] {
+  const out: ExerciseTarget[] = [];
+  let set = 1;
+  for (const group of groups) {
+    const count = Math.max(1, Math.min(50, Math.floor(group.count) || 1));
+    for (let i = 0; i < count; i += 1) {
+      out.push({ ...group.target, set });
+      set += 1;
+    }
+  }
+  return out;
+}
+
+export function totalSetsInGroups(groups: TargetGroup[]): number {
+  return groups.reduce((sum, g) => sum + Math.max(0, g.count), 0);
 }
 
 /** Format duration for coach shorthand. */
@@ -174,11 +197,10 @@ export function formatTargets(
   return formatTargetGroups(compressTargets(targets, targetShapeId), targetShapeId);
 }
 
-function splitSummary(value: string | null): string[] {
-  return value ? value.split(GROUP_SEP).filter(Boolean) : [];
-}
-
-/** One chip for every dot-separated prescription fragment. */
+/**
+ * One chip per set group. Multi-metric prescriptions stay condensed inside
+ * that chip with middle-dot grammar: `2×8:30 · 1 mi @ BW`.
+ */
 export function summarizeExerciseChips(
   draft: Pick<
     ExerciseTemplateInput,
@@ -190,11 +212,11 @@ export function summarizeExerciseChips(
     draft.target_shape_id,
   );
   const forceCount = groups.length > 1;
-  return groups.flatMap((group) =>
-    splitSummary(
+  return groups
+    .map((group) =>
       formatTargetGroup(group, draft.target_shape_id, { forceCount }),
-    ),
-  );
+    )
+    .filter((summary): summary is string => Boolean(summary));
 }
 
 function truncateChip(value: string, max = MAX_CHIP): string {
@@ -253,35 +275,13 @@ function formatOverrideChipBit(override: ClusterRoundOverride): string {
   return `${range}→${bits.join(' ')}`;
 }
 
-/** Detailed cluster chips: type, rounds, exercise names, targets, overrides. */
+/** Sequence chips: immediate next layer only (exercise titles). */
 export function summarizeClusterChips(
-  draft: Pick<
-    ClusterTemplateInput,
-    'rounds' | 'items' | 'overrides' | 'cluster_type'
-  >,
+  draft: Pick<ClusterTemplateInput, 'items'>,
 ): string[] {
-  const rounds = Math.max(1, draft.rounds || 1);
-  const chips: string[] = [
-    draft.cluster_type === 'circuit' ? 'Circuit' : 'Superset',
-    `${rounds}r`,
-  ];
-
-  for (const item of draft.items) {
-    chips.push(item.name.trim() || 'Exercise');
-    chips.push(
-      ...summarizeExerciseChips({
-        target_shape_id: item.target_shape_id,
-        default_target_shape: item.targets,
-      }),
-    );
-    chips.push(
-      ...(draft.overrides ?? [])
-        .filter((override) => override.exercise_id === item.id)
-        .map(formatOverrideChipBit),
-    );
-  }
-
-  return chips;
+  return (draft.items ?? []).map((item, index) =>
+    exerciseTitle(item.tool_id, item.tool_name, item.name, index + 1),
+  );
 }
 
 function summarizeClusterExerciseLine(
@@ -327,7 +327,7 @@ function summarizeClusterExerciseLine(
 }
 
 /**
- * Full cluster summary (multi-line detail) or compact chip (`4r · Ex 10@BW`).
+ * Full sequence summary (multi-line detail) or compact chip (`4r · Ex 10@BW`).
  */
 export function summarizeCluster(
   draft: Pick<
@@ -373,22 +373,36 @@ function summarizeBlockItem(
   );
 }
 
-/** Detailed block chips, preserving the ordered mix of exercises and clusters. */
+/**
+ * Block chips: immediate next layer only (sequence / exercise titles in order).
+ * Example: Circuit · Pull-ups · Push-ups
+ */
 export function summarizeBlockChips(
   draft: Pick<BlockTemplateInput, 'items'>,
 ): string[] {
   const chips: string[] = [];
+  let clusterIndex = 0;
+  let exerciseIndex = 0;
   for (const item of draft.items ?? []) {
-    chips.push(item.name.trim() || (item.kind === 'cluster' ? 'Cluster' : 'Exercise'));
     if (item.kind === 'cluster') {
-      const { kind: _kind, id: _id, name: _name, ...cluster } = item;
-      chips.push(...summarizeClusterChips(cluster));
-    } else {
       chips.push(
-        ...summarizeExerciseChips({
-          target_shape_id: item.target_shape_id,
-          default_target_shape: item.targets,
-        }),
+        clusterTitle(
+          item.label_id,
+          item.label_name,
+          item.name,
+          clusterIndex,
+        ),
+      );
+      clusterIndex += 1;
+    } else {
+      exerciseIndex += 1;
+      chips.push(
+        exerciseTitle(
+          item.tool_id,
+          item.tool_name,
+          item.name,
+          exerciseIndex,
+        ),
       );
     }
   }
@@ -404,10 +418,10 @@ export function summarizeBlock(
   if (options?.chip) {
     if (!items.length) return null;
     const exercises = items.filter((i) => i.kind === 'exercise').length;
-    const clusters = items.filter((i) => i.kind === 'cluster').length;
+    const sequences = items.filter((i) => i.kind === 'cluster').length;
     const bits: string[] = [];
     if (exercises) bits.push(`${exercises} ex`);
-    if (clusters) bits.push(`${clusters} cl`);
+    if (sequences) bits.push(`${sequences} seq`);
     return truncateChip(bits.join(GROUP_SEP) || `${items.length} items`);
   }
 
@@ -430,8 +444,8 @@ export function summarizeSession(
   }
 
   const lines = blocks
-    .map((block) => {
-      const name = block.name.trim() || 'Block';
+    .map((block, index) => {
+      const name = blockTitle(block.label_name, block.name, index + 1);
       const body = summarizeBlock(block);
       return body ? `${name}\n${body}` : name;
     })
@@ -439,14 +453,76 @@ export function summarizeSession(
   return lines.length ? lines.join('\n\n') : null;
 }
 
-/** Detailed session chips, preserving block and item order. */
+/** Session chips: immediate next layer only (block titles). */
 export function summarizeSessionChips(
   draft: Pick<SessionTemplateInput, 'blocks'>,
 ): string[] {
-  const chips: string[] = [];
-  for (const block of draft.blocks ?? []) {
-    chips.push(block.name.trim() || 'Block');
-    chips.push(...summarizeBlockChips(block));
+  return (draft.blocks ?? []).map((block, index) =>
+    blockTitle(block.label_name, block.name, index + 1),
+  );
+}
+
+/** Patch one group and re-expand into numbered targets. */
+export function patchTargetGroup(
+  targets: ExerciseTarget[],
+  targetShapeId: string,
+  groupIndex: number,
+  patch: Partial<ExerciseTarget> & { count?: number },
+): ExerciseTarget[] {
+  const groups = compressTargets(targets, targetShapeId);
+  const current = groups[groupIndex];
+  if (!current) return targets;
+
+  const { count, ...targetPatch } = patch;
+  const nextGroups = groups.map((g, i) => {
+    if (i !== groupIndex) return g;
+    return {
+      count:
+        count != null
+          ? Math.max(1, Math.min(50, Math.floor(count) || 1))
+          : g.count,
+      target: { ...g.target, ...targetPatch },
+    };
+  });
+  return expandTargetGroups(nextGroups);
+}
+
+/** Remove a group and re-expand. Keeps at least one empty set. */
+export function removeTargetGroup(
+  targets: ExerciseTarget[],
+  targetShapeId: string,
+  groupIndex: number,
+): ExerciseTarget[] {
+  const groups = compressTargets(targets, targetShapeId);
+  if (groups.length <= 1) {
+    return [
+      {
+        ...emptyTarget(1),
+        track_analytics: targets[0]?.track_analytics ?? null,
+      },
+    ];
   }
-  return chips;
+  return expandTargetGroups(groups.filter((_, i) => i !== groupIndex));
+}
+
+/**
+ * Append a new single-set row. Prefer TargetsGrid local group state for editing
+ * — round-tripping through compress merges identical consecutive prescriptions.
+ */
+export function addTargetGroup(
+  targets: ExerciseTarget[],
+  targetShapeId: string,
+): ExerciseTarget[] {
+  const groups = compressTargets(targets, targetShapeId);
+  const last = groups[groups.length - 1];
+  groups.push({
+    count: 1,
+    target: {
+      ...emptyTarget(1),
+      track_analytics: last?.target.track_analytics ?? null,
+    },
+  });
+  const expanded = expandTargetGroups(groups);
+  if (expanded.length <= 50) return expanded;
+  return expanded.slice(0, 50).map((t, i) => ({ ...t, set: i + 1 }));
 }

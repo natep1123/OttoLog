@@ -98,10 +98,10 @@ export function HomeDashboardScreen({
           {!recentError && recentTemplates.length === 0 ? (
             <StatusText>No exercise templates yet.</StatusText>
           ) : null}
-          {recentTemplates.slice(0, 4).map((template) => (
+          {recentTemplates.slice(0, 4).map((template, index) => (
             <ListCard
               key={template.id}
-              title={template.name}
+              title={template.name?.trim() || `Exercise ${index + 1}`}
               meta={`${TARGET_SHAPE_LABELS[template.target_shape_id] ?? 'Exercise'}${
                 template.track_analytics ? ' · Analytics on' : ''
               }`}

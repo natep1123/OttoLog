@@ -23,7 +23,7 @@ const LOOP_BOTTOM = 20;
 /** Room for the inbound loop arrow into the first chip. */
 const LEFT_PAD = 28;
 /**
- * Cluster-purple blueprint grid; gold paths and chips remain unchanged.
+ * Sequence-purple blueprint grid; gold paths and chips remain unchanged.
  */
 const STROKE = colors.gold;
 const STROKE_W = 1.75;
@@ -175,7 +175,7 @@ function arrowHeadDown(x: number, y: number): string {
 type LineSeg = { d: string; head?: string; tone?: 'flow' | 'loop' };
 
 /**
- * Centered flowchart for cluster round order.
+ * Centered flowchart for sequence round order.
  * Rows are up to 3 wide; short rows center under the full grid (upside-down pyramid).
  * Chip width is always sized for a full row so 1–2 chip lines stay compact.
  */

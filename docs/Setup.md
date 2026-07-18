@@ -45,6 +45,8 @@ sql/007_template_name_uniqueness.sql
 sql/008_cluster_templates.sql
 sql/009_block_templates.sql
 sql/010_session_templates.sql
+sql/011_layer_labels.sql
+sql/012_standard_sequence_label.sql
 ```
 
 After `004`, **No Tool** and **Uncategorized** exist once for the whole project (fixed UUIDs). Signup does not create copies per user. Session templates require Uncategorized (`010` depends on `004`).
@@ -63,9 +65,9 @@ Scan the QR code in Expo Go.
 
 1. Create account and sign in
 2. **Create** → Build templates → Exercise → save
-3. **Create** → Build templates → Cluster → add exercises → save
+3. **Create** → Build templates → Sequence → add exercises → save
 4. **Create** → Build templates → Block / Session → nest lower layers → save
-5. **Library** → Templates → Exercises / Clusters / Blocks / Sessions → reopen and edit
+5. **Library** → Templates → Exercises / Sequences / Blocks / Sessions → reopen and edit
 6. **Account** → Taxonomy → add a tool
 7. **Home** → recent exercise templates and quick actions show up
 
@@ -77,7 +79,7 @@ Scan the QR code in Expo Go.
 | RLS / empty lists | Migrations applied in order; user is signed in |
 | Delete account fails | `sql/002_delete_own_account.sql` applied |
 | Duplicate template name | By design. Active names are unique per user per layer (`007`–`010`). |
-| Cluster list empty / RLS | Apply `sql/008_cluster_templates.sql`; user signed in |
+| Sequence list empty / RLS | Apply `sql/008_cluster_templates.sql`; user signed in |
 | Block / Session list empty | Apply `sql/009` and `sql/010`; user signed in |
 
 Schema: [`Database_Outline.md`](./Database_Outline.md). Folders: [`Project_Structure.md`](./Project_Structure.md).

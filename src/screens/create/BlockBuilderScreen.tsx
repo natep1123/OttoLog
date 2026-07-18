@@ -11,10 +11,11 @@ import {
 import { useAuth } from '../../auth/AuthContext';
 import { Button } from '../../components/Button';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { BlockEditor } from '../../components/forms';
+import { BlockEditor, EditorChrome } from '../../components/forms';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import {
   archiveBlockTemplate,
+  blockTemplateToDraft,
   defaultBlockDraft,
   deleteBlockTemplate,
   getBlockTemplate,
@@ -70,15 +71,7 @@ export function BlockBuilderScreen({
       setError(loadError ?? 'Could not load template.');
       return;
     }
-    setDraft({
-      name: data.name,
-      notes: data.content.notes,
-      track_duration: data.content.track_duration,
-      duration: data.content.duration,
-      items: data.content.items.length
-        ? data.content.items
-        : defaultBlockDraft().items,
-    });
+    setDraft(blockTemplateToDraft(data));
     setSavedId(data.id);
   }, [templateId]);
 
@@ -152,12 +145,14 @@ export function BlockBuilderScreen({
       >
         <ScreenHeader
           title={savedId ? 'Edit block' : 'Block'}
-          subtitle="Ordered exercises and clusters for one session section."
+          subtitle="Ordered exercises and sequences for one session section."
           onBack={onBack}
           onBrandPress={onBrandPress}
         />
 
-        <BlockEditor value={draft} onChange={setDraft} />
+        <EditorChrome>
+          <BlockEditor value={draft} onChange={setDraft} />
+        </EditorChrome>
 
         <View style={styles.footer}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
