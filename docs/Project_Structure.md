@@ -14,7 +14,9 @@ ottolog-app/
 │   ├── Project_Structure.md
 │   ├── Setup.md
 │   ├── Styling.md
-│   └── original-concept/   Early prototypes (not the live contract)
+│   ├── Template_Builders.md
+│   └── deprecated/         Archived design set (historical, not the contract)
+│       └── original-concept/
 └── src/
     ├── auth/               Session, sign in, sign up, delete account
     ├── components/         Shared UI and forms kit
@@ -63,7 +65,7 @@ Bottom nav hides on Session / Block / Cluster / Exercise builders (Create or Lib
 
 Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `ConfirmDialog`, `ListSearchBar`, `BottomNav`, `BrandWordmark`.
 
-**`components/forms/`**: Nestable editors — `SessionEditor` → `BlockEditor` → `ClusterEditor` → `ExerciseEditor`, plus `NestedLayer`, `TemplateNameSearch` / `ExerciseNameSearch`, `MorePanel`, `Disclosure`, `ClusterSequenceDiagram`, `CoordRow`, etc.
+**`components/forms/`**: Nestable editors — `SessionEditor` → `BlockEditor` → `ClusterEditor` → `ExerciseEditor`, plus `NestedLayer`, `TemplateNameSearch` / `ExerciseNameSearch`, `MorePanel`, `Disclosure`, `ClusterSequenceDiagram`, `CoordRow`, etc. Behavior is documented in `docs/Template_Builders.md`.
 
 ### `src/screens/`
 

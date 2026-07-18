@@ -2,13 +2,13 @@
 
 Official high-level map of OttoLog’s Supabase / Postgres structure.
 
-This document is the project outline for what exists and what we intend to build. Detailed field contracts, JSON tree shapes, and denest/renest behavior live in the original concept docs and will be promoted into official project docs as each layer ships.
+This document is the project outline for what exists and what we intend to build. Shipped builder behavior lives in `docs/Template_Builders.md`. The archived design set in `docs/deprecated/original-concept/` still holds the JSON tree and denest/renest sketch for the not-yet-built log layer, but it is historical and contradicts shipped behavior in places (see that folder's README).
 
-When outline, concept docs, and live SQL disagree, use this order:
+When outline, archived docs, and live SQL disagree, use this order:
 
 1. Applied SQL in `sql/`
 2. This document (status + intended shape)
-3. `docs/original-concept/Backend/Database_Design.md`
+3. `docs/deprecated/original-concept/Backend/Database_Design.md` (historical only)
 
 ---
 
@@ -90,7 +90,7 @@ Array order in the editor is the source of truth. Persisted `*_order` / `set_num
 
 **Decision:** **No Tool** and **Uncategorized** are single global rows with **known fixed UUID primary keys** and **`user_id IS NULL`**.
 
-This deliberately diverges from `docs/original-concept/Backend/Database_Design.md`, which seeded a copy of each default per user. Official project docs win.
+This deliberately diverges from `docs/deprecated/original-concept/Backend/Database_Design.md`, which seeded a copy of each default per user. Official project docs win.
 
 ### Why global nulls (not per-user copies)
 
@@ -184,7 +184,7 @@ Use these names consistently in SQL, app code, and docs. Do not invent synonyms.
 - It does **not** mean the structural role of the node (`kind = exercise | cluster`).
 - It does **not** mean session labeling (`category_id` / Uncategorized).
 - `default_target_shape` (jsonb on exercise templates) is the **prescribed targets array payload**, not the shape enum. The enum is `target_shape_id`; the jsonb holds the actual target rows for that shape.
-- Legacy / concept-doc name `composition_categories` / `comp_category_id` is **retired** in official project docs and SQL. Original-concept files may still say composition; this outline wins.
+- Legacy / concept-doc name `composition_categories` / `comp_category_id` is **retired** in official project docs and SQL. Archived docs under `docs/deprecated/` may still say composition; this outline wins.
 
 **Groups vs tags**
 
@@ -482,10 +482,11 @@ Do not create the full graph in one migration. Ship in dependency order:
 
 | Doc | Role |
 |-----|------|
+| `docs/Template_Builders.md` | Shipped builder behavior (Session / Block / Cluster / Exercise) |
 | `docs/Styling.md` | Official visual system |
-| `docs/original-concept/Backend/Database_Design.md` | Concept schema + JSON tree. **Note:** may still say `composition_categories` / `comp_category_id`; official name is `target_shapes` / `target_shape_id` |
-| `docs/original-concept/Frontend/Modular_Forms_Design.md` | Editor behavior that the schema supports |
-| `docs/original-concept/Frontend/UI_Design.md` | App shell / auth / tab structure |
+| `docs/Project_Structure.md` | Folders, navigation, key files |
+| `docs/deprecated/original-concept/Backend/Database_Design.md` | Historical schema + JSON tree. Retired names (`composition_categories`), retired seeding model. Keep only for the log-layer sketch |
+| `docs/deprecated/` | Archived design set (README explains what is stale) |
 | `sql/` | Applied and pending migrations |
 
 ---
@@ -496,4 +497,4 @@ Do not create the full graph in one migration. Ship in dependency order:
 - Mark sections Live / Planned as SQL lands.
 - Keep field-level SQL in `sql/*.sql`, not duplicated here.
 - After each migration ships, update **Current Status** and the relevant layer notes.
-- Prefer this document over original-concept docs when they disagree on locked decisions.
+- Prefer this document over archived docs when they disagree on locked decisions.

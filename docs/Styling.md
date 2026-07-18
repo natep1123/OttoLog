@@ -7,7 +7,7 @@ The original form prototype helped establish the visual direction, but it is not
 1. `src/theme/tokens.ts`
 2. Shared components in `src/components/`
 3. This document
-4. Original concept documents and prototypes
+4. Archived concept documents and prototypes in `docs/deprecated/` (historical only)
 
 Update this document and the shared implementation together when an intentional design change is approved.
 

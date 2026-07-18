@@ -36,9 +36,10 @@ Run `sql/001` through `sql/010` in order in the Supabase SQL Editor. See [`docs/
 | [`docs/Setup.md`](docs/Setup.md) | Env, migrations, run, verify |
 | [`docs/Project_Structure.md`](docs/Project_Structure.md) | Folders, navigation, key files |
 | [`docs/Database_Outline.md`](docs/Database_Outline.md) | Schema, RLS, live vs planned |
+| [`docs/Template_Builders.md`](docs/Template_Builders.md) | Shipped builder behavior |
 | [`docs/Styling.md`](docs/Styling.md) | Visual system and screen patterns |
 
-Older prototypes live in [`docs/original-concept/`](docs/original-concept/). They are background only; official docs above are the contract.
+Older prototypes live in [`docs/deprecated/original-concept/`](docs/deprecated/original-concept/). They are background only; official docs above are the contract.
 
 ## Project layout (short)
 
