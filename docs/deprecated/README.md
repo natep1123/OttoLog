@@ -33,7 +33,5 @@ denest/renest into relational log tables), but read it against the live docs.
   snapshot confirm sheet. Neither was built. Reordering plus name-search
   copy-from-template replaced them.
 - Assumes Expo Router. The app uses a custom `useState` stack in `HomeScreen`.
-- `Sample_Roadmap.md` is an old build plan. Chats 0 through 5b are shipped; the
-  session log builder (chat 6) has not started.
 - `Overview.md` links to `Frontend/Styling.md`, which never existed here. The
   styling doc is `docs/Styling.md`.
