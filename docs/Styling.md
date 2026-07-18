@@ -28,11 +28,14 @@ The interface should not feel like a dashboard unless the content truly requires
 
 The nested template hierarchy is one intentional, tightly scoped exception to
 the warm-only direction: Block and Sequence may use cool blue/violet accents
-only for their structural rails, card borders, chips, and overflow icons.
-Session and Exercise bookend them with warm accents. Cool colors must not spread
-to general buttons, CTAs, ambient washes, or the brand gradient. The narrow
-exception is the solid-outline “Add sequence” control, which uses the Sequence
-token because add controls identify the layer they create.
+for their structural rails, card borders, overflow icons, and any summary pill
+that describes a Block or Sequence. Because pills are colored by the item they
+name (not the host card), a warm Session or Block card can legitimately show
+cool block/sequence pills. Session and Exercise bookend the hierarchy with warm
+accents. Cool colors must not spread to general buttons, CTAs, ambient washes,
+or the brand gradient. The narrow control exception is the solid-outline “Add
+sequence” button, which uses the Sequence token because add controls identify
+the layer they create.
 
 ## Implementation Rules
 
@@ -400,14 +403,32 @@ overlap at the same x-position. Each card then applies the same 12-point
 horizontal content inset. Eight-point vertical gaps reveal the parent rail
 between child boxes, while the child accent visually covers it over the child's
 own height. The 4-point accent runs the full left edge, curves around the
-bottom-left corner, and continues across the full bottom edge. Header count/type
-pills are intentionally omitted to keep the name field clear. Collapse state is
+bottom-left corner, and continues across the full bottom edge. Collapse state is
 local to each card; the layer chevron rotates `-90deg` when collapsed, and
 collapsing a card also closes its More panel.
 
-Overflow triggers use a dashed layer-colored square. Their expanded More panel
-uses the same 1-point dashed outline as the card hairline, on all sides, with
-centered option content.
+Session/Block/Sequence headers keep Name/Brief out of the header entirely: an
+expanded card shows only the Label selector, a `⌕` search shortcut, and the `⋯`
+overflow; a collapsed card shows the resolved title line. Name/Brief moves into
+the More panel, and the `⌕` shortcut opens that panel focused on the field.
+
+Summary pills are colored by the layer of the item each pill names, while the
+arrows between pills stay the host card's color: red arrows in Session, blue in
+Block, violet in Sequence, gold in Exercise. Set-group pills use the sunrise
+orange (`colors.sunrise` / `amberGlow`) already used by the active Tool selector
+and `+ Add sets`. Focused controls take their card's layer color — Tool/Shape and
+analytics selectors focus gold, label selectors and coaching notes focus their
+own layer color — so orange is reserved for set-level actions.
+
+Overflow and search triggers use a dashed layer-colored square. Their expanded
+More panel uses the same 1-point dashed outline as the card hairline, on all
+sides, with centered option content.
+
+Each builder screen wraps its editor in `EditorChrome`, which shows an
+`EditorTools` dropdown (the **Tools** tray) above the form and outside the card
+chrome. Its first action collapses every exercise card while leaving blocks and
+sequences open. The tray renders in a `Modal` anchored to its button so it floats
+above card `elevation`; it is the intended home for future workspace actions.
 
 Nesting is constrained by role: Session adds Blocks; Block adds an ordered mix
 of Sequences and standalone Exercises; Sequence adds Exercises only. Each
@@ -427,8 +448,9 @@ directly below it. Overrides continues to use a tight `Disclosure`.
 
 More-panel duration controls stay left-aligned. All four layers reserve the
 HH/MM/SS label row even while duration is off, preventing the toggle and time
-inputs from shifting when duration is enabled. Name fields use layer-tinted
-`TemplateNameSearch` typeaheads. Selecting a hit copies contents into the
+inputs from shifting when duration is enabled. Session/Block/Sequence Name/Brief
+fields live in the More panel as layer-tinted `TemplateNameSearch` typeaheads
+(Exercise keeps its inline name search). Selecting a hit copies contents into the
 current draft without changing save identity.
 
 ## Native Implementation Notes

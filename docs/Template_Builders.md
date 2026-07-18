@@ -41,30 +41,75 @@ stack vertically when a parent offers more than one child type.
 ## Shared card chrome
 
 Every layer uses `NestedLayer` for its card: left rail, tinted border, collapse
-chevron, and a three-band header (`CoordRow`):
+chevron, and a header (`CoordRow`):
 
-1. Label selector (Session/Block/Sequence) or exercise name search, plus overflow
-2. Optional Name/Brief (Session/Block/Sequence) — the same width and height as the
-   Label selector; editable when expanded; smaller read-only title when collapsed
+1. Label selector (Session/Block/Sequence) or exercise name search, plus a search
+   shortcut and overflow (Session/Block/Sequence). Exercise keeps its inline name
+   search and a single overflow.
+2. Resolved title line, shown **only when collapsed** (Session/Block/Sequence).
+   Session/Block/Sequence no longer edit Name/Brief inline in the header; the
+   field lives in the More panel (see below). Expanded cards keep the header clear.
 3. Full-card-width scrollable summary chips, centered while they fit. Chips show
    only the **immediate next layer** (session → block titles; block → child
    sequence/exercise titles; sequence → exercise titles; exercise → prescriptions).
-   Layer-colored arrows between every chip make their execution order explicit.
+   Arrows between chips stay the **host layer's** color and make execution order
+   explicit; each pill is colored by **what it describes** (see Chip colors).
 
 Collapse state is local to each card. Collapsing a card also closes its More
 panel.
 
-The overflow button (`IconButton`) opens `MorePanel`, a dashed layer-colored
-panel labeled "More options". Each layer's More panel holds:
+Session/Block/Sequence headers carry two trailing buttons: a **search icon**
+(`⌕`) and the **overflow** (`⋯`). The search icon opens the More panel and jumps
+focus straight to Name/Brief; pressing it again while open just refocuses that
+field. Overflow toggles the same panel without moving focus. Exercise keeps only
+the overflow. Both use `IconButton`, which now renders a Feather glyph or the `⋯`
+label.
 
+The overflow button opens `MorePanel`, a dashed layer-colored panel labeled
+"More options". Each layer's More panel holds:
+
+- **Name / Brief** (Session/Block/Sequence only) — the layer-tinted
+  `TemplateNameSearch` typeahead, moved here so the collapse UI stays clean and
+  labels stay the primary identity. Library search still runs from this field.
 - Track duration toggle plus an HH/MM/SS stepper. The unit-label row is always
   reserved so enabling duration shifts nothing.
-- Coaching notes.
+- Coaching notes. The note field's focused border uses the **card's own layer
+  color** (red/blue/violet/gold), not a global orange.
 - A remove action when the card is nested and removable (for example "Remove from
   block", "Remove from session", "Delete sequence").
 
 Duration here is a structural clock for the whole node. It is separate from a
 Time-shape target's `time_duration`.
+
+## Chip colors
+
+Summary pills are colored by the layer of the item each pill names, while the
+arrows between them stay the host card's color. This makes the nest legible at a
+glance — e.g. a Block shows a mix of gold exercise pills and violet sequence
+pills, joined by blue arrows.
+
+| Host card | Arrows | Pills |
+|-----------|--------|-------|
+| Session | red | blue (blocks) |
+| Block | blue | gold (exercises) + violet (sequences) |
+| Sequence | violet | gold (exercises) |
+| Exercise | gold | sunrise-orange (set groups) |
+
+Set-group pills reuse the existing sunrise orange (`colors.sunrise` /
+`amberGlow`), matching the Tool selector's active state and the `+ Add sets`
+control. `CoordRow` accepts either plain strings (colored by the host layer) or
+`{ label, kind }` chips where `kind` is a layer name or `'set'`.
+
+## Editor tools tray
+
+Each builder screen wraps its editor tree in `EditorChrome`, which renders an
+`EditorTools` dropdown above the form (outside the nested card chrome) and an
+`ExpansionControllerProvider`. The **Tools** button opens a small tray whose
+first action is **Collapse exercises** — it folds every exercise card while
+leaving blocks and sequences open, via a broadcast signal each `ExerciseEditor`
+listens for. The tray is the intended home for future workspace actions (reset,
+undo/redo, expand all). It renders in a `Modal` anchored to the button so it
+floats above card `elevation`.
 
 ## Labels, Name/Brief, and resolved titles
 
@@ -87,8 +132,9 @@ are editable ordinary taxonomy rows via `ensure_default_template_labels()`.
 
 ## Name field and copy-from-template
 
-Name/Brief and exercise name fields use typeahead (`TemplateNameSearch`; Exercise
-wraps it as `ExerciseNameSearch`). Behavior:
+Name/Brief (in the More panel for Session/Block/Sequence) and the exercise name
+field use typeahead (`TemplateNameSearch`; Exercise wraps it as
+`ExerciseNameSearch`). Behavior:
 
 - Typing at least one character runs a debounced search over that layer's active
   templates and shows up to eight matches by resolved title or stored brief.
@@ -155,14 +201,15 @@ Grammar:
 - Multi-group ladders: keep `1×` so run lengths stay parallel
 - Multi-metric group: `2×8:30 · 1 mi @ BW`
 
-Each exercise set group is one layer-tinted chip. Multiple metrics stay together
-inside that chip, separated by middle dots. Parent cards show only immediate
-child titles; they do not flatten deeper descendants. Blank exercise volume
-yields no prescription chip.
+Each exercise set group is one sunrise-orange chip (see Chip colors). Multiple
+metrics stay together inside that chip, separated by middle dots. Parent cards
+show only immediate child titles; they do not flatten deeper descendants. Blank
+exercise volume yields no prescription chip.
 
 ## Sequence editor
 
-Header: Label (taxonomy) + Name/Brief.
+Header: Label (taxonomy) + search icon + overflow. Name/Brief lives in the More
+panel.
 
 - Label replaces the old Type select. Seeded Superset/Circuit map to legacy
   `cluster_type` for dual-write while that column remains.

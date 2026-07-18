@@ -8,7 +8,7 @@ Where code lives and how the signed-in app is organized.
 ottolog-app/
 ├── App.tsx                 Entry: fonts, splash, auth gate, then HomeScreen or auth stack
 ├── index.ts                Expo registerRootComponent
-├── sql/                    Supabase migrations (001 through 010), run in order
+├── sql/                    Supabase migrations (001 through 012), run in order
 ├── docs/                   Official project docs (this folder)
 │   ├── Database_Outline.md
 │   ├── Project_Structure.md
@@ -67,7 +67,7 @@ Bottom nav hides on Session / Block / Sequence / Exercise builders (Create or Li
 
 Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `ConfirmDialog`, `ListSearchBar`, `BottomNav`, `BrandWordmark`.
 
-**`components/forms/`**: Nestable editors — Session → Block → Sequence → Exercise (`ClusterEditor` remains the internal component name), plus `NestedLayer`, `TemplateNameSearch` / `ExerciseNameSearch`, `MorePanel`, `Disclosure`, `ClusterSequenceDiagram`, `CoordRow`, etc. Behavior is documented in `docs/Template_Builders.md`.
+**`components/forms/`**: Nestable editors — Session → Block → Sequence → Exercise (`ClusterEditor` remains the internal component name), plus `NestedLayer`, `CoordRow`, `LayerLabelSelect`, `TemplateNameSearch` / `ExerciseNameSearch`, `MorePanel`, `IconButton`, `AddChildButton`, `Disclosure`, `ClusterSequenceDiagram`, and the workspace `EditorChrome` / `EditorTools` + `ExpansionController` (Tools tray, collapse exercises). Behavior is documented in `docs/Template_Builders.md`.
 
 ### `src/screens/`
 
@@ -118,4 +118,4 @@ Account TaxonomyListScreen
 
 ## Forms layer accents
 
-See `formTokens.ts` / `docs/Styling.md`. Session → Block → Sequence → Exercise each own a background + accent rail used by `NestedLayer`, `IconButton`, and `MorePanel`. Session/Block/Sequence headers are label-first with optional Name/Brief; Exercise keeps name search. Cards show scrollable summary chips from `targetSummaries.ts` under the brief/title.
+See `formTokens.ts` / `docs/Styling.md`. Session → Block → Sequence → Exercise each own a background + accent rail used by `NestedLayer`, `IconButton`, and `MorePanel`. Session/Block/Sequence headers are label-first; Name/Brief and a `⌕` search shortcut live in the More panel; Exercise keeps its inline name search. Cards show scrollable summary chips from `targetSummaries.ts`, colored by the layer each pill describes with host-colored arrows between them.
