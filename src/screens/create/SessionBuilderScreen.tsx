@@ -153,7 +153,7 @@ export function SessionBuilderScreen({
       >
         <ScreenHeader
           title={savedId ? 'Edit session' : 'Session'}
-          subtitle="Full day blueprint — blocks of clusters. Category defaults to Uncategorized."
+          subtitle="Full day blueprint of blocks and clusters. Category defaults to Uncategorized."
           onBack={onBack}
           onBrandPress={onBrandPress}
         />

@@ -191,7 +191,7 @@ export function ExerciseBuilderScreen({
       >
         <ScreenHeader
           title={savedId ? 'Edit exercise' : 'Exercise'}
-          subtitle="Reusable exercise blueprint — same editor that nests in clusters and blocks."
+          subtitle="Reusable exercise blueprint. Same editor nests in clusters and blocks."
           onBack={onBack}
           onBrandPress={onBrandPress}
         />

@@ -25,29 +25,29 @@ export function LibraryTemplatesHubScreen({
     <View style={styles.root}>
       <ScreenHeader
         title="Templates"
-        subtitle="Pick a layer to manage."
+        subtitle="Pick a layer to browse."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />
       <View style={styles.actions}>
         <HubAction
           title="Session"
-          body="Full session tree blueprints."
+          body="Full session tree of blocks and clusters."
           onPress={onSessions}
         />
         <HubAction
           title="Block"
-          body="Reusable block blobs."
+          body="Ordered exercises and clusters."
           onPress={onBlocks}
         />
         <HubAction
           title="Cluster"
-          body="Open, edit, archive, or delete cluster templates."
+          body="Superset or circuit with nested exercises."
           onPress={onClusters}
         />
         <HubAction
           title="Exercise"
-          body="Open, edit, or delete your saved exercise templates."
+          body="Name, tool, target shape, and sets."
           onPress={onExercises}
         />
       </View>

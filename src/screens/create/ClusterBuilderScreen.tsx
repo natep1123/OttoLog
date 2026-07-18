@@ -169,7 +169,7 @@ export function ClusterBuilderScreen({
       >
         <ScreenHeader
           title={savedId ? 'Edit cluster' : 'Cluster'}
-          subtitle="Rounds through a sequence of exercises — compact template; sets expand when you log."
+          subtitle="Rounds through a sequence of exercises. Sets expand when you log."
           onBack={onBack}
           onBrandPress={onBrandPress}
         />

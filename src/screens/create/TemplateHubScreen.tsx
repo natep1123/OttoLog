@@ -24,19 +24,19 @@ export function TemplateHubScreen({
     <View style={styles.root}>
       <ScreenHeader
         title="Templates"
-        subtitle="Pick what to build — session down to exercise."
+        subtitle="Pick a layer to build."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />
       <View style={styles.actions}>
         <HubAction
           title="Session"
-          body="Full session tree — blocks of clusters."
+          body="Full session tree of blocks and clusters."
           onPress={onSession}
         />
         <HubAction
           title="Block"
-          body="Reusable block of ordered exercises and clusters."
+          body="Ordered exercises and clusters."
           onPress={onBlock}
         />
         <HubAction
@@ -46,7 +46,7 @@ export function TemplateHubScreen({
         />
         <HubAction
           title="Exercise"
-          body="Name, tool, target shape, sets — save to your library."
+          body="Name, tool, target shape, and sets."
           onPress={onExercise}
         />
       </View>

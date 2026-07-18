@@ -19,7 +19,7 @@ export function LibraryHubScreen({
     <View style={styles.root}>
       <ScreenHeader
         title="Library"
-        subtitle="Open your saved templates or past logs."
+        subtitle="Saved templates and past logs."
         onBrandPress={onBrandPress}
       />
       <View style={styles.actions}>
@@ -30,7 +30,7 @@ export function LibraryHubScreen({
         />
         <HubAction
           title="Logs"
-          body="Coming next — browse recorded sessions."
+          body="Browse recorded sessions."
           onPress={onLogs}
           disabled
           badge="Soon"

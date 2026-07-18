@@ -35,7 +35,7 @@ export function AccountDangerScreen({ onBrandPress, onBack }: Props) {
     <View style={styles.root}>
       <ScreenHeader
         title="Danger zone"
-        subtitle="These actions are permanent. Take care."
+        subtitle="Permanent actions. Proceed carefully."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />
@@ -43,8 +43,8 @@ export function AccountDangerScreen({ onBrandPress, onBack }: Props) {
       <View style={styles.panel}>
         <Text style={styles.panelTitle}>Delete account</Text>
         <Text style={styles.panelBody}>
-          Permanently removes your profile, templates, and taxonomy. Use this
-          for clearing test accounts — it cannot be undone.
+          Permanently deletes your profile, templates, and taxonomy. This
+          cannot be undone.
         </Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Button

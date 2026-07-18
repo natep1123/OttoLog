@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { HubAction } from '../../components/HubAction';
+import { ListCard } from '../../components/ListCard';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { StatusText } from '../../components/StatusText';
 import { TARGET_SHAPE_LABELS } from '../../constants/targetShapeFields';
 import {
   greetingForLocalTime,
@@ -42,7 +44,7 @@ export function HomeDashboardScreen({
     return () => clearInterval(id);
   }, []);
 
-  const greeting = `${greetingForLocalTime(now)}, ${name}.`;
+  const greeting = `${greetingForLocalTime(now)}, ${name}`;
   const week = localWeekDays(now);
 
   return (
@@ -53,17 +55,12 @@ export function HomeDashboardScreen({
     >
       <ScreenHeader
         title="Home"
-        subtitle="A quiet landing place for what you are building and what you will log next."
+        subtitle="What you're building and what's next."
         onBrandPress={onBrandPress}
       />
 
       <View style={styles.hero}>
         <Text style={styles.eyebrow}>{greeting}</Text>
-        <Text style={styles.heroTitle}>Ready when you are.</Text>
-        <Text style={styles.heroBody}>
-          Build from your own vocabulary, reopen recent templates, and keep the
-          week in view.
-        </Text>
       </View>
 
       <View style={styles.section}>
@@ -94,31 +91,22 @@ export function HomeDashboardScreen({
             <Text style={styles.sectionLink}>View all</Text>
           </Pressable>
         </View>
-        <View style={styles.panel}>
-          {recentError ? <Text style={styles.error}>{recentError}</Text> : null}
+        <View style={styles.recentList}>
+          {recentError ? (
+            <StatusText tone="error">{recentError}</StatusText>
+          ) : null}
           {!recentError && recentTemplates.length === 0 ? (
-            <Text style={styles.empty}>
-              No exercise templates yet. Build one to make Home feel lived in.
-            </Text>
+            <StatusText>No exercise templates yet.</StatusText>
           ) : null}
           {recentTemplates.slice(0, 4).map((template) => (
-            <Pressable
+            <ListCard
               key={template.id}
+              title={template.name}
+              meta={`${TARGET_SHAPE_LABELS[template.target_shape_id] ?? 'Exercise'}${
+                template.track_analytics ? ' · Analytics on' : ''
+              }`}
               onPress={() => onOpenExercise(template.id)}
-              style={({ pressed }) => [
-                styles.templateRow,
-                pressed && styles.templateRowPressed,
-              ]}
-            >
-              <View style={styles.templateCopy}>
-                <Text style={styles.templateTitle}>{template.name}</Text>
-                <Text style={styles.templateMeta}>
-                  {TARGET_SHAPE_LABELS[template.target_shape_id] ?? 'Exercise'}
-                  {template.track_analytics ? ' · Analytics on' : ''}
-                </Text>
-              </View>
-              <Text style={styles.chevron}>›</Text>
-            </Pressable>
+            />
           ))}
         </View>
       </View>
@@ -154,10 +142,7 @@ export function HomeDashboardScreen({
               </View>
             ))}
           </View>
-          <Text style={styles.weekHint}>
-            Session logging will turn each day into a journal entry. For now,
-            this keeps the calendar shape visible without fake data.
-          </Text>
+          <Text style={styles.weekHint}>Session logging will show up here.</Text>
         </View>
       </View>
     </ScrollView>
@@ -174,11 +159,11 @@ const styles = StyleSheet.create({
   },
   hero: {
     gap: spacing.sm,
-    padding: spacing.lg,
+    padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.md,
-    backgroundColor: 'rgba(255, 154, 90, 0.06)',
+    backgroundColor: colors.pressedWash,
   },
   eyebrow: {
     fontFamily: typography.fontSemiBold,
@@ -186,18 +171,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.7,
     textTransform: 'uppercase',
     color: colors.gold,
-  },
-  heroTitle: {
-    fontFamily: typography.fontMedium,
-    fontSize: 24,
-    color: colors.text,
-    letterSpacing: -0.2,
-  },
-  heroBody: {
-    fontFamily: typography.font,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.textMuted,
   },
   section: {
     gap: spacing.sm,
@@ -223,56 +196,8 @@ const styles = StyleSheet.create({
   actions: {
     gap: spacing.sm,
   },
-  panel: {
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    backgroundColor: colors.bgPanel,
-  },
-  empty: {
-    padding: spacing.md,
-    fontFamily: typography.font,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.textMuted,
-  },
-  error: {
-    padding: spacing.md,
-    fontFamily: typography.font,
-    fontSize: 14,
-    color: colors.sunset,
-  },
-  templateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  recentList: {
     gap: spacing.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  templateRowPressed: {
-    backgroundColor: 'rgba(255, 154, 90, 0.06)',
-  },
-  templateCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  templateTitle: {
-    fontFamily: typography.fontMedium,
-    fontSize: 16,
-    color: colors.text,
-  },
-  templateMeta: {
-    fontFamily: typography.font,
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  chevron: {
-    fontFamily: typography.fontMedium,
-    fontSize: 22,
-    color: colors.textDim,
   },
   badge: {
     fontFamily: typography.fontSemiBold,

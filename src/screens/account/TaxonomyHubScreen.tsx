@@ -20,24 +20,24 @@ export function TaxonomyHubScreen({
     <View style={styles.root}>
       <ScreenHeader
         title="Taxonomy"
-        subtitle="Rename, archive, or remove vocabulary used by templates."
+        subtitle="Vocabulary used by your templates."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />
       <View style={styles.actions}>
         <HubAction
           title="Tools"
-          body="Equipment and implements. System “None” is locked."
+          body="Equipment used by exercises."
           onPress={() => onOpenList('tool')}
         />
         <HubAction
           title="Primary groups"
-          body="Singular analytics buckets for tracked exercises."
+          body="Analytics groups for tracked exercises."
           onPress={() => onOpenList('primary_group')}
         />
         <HubAction
           title="Analytics tags"
-          body="Optional filters linked to tracked exercises."
+          body="Optional filters for tracked exercises."
           onPress={() => onOpenList('analytics_tag')}
         />
       </View>

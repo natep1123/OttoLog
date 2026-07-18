@@ -18,7 +18,7 @@ export function CreateHubScreen({
     <View style={styles.root}>
       <ScreenHeader
         title="Create"
-        subtitle="Build reusable templates or log a session."
+        subtitle="Build templates or log a session."
         onBrandPress={onBrandPress}
       />
       <View style={styles.actions}>
@@ -29,7 +29,7 @@ export function CreateHubScreen({
         />
         <HubAction
           title="Log a session"
-          body="Coming next — relational session logging."
+          body="Session logging comes next."
           onPress={onLogSession}
           disabled
           badge="Soon"

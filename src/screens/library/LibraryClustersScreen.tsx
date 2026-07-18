@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
+import { ListCard } from '../../components/ListCard';
 import { ListSearchBar } from '../../components/ListSearchBar';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { StatusText } from '../../components/StatusText';
 import { listClusterTemplates } from '../../lib/clusterTemplates';
 import {
   CLUSTER_TYPE_LABELS,
   type ClusterTemplateRow,
 } from '../../types/clusterTemplate';
-import { colors, radii, spacing, typography } from '../../theme/tokens';
+import { colors, spacing } from '../../theme/tokens';
 
 type Props = {
   onBrandPress?: () => void;
@@ -65,7 +65,7 @@ export function LibraryClustersScreen({
     <View style={styles.root}>
       <ScreenHeader
         title="Clusters"
-        subtitle="Open one to edit, archive, or delete. Create new ones under Create."
+        subtitle="Open one to edit. Create new ones under Create."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />
@@ -93,39 +93,29 @@ export function LibraryClustersScreen({
             />
           }
         >
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <StatusText tone="error">{error}</StatusText> : null}
           {!error && rows.length === 0 ? (
-            <Text style={styles.empty}>
-              No cluster templates yet. Create → Build templates → Cluster.
-            </Text>
+            <StatusText>No cluster templates yet.</StatusText>
           ) : null}
           {!error && rows.length > 0 && filteredRows.length === 0 ? (
-            <Text style={styles.empty}>
+            <StatusText>
               No templates match “{searchQuery.trim()}”.
-            </Text>
+            </StatusText>
           ) : null}
           {filteredRows.map((row) => {
             const exerciseCount = row.content.items?.length ?? 0;
             const rounds = row.content.rounds ?? 1;
             return (
-              <Pressable
+              <ListCard
                 key={row.id}
+                title={row.name}
+                meta={`${CLUSTER_TYPE_LABELS[row.cluster_type] ?? row.cluster_type} · ${rounds} ${
+                  rounds === 1 ? 'round' : 'rounds'
+                } · ${exerciseCount} ${
+                  exerciseCount === 1 ? 'exercise' : 'exercises'
+                }`}
                 onPress={() => onOpenCluster(row.id)}
-                style={({ pressed }) => [
-                  styles.item,
-                  pressed && styles.itemPressed,
-                ]}
-              >
-                <Text style={styles.itemTitle}>{row.name}</Text>
-                <Text style={styles.itemMeta}>
-                  {CLUSTER_TYPE_LABELS[row.cluster_type] ?? row.cluster_type}
-                  {' · '}
-                  {rounds} {rounds === 1 ? 'round' : 'rounds'}
-                  {' · '}
-                  {exerciseCount}{' '}
-                  {exerciseCount === 1 ? 'exercise' : 'exercises'}
-                </Text>
-              </Pressable>
+              />
             );
           })}
         </ScrollView>
@@ -152,39 +142,5 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     gap: spacing.sm,
     paddingBottom: spacing.xl,
-  },
-  empty: {
-    fontFamily: typography.font,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.textMuted,
-  },
-  error: {
-    fontFamily: typography.font,
-    fontSize: 14,
-    color: colors.sunset,
-  },
-  item: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    backgroundColor: colors.bgPanel,
-    gap: 4,
-  },
-  itemPressed: {
-    borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(255, 154, 90, 0.06)',
-  },
-  itemTitle: {
-    fontFamily: typography.fontMedium,
-    fontSize: 17,
-    color: colors.text,
-  },
-  itemMeta: {
-    fontFamily: typography.font,
-    fontSize: 13,
-    color: colors.textMuted,
   },
 });

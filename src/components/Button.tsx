@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   },
   ghostPressed: {
     borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(255, 154, 90, 0.06)',
+    backgroundColor: colors.pressedWash,
   },
   ghostLabel: {
     fontFamily: typography.fontMedium,

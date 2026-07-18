@@ -12,8 +12,10 @@ import {
 import { useAuth } from '../../auth/AuthContext';
 import { Button } from '../../components/Button';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { ListCard } from '../../components/ListCard';
 import { ListSearchBar } from '../../components/ListSearchBar';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { StatusText } from '../../components/StatusText';
 import { TextField } from '../../components/TextField';
 import {
   createManagedTaxonomy,
@@ -170,11 +172,8 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
   };
 
   const usageLabel = (row: ManagedTaxonomyRow) => {
-    if (row.isSystem) return 'System default — locked';
+    if (row.isSystem) return 'System default. Locked.';
     if (row.usageCount === 0) return 'Unused';
-    if (kind === 'analytics_tag') {
-      return `Used on ${row.usageCount} template${row.usageCount === 1 ? '' : 's'}`;
-    }
     return `Used by ${row.usageCount} template${row.usageCount === 1 ? '' : 's'}`;
   };
 
@@ -209,7 +208,7 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
     <View style={styles.root}>
       <ScreenHeader
         title={taxonomyKindLabel(kind)}
-        subtitle="Create, rename, archive. Hard delete only when unused."
+        subtitle="Create, rename, and archive. Delete only when unused."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />
@@ -270,46 +269,31 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
             />
           }
         >
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <StatusText tone="error">{error}</StatusText> : null}
           {!error && rows.length === 0 ? (
-            <Text style={styles.empty}>
+            <StatusText>
               No {taxonomyKindLabel(kind).toLowerCase()} yet.
-            </Text>
+            </StatusText>
           ) : null}
           {!error && rows.length > 0 && filteredRows.length === 0 ? (
-            <Text style={styles.empty}>
+            <StatusText>
               No matches for “{searchQuery.trim()}”.
-            </Text>
+            </StatusText>
           ) : null}
           {filteredRows.map((row) => {
             const archived = row.archivedAt != null;
             return (
-              <Pressable
+              <ListCard
                 key={row.id}
+                title={row.name}
+                meta={usageLabel(row)}
                 onPress={() => openRow(row)}
                 disabled={row.isSystem}
-                style={({ pressed }) => [
-                  styles.item,
-                  archived && styles.itemArchived,
-                  pressed && !row.isSystem && styles.itemPressed,
-                ]}
-              >
-                <View style={styles.itemCopy}>
-                  <View style={styles.titleRow}>
-                    <Text style={styles.itemTitle}>{row.name}</Text>
-                    {row.isSystem ? (
-                      <Text style={styles.badge}>System</Text>
-                    ) : null}
-                    {archived ? (
-                      <Text style={styles.badgeMuted}>Archived</Text>
-                    ) : null}
-                  </View>
-                  <Text style={styles.itemMeta}>{usageLabel(row)}</Text>
-                </View>
-                {!row.isSystem ? (
-                  <Text style={styles.chevron}>›</Text>
-                ) : null}
-              </Pressable>
+                showChevron={!row.isSystem}
+                badge={row.isSystem ? 'System' : undefined}
+                badgeMuted={archived ? 'Archived' : undefined}
+                archived={archived}
+              />
             );
           })}
         </ScrollView>
@@ -373,7 +357,7 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
               />
             ) : (
               <Text style={styles.hint}>
-                Hard delete is available only when unused. Prefer archive.
+                Delete is available only when unused. Prefer archive.
               </Text>
             )}
 
@@ -444,73 +428,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingBottom: spacing.xl,
   },
-  empty: {
-    fontFamily: typography.font,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.textMuted,
-  },
   error: {
     fontFamily: typography.font,
     fontSize: 14,
     color: colors.sunset,
-  },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    backgroundColor: colors.bgPanel,
-  },
-  itemArchived: {
-    opacity: 0.72,
-  },
-  itemPressed: {
-    borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(255, 154, 90, 0.06)',
-  },
-  itemCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  itemTitle: {
-    fontFamily: typography.fontMedium,
-    fontSize: 17,
-    color: colors.text,
-  },
-  badge: {
-    fontFamily: typography.fontSemiBold,
-    fontSize: 10,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: colors.gold,
-  },
-  badgeMuted: {
-    fontFamily: typography.fontSemiBold,
-    fontSize: 10,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: colors.textDim,
-  },
-  itemMeta: {
-    fontFamily: typography.font,
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  chevron: {
-    fontFamily: typography.fontMedium,
-    fontSize: 22,
-    color: colors.textDim,
   },
   backdrop: {
     flex: 1,

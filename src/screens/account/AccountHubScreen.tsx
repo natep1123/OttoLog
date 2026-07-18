@@ -23,7 +23,7 @@ export function AccountHubScreen({
     <View style={styles.root}>
       <ScreenHeader
         title="Account"
-        subtitle="Profile and things you manage."
+        subtitle="Your profile and account tools."
         onBrandPress={onBrandPress}
       />
 
@@ -42,12 +42,12 @@ export function AccountHubScreen({
       <View style={styles.actions}>
         <HubAction
           title="Taxonomy"
-          body="Tools, primary analytics groups, and tags."
+          body="Tools, primary groups, and analytics tags."
           onPress={onTaxonomy}
         />
         <HubAction
           title="Settings"
-          body="Profile, preferences, and account safety."
+          body="Profile, preferences, and account actions."
           onPress={onSettings}
         />
       </View>

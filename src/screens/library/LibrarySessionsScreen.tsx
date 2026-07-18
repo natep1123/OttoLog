@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
+import { ListCard } from '../../components/ListCard';
 import { ListSearchBar } from '../../components/ListSearchBar';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { StatusText } from '../../components/StatusText';
 import { listSessionTemplates } from '../../lib/sessionTemplates';
 import type { SessionTemplateRow } from '../../types/sessionTemplate';
-import { colors, radii, spacing, typography } from '../../theme/tokens';
+import { colors, spacing } from '../../theme/tokens';
 
 type Props = {
   onBrandPress?: () => void;
@@ -61,7 +61,7 @@ export function LibrarySessionsScreen({
     <View style={styles.root}>
       <ScreenHeader
         title="Sessions"
-        subtitle="Open one to edit, archive, or delete. Create new ones under Create."
+        subtitle="Open one to edit. Create new ones under Create."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />
@@ -87,33 +87,24 @@ export function LibrarySessionsScreen({
             />
           }
         >
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? <StatusText tone="error">{error}</StatusText> : null}
           {!error && rows.length === 0 ? (
-            <Text style={styles.empty}>
-              No session templates yet. Create → Build templates → Session.
-            </Text>
+            <StatusText>No session templates yet.</StatusText>
           ) : null}
           {!error && rows.length > 0 && filteredRows.length === 0 ? (
-            <Text style={styles.empty}>
+            <StatusText>
               No templates match “{searchQuery.trim()}”.
-            </Text>
+            </StatusText>
           ) : null}
           {filteredRows.map((row) => {
             const blockCount = row.content.blocks?.length ?? 0;
             return (
-              <Pressable
+              <ListCard
                 key={row.id}
+                title={row.name}
+                meta={`${blockCount} ${blockCount === 1 ? 'block' : 'blocks'}`}
                 onPress={() => onOpenSession(row.id)}
-                style={({ pressed }) => [
-                  styles.item,
-                  pressed && styles.itemPressed,
-                ]}
-              >
-                <Text style={styles.itemTitle}>{row.name}</Text>
-                <Text style={styles.itemMeta}>
-                  {blockCount} {blockCount === 1 ? 'block' : 'blocks'}
-                </Text>
-              </Pressable>
+              />
             );
           })}
         </ScrollView>
@@ -131,39 +122,5 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     gap: spacing.sm,
     paddingBottom: spacing.xl,
-  },
-  empty: {
-    fontFamily: typography.font,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.textMuted,
-  },
-  error: {
-    fontFamily: typography.font,
-    fontSize: 14,
-    color: colors.sunset,
-  },
-  item: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.md,
-    backgroundColor: colors.bgPanel,
-    gap: 4,
-  },
-  itemPressed: {
-    borderColor: colors.borderStrong,
-    backgroundColor: 'rgba(255, 154, 90, 0.06)',
-  },
-  itemTitle: {
-    fontFamily: typography.fontMedium,
-    fontSize: 17,
-    color: colors.text,
-  },
-  itemMeta: {
-    fontFamily: typography.font,
-    fontSize: 13,
-    color: colors.textMuted,
   },
 });

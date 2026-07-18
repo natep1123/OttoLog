@@ -21,6 +21,8 @@ export const colors = {
   dusk: '#c96b8a',
   gold: '#e8b86d',
   amberGlow: 'rgba(255, 154, 90, 0.15)',
+  /** Soft pressed wash for tappable panels and rows */
+  pressedWash: 'rgba(255, 154, 90, 0.06)',
 
   /** Primary button label — matches `.btn-primary` color */
   onPrimary: '#1a0e0a',

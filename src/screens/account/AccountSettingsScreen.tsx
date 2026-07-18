@@ -22,7 +22,7 @@ export function AccountSettingsScreen({
     <View style={styles.root}>
       <ScreenHeader
         title="Settings"
-        subtitle="Manage your account. Most options arrive later."
+        subtitle="Profile, preferences, and account actions."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />
@@ -43,7 +43,7 @@ export function AccountSettingsScreen({
         />
         <HubAction
           title="Danger zone"
-          body="Irreversible account actions."
+          body="Permanent account actions."
           onPress={onDangerZone}
         />
       </View>
