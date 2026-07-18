@@ -9,7 +9,7 @@ import { TARGET_SHAPE_IDS } from '../constants/lockedAtoms';
 import { fieldsForTargetShape } from '../constants/targetShapeFields';
 import { NO_TOOL_ID } from '../constants/sentinelIds';
 
-function emptyTarget(set: number): ExerciseTarget {
+export function emptyTarget(set: number): ExerciseTarget {
   return {
     set,
     reps: null,

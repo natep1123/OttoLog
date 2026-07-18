@@ -91,12 +91,43 @@ analytics group (single, searchable create-combobox) and optional Analytics tags
 (multi, searchable create-combobox). When off, the group is null and tag links are
 empty.
 
-### Exercise as a cluster or block subitem
+### Exercise as a cluster subitem
 
-Inside a Cluster (and as a standalone Block exercise), the exercise leaf is a
-per-round prescription. The Sets control is replaced by a locked "Round" value of
-1: one target row per exercise per round. The `rounds` count on the cluster
-repeats the sequence.
+Inside a Cluster only, the exercise leaf is a per-round prescription. The Sets
+control is replaced by a locked "Round" value of 1: one target row per exercise
+per round. The `rounds` count on the cluster repeats the sequence. Standalone
+Block exercises are not subitems and keep the normal Sets incrementor.
+
+### Sets (solo / block exercise)
+
+Solo exercises (and standalone Block exercises) use the Sets incrementor. Editing
+the Sets count adds or trims rows in the stored `default_target_shape` /
+`targets[]` array (one row per set, renumbered); each row's metrics are edited in
+`TargetsGrid`. Storage is always one expanded row per set. Only cluster subitems
+are locked to a single set.
+
+### Prescription summaries
+
+`src/lib/targetSummaries.ts` builds coach-shorthand strings for chips and later
+library/detail surfaces.
+
+Grammar:
+
+- Groups: `3×10 @ BW`, ladders `1×10 @ BW · 2×8 @ BW · 5×5 @ BW`
+- Per side: `10/side`
+- Load: `@ BW` or `@ 135 lbs`; omit `@ …` when load value is missing on lbs/kg
+- Time under one hour: `m:ss`; at/above one hour: `h:mm:ss`
+- Single group of one set: drop the `1×` prefix (`10 @ BW`)
+- Multi-group ladders: keep `1×` so run lengths stay parallel
+- Cluster summary: `Superset · 4r · Pull-Ups · 10 @ BW · R3–4→8`
+
+Every dot-separated summary part is rendered as its own layer-tinted chip.
+`CoordRow` keeps the chips in a horizontal scroller between the name field and
+the overflow button. Exercise cards show their set groups. Cluster cards add
+type, rounds, exercise names, prescriptions, and overrides. Block and Session
+cards flatten their ordered descendants into the same scrollable detail instead
+of replacing them with aggregate counts. Blank volume (no reps/time/distance
+yet) yields no prescription chip.
 
 ## Cluster editor
 

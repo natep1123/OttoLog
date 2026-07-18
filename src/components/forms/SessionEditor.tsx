@@ -18,6 +18,7 @@ import {
   listSessionTemplates,
   sessionTemplateToDraft,
 } from '../../lib/sessionTemplates';
+import { summarizeSessionChips } from '../../lib/targetSummaries';
 import { BlockEditor } from './BlockEditor';
 import { IconButton } from './IconButton';
 import { MorePanel } from './MorePanel';
@@ -89,6 +90,7 @@ export function SessionEditor({ value, onChange }: Props) {
         setExpanded(next);
         if (!next) setMoreOpen(false);
       }}
+      metaChips={summarizeSessionChips(value)}
       title={
         <TemplateNameSearch
           kind="session"

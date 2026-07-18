@@ -51,6 +51,7 @@ import {
   buildTargets,
   getExerciseTemplate,
 } from '../../lib/exerciseTemplates';
+import { summarizeClusterChips } from '../../lib/targetSummaries';
 import { ClusterSequenceDiagram } from './ClusterSequenceDiagram';
 import { Disclosure } from './Disclosure';
 import { ExerciseEditor } from './ExerciseEditor';
@@ -615,6 +616,7 @@ export function ClusterEditor({
         setExpanded(next);
         if (!next) setMoreOpen(false);
       }}
+      metaChips={summarizeClusterChips(value)}
       title={
         <TemplateNameSearch
           kind="cluster"

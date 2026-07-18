@@ -1,5 +1,11 @@
 import { type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { layer as layerTokens, radii, typography } from '../../theme/tokens';
 import {
   FormNodeKind,
@@ -9,10 +15,10 @@ import {
 
 type Props = {
   layer?: FormNodeKind;
-  /** @deprecated Prefer metaChip on the trailing side. */
+  /** @deprecated Prefer metaChips. */
   meta?: string;
-  /** Small tinted summary chip on the right (before trailing). */
-  metaChip?: string | null;
+  /** Tinted summary chips that scroll between title and trailing controls. */
+  metaChips?: string[];
   coord?: string | null;
   onCoordPress?: () => void;
   title?: ReactNode;
@@ -22,13 +28,13 @@ type Props = {
 };
 
 /**
- * Top card line: chevron · name · meta chip · trailing.
+ * Top card line: chevron · name · scrollable summary chips · trailing.
  * Chevron is tinted to the layer rail and rotates -90deg when collapsed.
  */
 export function CoordRow({
   layer = 'exercise',
   meta,
-  metaChip,
+  metaChips,
   coord,
   onCoordPress,
   title,
@@ -36,12 +42,12 @@ export function CoordRow({
   expanded,
   onToggleExpand,
 }: Props) {
-  if (!meta && !metaChip && !coord && !title && !trailing) return null;
+  if (!meta && !metaChips?.length && !coord && !title && !trailing) return null;
 
   const collapsible = typeof onToggleExpand === 'function';
   const isExpanded = expanded !== false;
   const token = layerTokens[layer];
-  const chipLabel = metaChip ?? meta ?? null;
+  const chipLabels = metaChips?.length ? metaChips : meta ? [meta] : [];
 
   return (
     <View style={[styles.row, !isExpanded && styles.rowCollapsed]}>
@@ -73,10 +79,18 @@ export function CoordRow({
 
       {title ? <View style={styles.title}>{title}</View> : null}
 
-      {chipLabel || coord ? (
-        <View style={styles.chips}>
-          {chipLabel ? (
+      {chipLabels.length || coord ? (
+        <ScrollView
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipViewport}
+          contentContainerStyle={styles.chips}
+          keyboardShouldPersistTaps="handled"
+        >
+          {chipLabels.map((chipLabel, index) => (
             <View
+              key={`${chipLabel}-${index}`}
               style={[
                 styles.chip,
                 {
@@ -92,7 +106,7 @@ export function CoordRow({
                 {chipLabel}
               </Text>
             </View>
-          ) : null}
+          ))}
           {coord ? (
             <Pressable
               onPress={onCoordPress}
@@ -112,7 +126,7 @@ export function CoordRow({
               </Text>
             </Pressable>
           ) : null}
-        </View>
+        </ScrollView>
       ) : null}
 
       {trailing ? <View style={styles.trailing}>{trailing}</View> : null}
@@ -153,15 +167,20 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-90deg' }],
   },
   title: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 150,
     minWidth: 0,
   },
+  chipViewport: {
+    width: 76,
+    flexShrink: 0,
+  },
   chips: {
-    width: 112,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    flexShrink: 0,
+    paddingRight: 2,
   },
   trailing: {
     flexShrink: 0,
@@ -171,9 +190,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderWidth: 1,
     borderRadius: radii.sm,
-    alignSelf: 'stretch',
+    alignSelf: 'center',
     justifyContent: 'center',
-    maxWidth: '100%',
   },
   chipPressed: {
     opacity: 0.75,

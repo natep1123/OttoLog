@@ -28,6 +28,7 @@ import {
   exerciseDraftToClusterItem,
 } from '../../lib/clusterTemplates';
 import { getExerciseTemplate } from '../../lib/exerciseTemplates';
+import { summarizeBlockChips } from '../../lib/targetSummaries';
 import { ClusterEditor } from './ClusterEditor';
 import { ExerciseEditor } from './ExerciseEditor';
 import { IconButton } from './IconButton';
@@ -143,6 +144,7 @@ export function BlockEditor({
         setExpanded(next);
         if (!next) setMoreOpen(false);
       }}
+      metaChips={summarizeBlockChips(value)}
       title={
         <TemplateNameSearch
           kind="block"

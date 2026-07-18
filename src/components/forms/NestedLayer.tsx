@@ -28,8 +28,8 @@ type Props = {
   expanded?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
   title: ReactNode;
-  /** Small tinted chip on the right of the header (e.g. "3 exercises"). */
-  metaChip?: string | null;
+  /** Tinted summary chips that scroll between the name and overflow button. */
+  metaChips?: string[];
   trailing?: ReactNode | ((api: ExpandApi) => ReactNode);
   children?: ReactNode;
   style?: ViewStyle;
@@ -46,7 +46,7 @@ export function NestedLayer({
   expanded: controlledExpanded,
   onExpandedChange,
   title,
-  metaChip,
+  metaChips,
   trailing,
   children,
   style,
@@ -137,7 +137,7 @@ export function NestedLayer({
       />
       <CoordRow
         layer={layer}
-        metaChip={metaChip}
+        metaChips={metaChips}
         expanded={collapsible ? expanded : undefined}
         onToggleExpand={collapsible ? api.toggle : undefined}
         title={title}

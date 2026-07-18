@@ -60,6 +60,7 @@ Bottom nav hides on Session / Block / Cluster / Exercise builders (Create or Lib
 | `sessionTemplates.ts` | List, get, save, archive / hard-delete; nested blocks; `sessionTemplateToDraft`; default Uncategorized |
 | `taxonomy.ts` | Picker lists and Account taxonomy CRUD |
 | `localTime.ts` | Local greeting and week strip (`dayjs`) |
+| `targetSummaries.ts` | Compress/expand set groups; coach-shorthand summaries for all layers |
 
 ### `src/components/`
 
@@ -116,4 +117,4 @@ Account TaxonomyListScreen
 
 ## Forms layer accents
 
-See `formTokens.ts` / `docs/Styling.md`. Session → Block → Cluster → Exercise each own a background + accent rail used by `NestedLayer`, `IconButton`, and `MorePanel`. Name fields use `TemplateNameSearch` (Exercise wraps it) to copy library templates into the current draft without changing save identity.
+See `formTokens.ts` / `docs/Styling.md`. Session → Block → Cluster → Exercise each own a background + accent rail used by `NestedLayer`, `IconButton`, and `MorePanel`. Name fields use `TemplateNameSearch` (Exercise wraps it) to copy library templates into the current draft without changing save identity. Card headers show scrollable summary chips from `targetSummaries.ts`.

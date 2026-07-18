@@ -23,6 +23,7 @@ import {
   resolveTaxonomyOptions,
   type TaxonomyOption,
 } from '../../lib/taxonomy';
+import { summarizeExerciseChips } from '../../lib/targetSummaries';
 import type { ExerciseTemplateRow } from '../../types/exerciseTemplate';
 import type {
   ExerciseTarget,
@@ -84,6 +85,7 @@ export function ExerciseEditor({
   const [tags, setTags] = useState<TaxonomyOption[]>([]);
 
   const setCount = value.default_target_shape.length || 1;
+  const metaChips = summarizeExerciseChips(value);
 
   const patch = (partial: Partial<ExerciseTemplateInput>) => {
     onChange({ ...value, ...partial });
@@ -164,6 +166,7 @@ export function ExerciseEditor({
         setExpanded(next);
         if (!next) setMoreOpen(false);
       }}
+      metaChips={metaChips}
       title={
         <ExerciseNameSearch
           value={value.name}
