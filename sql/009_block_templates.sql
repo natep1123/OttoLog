@@ -4,7 +4,7 @@
 -- Requires: 001_users (public.users)
 --
 -- Standalone block blueprints. content jsonb holds notes/duration + items[]
--- of nested cluster blobs (copied, no FK to cluster_templates).
+-- as an ordered mix of exercise and cluster blobs (copied, no template FKs).
 
 create table if not exists public.block_templates (
   id uuid primary key default gen_random_uuid(),

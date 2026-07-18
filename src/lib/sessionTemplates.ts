@@ -1,9 +1,10 @@
 import { UNCATEGORIZED_ID } from '../constants/sentinelIds';
 import { supabase } from './supabase';
 import {
-  defaultBlockClusterItem,
   defaultBlockDraft,
-  normalizeClusterItem,
+  defaultBlockExerciseItem,
+  normalizeBlockItem as normalizeBlockChildItem,
+  prepareBlockItemForSave,
 } from './blockTemplates';
 import type { BlockTemplateInput } from '../types/blockTemplate';
 import type {
@@ -36,6 +37,44 @@ export function defaultSessionDraft(): SessionTemplateInput {
   };
 }
 
+/** Copy a library session into an editable draft (does not change save identity). */
+export function sessionTemplateToDraft(
+  row: SessionTemplateRow,
+): SessionTemplateInput {
+  const content = row.content;
+  return {
+    name: row.name,
+    category_id: row.category_id || UNCATEGORIZED_ID,
+    notes: content.notes,
+    track_duration: content.track_duration,
+    duration: content.duration,
+    blocks: content.blocks.map((block) => ({
+      ...block,
+      items: block.items.map((item) => {
+        if (item.kind === 'exercise') {
+          return {
+            ...item,
+            analytics_tag_ids: [...(item.analytics_tag_ids ?? [])],
+            targets: item.targets.map((t) => ({ ...t })),
+          };
+        }
+        return {
+          ...item,
+          items: item.items.map((ex) => ({
+            ...ex,
+            analytics_tag_ids: [...(ex.analytics_tag_ids ?? [])],
+            targets: ex.targets.map((t) => ({ ...t })),
+          })),
+          overrides: (item.overrides ?? []).map((o) => ({
+            ...o,
+            patch: { ...o.patch },
+          })),
+        };
+      }),
+    })),
+  };
+}
+
 function normalizeBlockItem(raw: unknown): SessionBlockItem {
   const base = defaultBlockDraft();
   if (!raw || typeof raw !== 'object') {
@@ -53,14 +92,14 @@ function normalizeBlockItem(raw: unknown): SessionBlockItem {
           ? '00:00:00'
           : null,
     items: Array.isArray(r.items)
-      ? r.items.map(normalizeClusterItem)
-      : [defaultBlockClusterItem()],
+      ? r.items.map(normalizeBlockChildItem)
+      : [defaultBlockExerciseItem()],
   };
   return {
     kind: 'block',
     id: typeof r.id === 'string' ? r.id : newBlockId(),
     ...draft,
-    items: draft.items.length ? draft.items : [defaultBlockClusterItem()],
+    items: draft.items.length ? draft.items : [defaultBlockExerciseItem()],
   };
 }
 
@@ -145,8 +184,26 @@ function validateDraft(draft: SessionTemplateInput): string | null {
   if (!draft.category_id) return 'Session category is required.';
   if (draft.blocks.length === 0) return 'Add at least one block.';
   for (let i = 0; i < draft.blocks.length; i += 1) {
-    if (!draft.blocks[i].name.trim()) {
+    const block = draft.blocks[i];
+    if (!block.name.trim()) {
       return `Block ${i + 1} needs a name.`;
+    }
+    if (block.items.length === 0) {
+      return `Block ${i + 1} needs at least one cluster or exercise.`;
+    }
+    for (let j = 0; j < block.items.length; j += 1) {
+      const item = block.items[j];
+      if (!item.name.trim()) {
+        const kind = item.kind === 'cluster' ? 'Cluster' : 'Exercise';
+        return `${kind} ${j + 1} in Block ${i + 1} needs a name.`;
+      }
+      if (
+        item.kind === 'exercise' &&
+        item.track_analytics &&
+        !item.primary_group_id
+      ) {
+        return `Exercise ${j + 1} in Block ${i + 1} needs a primary analytics group.`;
+      }
     }
   }
   return null;
@@ -187,12 +244,7 @@ export async function saveSessionTemplate(
       kind: 'block' as const,
       name: block.name.trim(),
       notes: block.notes?.trim() || null,
-      items: block.items.map((item) => ({
-        ...item,
-        kind: 'cluster' as const,
-        name: item.name.trim(),
-        notes: item.notes?.trim() || null,
-      })),
+      items: block.items.map(prepareBlockItemForSave),
     })),
   };
 

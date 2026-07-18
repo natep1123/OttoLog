@@ -1,8 +1,11 @@
 /**
- * Block template — ordered list of nested cluster blobs (copied, no FK).
+ * Block template — ordered mixed list of exercise/cluster blobs (copied, no FK).
  */
 
-import type { ClusterTemplateInput } from './clusterTemplate';
+import type {
+  ClusterExerciseItem,
+  ClusterTemplateInput,
+} from './clusterTemplate';
 
 /** Cluster embedded inside a block (React key + kind discriminator). */
 export type BlockClusterItem = ClusterTemplateInput & {
@@ -10,11 +13,19 @@ export type BlockClusterItem = ClusterTemplateInput & {
   id: string;
 };
 
+/**
+ * Standalone exercise embedded directly inside a block.
+ * Same leaf shape as cluster exercises (`targets[]`), so denest stays uniform.
+ */
+export type BlockExerciseItem = ClusterExerciseItem;
+
+export type BlockItem = BlockClusterItem | BlockExerciseItem;
+
 export type BlockContent = {
   notes: string | null;
   track_duration: boolean;
   duration: string | null;
-  items: BlockClusterItem[];
+  items: BlockItem[];
 };
 
 export type BlockTemplateRow = {
@@ -32,5 +43,5 @@ export type BlockTemplateInput = {
   notes: string | null;
   track_duration: boolean;
   duration: string | null;
-  items: BlockClusterItem[];
+  items: BlockItem[];
 };

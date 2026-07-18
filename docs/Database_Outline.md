@@ -37,11 +37,11 @@ When outline, concept docs, and live SQL disagree, use this order:
 - Searchable create-comboboxes for tools, primary groups, and tags in the exercise builder
 - **Account** → Taxonomy: tools, primary groups, tags (create, rename, archive, hard-delete when unused)
 - **Account** → Settings → Danger zone: delete account
-- Name search in the exercise builder can copy another template's fields into the current draft without switching which template you are editing
+- Name search on Session / Block / Cluster / Exercise builders can copy another template's fields into the current draft without switching which template you are editing
 - Active template names are unique per user per layer, case-insensitive (`sql/007`–`010`)
 - Cluster delete prefers soft archive; hard delete only when unreferenced (v1: always allowed — no FK references yet)
 - Clusters use **rounds (each)** programming: sequence of nested exercises × `rounds`, with sparse round-range overrides; individual sets expand only when logging
-- Blocks nest ordered cluster blobs; sessions nest ordered block blobs (copied JSON, no cross-template FKs). Session `category_id` defaults to Uncategorized
+- Blocks nest an ordered mix of exercise and cluster blobs; sessions nest ordered block blobs (copied JSON, no cross-template FKs). Session `category_id` defaults to Uncategorized
 
 **Not live yet**
 
@@ -339,8 +339,8 @@ Personal library objects for Create → Build templates.
 |-------|---------------|--------|
 | `exercise_templates` | Columns + `default_target_shape` jsonb | Presets. Always `tool_id` + `target_shape_id`. Optional `track_analytics` + `primary_group_id` (required iff tracking). Tags via `analytics_tag_links`, not a column on this table. `default_target_shape` holds the targets[] payload for that shape. Active names are unique per user (case-insensitive), enforced app-side and by a partial unique index (`sql/007`). |
 | `cluster_templates` | Columns + `content` jsonb | Standalone cluster blob. `cluster_type` ∈ `superset` \| `circuit`. `name` + `cluster_type` are columns. `content` holds `{ rounds, notes, track_duration, duration, items[], overrides[] }`. Nested `items` are **per-round** prescriptions locked to one target row each (set count UI is locked). `rounds` repeats the sequence. Sparse `overrides` may skip, patch fields **within the exercise’s existing target_shape** (not change shape), and/or attach `notes` (notes-only allowed). Templates stay compact; session logs expand to individual `log_sets` on denest. Active names unique per user (`sql/008`). Soft-archive preferred; hard delete when unreferenced. |
-| `block_templates` | `content` jsonb | Standalone block blob. `name` is a column; `content` holds `{ notes, track_duration, duration, items[] }` where each item is a nested **cluster** blob (`kind: 'cluster'`). Active names unique per user (`sql/009`). Soft-archive preferred. |
-| `session_templates` | `content` jsonb + `category_id` | Full session tree. `category_id` never null; default = global Uncategorized. `content` holds `{ notes, track_duration, duration, blocks[] }` where each block embeds ordered cluster items. Active names unique per user (`sql/010`). Soft-archive preferred. |
+| `block_templates` | `content` jsonb | Standalone block blob. `name` is a column; `content` holds `{ notes, track_duration, duration, items[] }` where each item is an **exercise** (`kind: 'exercise'`, with `targets[]`) or **cluster** (`kind: 'cluster'`) blob. Active names unique per user (`sql/009`). Soft-archive preferred. |
+| `session_templates` | `content` jsonb + `category_id` | Full session tree. `category_id` never null; default = global Uncategorized. `content` holds `{ notes, track_duration, duration, blocks[] }` where each block embeds an ordered mix of exercise and cluster items. Active names unique per user (`sql/010`). Soft-archive preferred. |
 
 ### Independence rule (v1)
 
@@ -351,7 +351,8 @@ Personal library objects for Create → Build templates.
 **Naming + copy-from-template**
 
 - Active template names are unique per user, per layer (case-insensitive). Archiving frees the name. Log session names may repeat later.
-- In the exercise builder, picking a name from search copies that template's editable fields into the current draft. It does not open that template for editing. Save under a new name if you are creating a copy.
+- On Session, Block, Cluster, and Exercise builders (including nested cards), picking a name from search copies that library template's editable fields into the current draft or card. It does not switch which template is being saved, and nested cards keep their outer id. Save under a new name if you are creating a standalone copy.
+- New Blocks default to one Exercise. New Sessions default to one Block containing one Exercise.
 - Cluster templates: soft archive removes them from library lists and frees the name; hard delete is available when unreferenced.
 - Cluster programming is compact (`rounds` + per-round subitem targets + overrides). Performed sets are expanded only into session logs (not stored as N duplicate rows on the template).
 
@@ -380,7 +381,7 @@ Logged sessions are fully relational so analytics can query sets.
 session header          → session_logs
 blocks[]                → log_blocks
   items[] exercise      → log_items + log_sets
-  items[] cluster       → log_items
+  items[] exercise/cluster → log_items
     nested exercises    → log_sub_items + log_sets
 ```
 

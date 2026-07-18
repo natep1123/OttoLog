@@ -21,6 +21,11 @@ type Props = {
   compact?: boolean;
   /** Fill parent width instead of fixed 128 (dense control rows). */
   fill?: boolean;
+  accent?: {
+    color: string;
+    border: string;
+    background: string;
+  };
 };
 
 /**
@@ -35,6 +40,7 @@ export function FormSelect({
   accessibilityLabel,
   compact,
   fill,
+  accent,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState({ x: 0, y: 0, w: 0, h: 0 });
@@ -70,6 +76,13 @@ export function FormSelect({
             styles.trigger,
             variant === 'tool' && styles.triggerTool,
             open && styles.triggerOpen,
+            accent ? { borderColor: accent.border } : null,
+            open && accent
+              ? {
+                  borderColor: accent.color,
+                  shadowColor: accent.color,
+                }
+              : null,
             pressed && styles.triggerPressed,
           ]}
         >
@@ -82,7 +95,9 @@ export function FormSelect({
           >
             {label}
           </Text>
-          <Text style={styles.caret}>▾</Text>
+          <Text style={[styles.caret, accent ? { color: accent.color } : null]}>
+            ▾
+          </Text>
         </Pressable>
       </View>
 
@@ -97,6 +112,7 @@ export function FormSelect({
           <View
             style={[
               styles.menu,
+              accent ? { borderColor: accent.border } : null,
               {
                 top: anchor.y + anchor.h + 4,
                 left: anchor.x,
@@ -113,9 +129,21 @@ export function FormSelect({
                     onChange(opt.id);
                     close();
                   }}
-                  style={[styles.option, isOn && styles.optionOn]}
+                  style={[
+                    styles.option,
+                    isOn && styles.optionOn,
+                    isOn && accent
+                      ? { backgroundColor: accent.background }
+                      : null,
+                  ]}
                 >
-                  <Text style={[styles.optionText, isOn && styles.optionTextOn]}>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      isOn && styles.optionTextOn,
+                      isOn && accent ? { color: accent.color } : null,
+                    ]}
+                  >
                     {opt.label}
                   </Text>
                 </Pressable>

@@ -199,7 +199,6 @@ export function ExerciseBuilderScreen({
         <ExerciseEditor
           value={draft}
           onChange={setDraft}
-          coordMeta="Exercise"
           onPickTemplate={(row) => {
             void onPickTemplate(row.id);
           }}

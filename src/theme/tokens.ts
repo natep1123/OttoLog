@@ -26,6 +26,62 @@ export const colors = {
   onPrimary: '#1a0e0a',
 } as const;
 
+/**
+ * Nested template chrome. Cool colors are intentionally scoped to the
+ * organizational Block/Cluster rails, borders, chips, and overflow icons.
+ */
+export const layer = {
+  session: {
+    bg: '#0c0a0e',
+    border: 'rgba(214, 91, 75, 0.12)',
+    rail: { color: '#d65b4b', width: 4, glow: null },
+    chip: {
+      color: '#d65b4b',
+      background: 'rgba(214, 91, 75, 0.21)',
+    },
+  },
+  block: {
+    bg: '#0d0b0f',
+    border: 'rgba(74, 127, 181, 0.12)',
+    rail: { color: '#4a7fb5', width: 4, glow: null },
+    chip: {
+      color: '#4a7fb5',
+      background: 'rgba(74, 127, 181, 0.21)',
+    },
+  },
+  cluster: {
+    bg: '#0f0d11',
+    border: 'rgba(122, 107, 201, 0.12)',
+    rail: { color: '#7a6bc9', width: 4, glow: null },
+    chip: {
+      color: '#7a6bc9',
+      background: 'rgba(122, 107, 201, 0.21)',
+    },
+  },
+  exercise: {
+    bg: '#100e12',
+    border: 'rgba(214, 170, 102, 0.12)',
+    rail: {
+      color: '#d6aa66',
+      width: 4,
+      glow: '0 0 8px rgba(214, 170, 102, 0.32)',
+    },
+    chip: {
+      color: '#d6aa66',
+      background: 'rgba(214, 170, 102, 0.3)',
+    },
+  },
+} as const;
+
+/** Sparse round-override UI inside Cluster editors — intentionally dusk pink. */
+export const override = {
+  color: colors.dusk,
+  border: 'rgba(201, 107, 138, 0.28)',
+  borderSoft: 'rgba(201, 107, 138, 0.16)',
+  wash: 'rgba(201, 107, 138, 0.08)',
+  washStrong: 'rgba(201, 107, 138, 0.16)',
+} as const;
+
 export const radii = {
   sm: 6,
   md: 10,
@@ -91,6 +147,8 @@ export const spacing = {
 export type Colors = typeof colors;
 export type Theme = {
   colors: typeof colors;
+  layer: typeof layer;
+  override: typeof override;
   radii: typeof radii;
   typography: typeof typography;
   spacing: typeof spacing;
@@ -98,6 +156,8 @@ export type Theme = {
 
 export const theme: Theme = {
   colors,
+  layer,
+  override,
   radii,
   typography,
   spacing,

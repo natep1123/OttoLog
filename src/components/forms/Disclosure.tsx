@@ -1,5 +1,11 @@
 import { type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import { colors, spacing, typography } from '../../theme/tokens';
 import { formChevron } from './formTokens';
 
@@ -12,6 +18,8 @@ type Props = {
   hint?: string;
   /** No gap between header and body (e.g. Visualize → chart). */
   tight?: boolean;
+  style?: ViewStyle;
+  accentColor?: string;
 };
 
 /**
@@ -25,9 +33,11 @@ export function Disclosure({
   children,
   hint,
   tight,
+  style,
+  accentColor,
 }: Props) {
   return (
-    <View style={[styles.wrap, tight && styles.wrapTight]}>
+    <View style={[styles.wrap, tight && styles.wrapTight, style]}>
       <Pressable
         onPress={onToggle}
         accessibilityRole="button"
@@ -39,8 +49,12 @@ export function Disclosure({
           pressed && styles.headerPressed,
         ]}
       >
-        <Text style={styles.chevron}>{open ? '▾' : '▸'}</Text>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.chevron, accentColor ? { color: accentColor } : null]}>
+          {open ? '▾' : '▸'}
+        </Text>
+        <Text style={[styles.label, accentColor ? { color: accentColor } : null]}>
+          {label}
+        </Text>
       </Pressable>
       {open ? (
         <View style={styles.body}>

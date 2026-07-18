@@ -19,6 +19,7 @@ import {
   type ClusterOverridePatch,
   type ClusterRoundOverride,
   type ClusterTemplateInput,
+  type ClusterTemplateRow,
 } from '../../types/clusterTemplate';
 import type {
   DistanceUnitCode,
@@ -27,12 +28,22 @@ import type {
   ExerciseTemplateRow,
   LoadUnitCode,
 } from '../../types/exerciseTemplate';
-import { colors, radii, spacing, typography } from '../../theme/tokens';
+import {
+  colors,
+  layer as layerTheme,
+  override as overrideTheme,
+  radii,
+  spacing,
+  typography,
+} from '../../theme/tokens';
 import {
   clusterItemToExerciseDraft,
+  clusterTemplateToDraft,
   defaultClusterExerciseItem,
   exerciseDraftToClusterItem,
   formatOverrideSummary,
+  getClusterTemplate,
+  listClusterTemplates,
   newOverrideId,
   pruneClusterOverrides,
 } from '../../lib/clusterTemplates';
@@ -40,28 +51,34 @@ import {
   buildTargets,
   getExerciseTemplate,
 } from '../../lib/exerciseTemplates';
-import { CoordRow } from './CoordRow';
 import { ClusterSequenceDiagram } from './ClusterSequenceDiagram';
 import { Disclosure } from './Disclosure';
 import { ExerciseEditor } from './ExerciseEditor';
 import { FormSelect } from './FormSelect';
 import { IconButton } from './IconButton';
 import { MorePanel } from './MorePanel';
-import { NameInput } from './NameInput';
-import { NodeShell } from './NodeShell';
+import { NestedLayer } from './NestedLayer';
 import { RoundStepper } from './RoundStepper';
+import { TemplateNameSearch } from './TemplateNameSearch';
 import { TimePartsInput } from './TimePartsInput';
 import { ToggleChip } from './ToggleChip';
+import {
+  addLayerButtonColors,
+  clusterItemsLayout,
+} from './formTokens';
 
+const addExerciseColors = addLayerButtonColors('exercise');
+const overrideControlAccent = {
+  color: overrideTheme.color,
+  border: overrideTheme.border,
+  background: overrideTheme.washStrong,
+};
 const MAX_ROUNDS = 99;
 
 type Props = {
   value: ClusterTemplateInput;
   onChange: (next: ClusterTemplateInput) => void;
   nested?: boolean;
-  coord?: string | null;
-  coordMeta?: string;
-  onCoordPress?: () => void;
   onDelete?: () => void;
   showDelete?: boolean;
 };
@@ -249,9 +266,6 @@ export function ClusterEditor({
   value,
   onChange,
   nested = false,
-  coord = null,
-  coordMeta = 'Cluster',
-  onCoordPress,
   onDelete,
   showDelete = false,
 }: Props) {
@@ -319,6 +333,12 @@ export function ClusterEditor({
 
   const addItem = () => {
     patch({ items: [...value.items, defaultClusterExerciseItem()] });
+  };
+
+  const onPickClusterTemplate = async (row: ClusterTemplateRow) => {
+    const { data, error } = await getClusterTemplate(row.id);
+    if (error || !data) return;
+    onChange(clusterTemplateToDraft(data));
   };
 
   const onPickExerciseTemplate = async (
@@ -587,47 +607,44 @@ export function ClusterEditor({
   };
 
   return (
-    <NodeShell kind="cluster" nested={nested}>
-      <CoordRow
-        meta={coordMeta}
-        coord={coord}
-        onCoordPress={onCoordPress}
-        expanded={expanded}
-        onToggleExpand={() => setExpanded((e) => !e)}
-        title={
-          <NameInput
-            value={value.name}
-            onChangeText={(name) => patch({ name })}
-            placeholder="Cluster name"
-            accessibilityLabel="Cluster name"
-            style={styles.titleField}
-          />
-        }
-        trailing={
-          <IconButton
-            kind="cluster"
-            active={moreOpen}
-            onPress={() => {
-              setExpanded(true);
-              setMoreOpen((o) => !o);
-            }}
-          />
-        }
-      />
-
-      {expanded ? (
-        <>
-          <View
-            style={[
-              styles.header,
-              !visualizeOpen && styles.headerVisualizeCollapsed,
-            ]}
-          >
+    <NestedLayer
+      layer="cluster"
+      nested={nested}
+      expanded={expanded}
+      onExpandedChange={(next) => {
+        setExpanded(next);
+        if (!next) setMoreOpen(false);
+      }}
+      title={
+        <TemplateNameSearch
+          kind="cluster"
+          value={value.name}
+          onChangeText={(name) => patch({ name })}
+          listTemplates={listClusterTemplates}
+          onPickTemplate={(row) => {
+            void onPickClusterTemplate(row);
+          }}
+          placeholder="Cluster name"
+          accessibilityLabel="Cluster name"
+          style={styles.titleField}
+        />
+      }
+      trailing={({ expand }) => (
+        <IconButton
+          kind="cluster"
+          active={moreOpen}
+          onPress={() => {
+            expand();
+            setMoreOpen((o) => !o);
+          }}
+        />
+      )}
+    >
+          <View style={styles.header}>
             <View style={styles.controlsRow}>
               <View style={styles.controlBlock}>
-                <ChoiceChips
-                  label="Type"
-                  singleLine
+                <Text style={styles.controlLabel}>Type</Text>
+                <FormSelect
                   options={CLUSTER_TYPE_OPTIONS}
                   value={value.cluster_type}
                   onChange={(cluster_type) =>
@@ -636,6 +653,8 @@ export function ClusterEditor({
                         cluster_type as ClusterTemplateInput['cluster_type'],
                     })
                   }
+                  fill
+                  accessibilityLabel="Cluster type"
                 />
               </View>
               <View style={styles.controlBlock}>
@@ -645,22 +664,12 @@ export function ClusterEditor({
                   onChange={setRounds}
                   min={1}
                   max={MAX_ROUNDS}
+                  compact
                   accessibilityLabel="Number of rounds"
                 />
               </View>
             </View>
 
-            <Disclosure
-              label="Visualize"
-              open={visualizeOpen}
-              onToggle={() => setVisualizeOpen((o) => !o)}
-              tight
-            >
-              <ClusterSequenceDiagram
-                items={value.items}
-                showLabel={false}
-              />
-            </Disclosure>
           </View>
 
           <MorePanel open={moreOpen} kind="cluster">
@@ -724,33 +733,54 @@ export function ClusterEditor({
             ) : null}
           </MorePanel>
 
-          <View
-            style={[
-              styles.eachRoundHeader,
-              !visualizeOpen && styles.eachRoundHeaderTight,
-            ]}
-          >
-            <Text style={styles.sectionTitle}>Per-round exercises</Text>
-            <Text style={styles.sectionHint}>
-              Values below are what you do each time through the sequence.
-            </Text>
+          <View style={styles.eachRoundHeader}>
+            <View style={styles.eachRoundTitleRow}>
+              <Text style={styles.sectionTitle}>Exercises per-round</Text>
+              <Pressable
+                onPress={() => setVisualizeOpen((open) => !open)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: visualizeOpen }}
+                accessibilityLabel={visualizeOpen ? 'Hide map' : 'Show map'}
+                style={({ pressed }) => [
+                  styles.mapToggle,
+                  { borderColor: layerTheme.cluster.chip.color },
+                  visualizeOpen && {
+                    backgroundColor: layerTheme.cluster.chip.background,
+                  },
+                  pressed && styles.mapTogglePressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.mapToggleText,
+                    { color: layerTheme.cluster.chip.color },
+                  ]}
+                >
+                  {visualizeOpen ? 'MAP ON' : 'MAP OFF'}
+                </Text>
+              </Pressable>
+            </View>
+            <Text style={styles.sectionHint}>Repeated each round.</Text>
           </View>
+
+          {visualizeOpen ? (
+            <ClusterSequenceDiagram items={value.items} showLabel={false} />
+          ) : null}
 
           <View style={styles.items}>
             {value.items.map((item: ClusterExerciseItem, index: number) => (
-              <ExerciseEditor
-                key={item.id}
-                value={clusterItemToExerciseDraft(item)}
-                onChange={(draft) => updateItem(index, draft)}
-                nested
-                subitem
-                coordMeta={`${index + 1} in round`}
-                showDelete
-                onDelete={() => removeItem(index)}
-                onPickTemplate={(row) => {
-                  void onPickExerciseTemplate(index, row);
-                }}
-              />
+                <ExerciseEditor
+                  key={item.id}
+                  value={clusterItemToExerciseDraft(item)}
+                  onChange={(draft) => updateItem(index, draft)}
+                  nested
+                  subitem
+                  showDelete
+                  onDelete={() => removeItem(index)}
+                  onPickTemplate={(row) => {
+                    void onPickExerciseTemplate(index, row);
+                  }}
+                />
             ))}
           </View>
 
@@ -758,12 +788,21 @@ export function ClusterEditor({
             onPress={addItem}
             style={({ pressed }) => [
               styles.addBtn,
-              pressed && styles.addPressed,
+              {
+                borderColor: addExerciseColors.border,
+                backgroundColor: addExerciseColors.wash,
+              },
+              pressed && {
+                borderColor: addExerciseColors.label,
+                backgroundColor: addExerciseColors.wash,
+              },
             ]}
             accessibilityRole="button"
             accessibilityLabel="Add exercise"
           >
-            <Text style={styles.addText}>+ Add exercise</Text>
+            <Text style={[styles.addText, { color: addExerciseColors.label }]}>
+              + Add exercise
+            </Text>
           </Pressable>
 
           <View
@@ -777,7 +816,8 @@ export function ClusterEditor({
               open={overridesOpen}
               onToggle={() => setOverridesOpen((o) => !o)}
               tight
-              hint="Exceptions for round ranges — skip, pick metrics to change, or leave a note. Skips are not logged as zero-rep sets."
+              accentColor={overrideTheme.color}
+              hint="Changes for selected rounds."
             >
         {(value.overrides ?? []).length === 0 && !addingOverride ? (
           <Text style={styles.overridesEmpty}>No overrides yet.</Text>
@@ -804,7 +844,7 @@ export function ClusterEditor({
                   pressed && styles.overrideIconBtnPressed,
                 ]}
               >
-                <Feather name="edit-2" size={15} color={colors.sunrise} />
+                <Feather name="edit-2" size={15} color={overrideTheme.color} />
               </Pressable>
               <Pressable
                 onPress={() => removeOverride(o.id)}
@@ -828,6 +868,7 @@ export function ClusterEditor({
               }))}
               value={overrideDraft.exercise_id}
               onChange={onOverrideExerciseChange}
+              accent={overrideControlAccent}
             />
 
             <View style={styles.rangeRow}>
@@ -858,6 +899,7 @@ export function ClusterEditor({
                   min={1}
                   max={rounds}
                   accessibilityLabel="From round"
+                  accent={overrideControlAccent}
                 />
               </View>
               <View style={styles.rangeField}>
@@ -887,6 +929,7 @@ export function ClusterEditor({
                   min={1}
                   max={rounds}
                   accessibilityLabel="To round"
+                  accent={overrideControlAccent}
                 />
               </View>
             </View>
@@ -894,6 +937,7 @@ export function ClusterEditor({
             <ToggleChip
               label={overrideDraft.skipped ? 'Skipped' : 'Skip these rounds'}
               active={overrideDraft.skipped}
+              accent={overrideControlAccent}
               onPress={() =>
                 setOverrideDraft({
                   ...overrideDraft,
@@ -904,6 +948,11 @@ export function ClusterEditor({
                 })
               }
             />
+            {overrideDraft.skipped ? (
+              <Text style={styles.skippedHint}>
+                Skipped rounds are not logged as zero-rep sets.
+              </Text>
+            ) : null}
 
             {!overrideDraft.skipped && baseline ? (
               <View style={styles.overrideFields}>
@@ -959,6 +1008,7 @@ export function ClusterEditor({
                           }
                           active={overrideDraft.is_per_side}
                           size="compact"
+                          accent={overrideControlAccent}
                           onPress={() =>
                             setOverrideDraft({
                               ...overrideDraft,
@@ -1024,6 +1074,7 @@ export function ClusterEditor({
                           })
                         }
                         compact
+                        accent={overrideControlAccent}
                         accessibilityLabel="Override distance unit"
                       />
                     </View>
@@ -1074,6 +1125,7 @@ export function ClusterEditor({
                           })
                         }
                         compact
+                        accent={overrideControlAccent}
                         accessibilityLabel="Override load unit"
                       />
                     </View>
@@ -1092,7 +1144,11 @@ export function ClusterEditor({
                 placeholder="Why this override, or a note for these rounds…"
                 placeholderTextColor={colors.textDim}
                 multiline
-                style={[styles.fieldInput, styles.notes]}
+                style={[
+                  styles.fieldInput,
+                  styles.notes,
+                  styles.overrideInput,
+                ]}
               />
             </View>
 
@@ -1105,7 +1161,7 @@ export function ClusterEditor({
                 onPress={commitOverride}
                 style={({ pressed }) => [
                   styles.overrideSave,
-                  pressed && styles.addPressed,
+                  pressed && styles.overridePressed,
                 ]}
               >
                 <Text style={styles.overrideSaveText}>
@@ -1123,7 +1179,7 @@ export function ClusterEditor({
             disabled={value.items.length === 0}
             style={({ pressed }) => [
               styles.addOverrideBtn,
-              pressed && styles.addPressed,
+              pressed && styles.overridePressed,
               value.items.length === 0 && styles.addDisabled,
             ]}
           >
@@ -1132,9 +1188,7 @@ export function ClusterEditor({
         )}
             </Disclosure>
           </View>
-        </>
-      ) : null}
-    </NodeShell>
+    </NestedLayer>
   );
 }
 
@@ -1142,9 +1196,6 @@ const styles = StyleSheet.create({
   header: {
     gap: spacing.sm,
     marginBottom: spacing.sm,
-  },
-  headerVisualizeCollapsed: {
-    marginBottom: 0,
   },
   titleField: {
     flex: 1,
@@ -1169,14 +1220,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   durationRow: {
+    width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
     gap: 10,
+    // Always reserve the unit-label row so enabling duration moves nothing.
+    paddingTop: 14,
   },
   durationPicker: {
     position: 'relative',
-    paddingTop: 14,
   },
   durationUnitLabels: {
     position: 'absolute',
@@ -1203,6 +1257,7 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   field: {
+    width: '100%',
     gap: 6,
   },
   fieldLabel: {
@@ -1231,7 +1286,7 @@ const styles = StyleSheet.create({
     borderColor: colors.sunrise,
   },
   deleteBtn: {
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderWidth: 1,
@@ -1248,11 +1303,32 @@ const styles = StyleSheet.create({
     color: colors.sunset,
   },
   eachRoundHeader: {
-    gap: 4,
+    gap: 2,
     marginTop: spacing.sm,
+    marginBottom: 0,
   },
-  eachRoundHeaderTight: {
-    marginTop: 4,
+  eachRoundTitleRow: {
+    minHeight: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  mapToggle: {
+    height: 32,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: radii.sm,
+  },
+  mapTogglePressed: {
+    opacity: 0.75,
+  },
+  mapToggleText: {
+    fontFamily: typography.fontSemiBold,
+    fontSize: 11,
+    letterSpacing: 0.5,
   },
   sectionTitle: {
     fontFamily: typography.fontSemiBold,
@@ -1269,7 +1345,8 @@ const styles = StyleSheet.create({
   },
   items: {
     gap: spacing.sm,
-    marginTop: spacing.sm,
+    marginTop: 0,
+    ...clusterItemsLayout,
   },
   addBtn: {
     marginTop: spacing.sm,
@@ -1277,10 +1354,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radii.sm,
-    borderStyle: 'dashed',
-    backgroundColor: 'rgba(255, 154, 90, 0.04)',
   },
   addPressed: {
     borderColor: colors.borderStrong,
@@ -1292,7 +1366,6 @@ const styles = StyleSheet.create({
   addText: {
     fontFamily: typography.fontMedium,
     fontSize: 14,
-    color: colors.sunrise,
   },
   overrides: {
     // Space after + Add exercise before the divider
@@ -1300,11 +1373,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: overrideTheme.borderSoft,
   },
   overridesCollapsed: {
-    // Pull up into NodeShell bottom pad when the panel is closed
-    marginBottom: -6,
+    marginBottom: spacing.xs,
   },
   overridesEmpty: {
     fontFamily: typography.font,
@@ -1319,9 +1391,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: overrideTheme.border,
     borderRadius: radii.sm,
-    backgroundColor: colors.bgInset,
+    backgroundColor: overrideTheme.wash,
   },
   overrideText: {
     flex: 1,
@@ -1336,7 +1408,11 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   overrideIconBtn: {
-    padding: 4,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: overrideTheme.border,
+    borderRadius: radii.sm,
+    backgroundColor: overrideTheme.wash,
   },
   overrideIconBtnPressed: {
     opacity: 0.7,
@@ -1350,12 +1426,18 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: overrideTheme.border,
     borderRadius: radii.md,
-    backgroundColor: 'rgba(201, 107, 138, 0.06)',
+    backgroundColor: overrideTheme.wash,
   },
   overrideFields: {
     gap: spacing.sm,
+  },
+  skippedHint: {
+    fontFamily: typography.font,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textMuted,
   },
   metricRow: {
     flexDirection: 'row',
@@ -1367,15 +1449,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     borderRadius: radii.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: overrideTheme.borderSoft,
     backgroundColor: colors.bgInset,
   },
   metricChipActive: {
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.amberGlow,
+    borderColor: overrideTheme.color,
+    backgroundColor: overrideTheme.washStrong,
   },
   metricChipPressed: {
-    borderColor: colors.borderStrong,
+    borderColor: overrideTheme.color,
   },
   metricChipText: {
     fontFamily: typography.fontMedium,
@@ -1383,7 +1465,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   metricChipTextActive: {
-    color: colors.text,
+    color: overrideTheme.color,
   },
   compareRow: {
     flexDirection: 'row',
@@ -1392,7 +1474,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: overrideTheme.borderSoft,
     borderRadius: radii.sm,
     backgroundColor: colors.bgInset,
   },
@@ -1425,10 +1507,14 @@ const styles = StyleSheet.create({
     fontFamily: typography.font,
     fontSize: 14,
     color: colors.text,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.bgInset,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: overrideTheme.border,
     borderRadius: radii.sm,
+  },
+  overrideInput: {
+    borderColor: overrideTheme.border,
+    backgroundColor: colors.bgInset,
   },
   compareInputDisabled: {
     opacity: 0.35,
@@ -1466,32 +1552,35 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: radii.sm,
-    backgroundColor: colors.amberGlow,
+    backgroundColor: overrideTheme.washStrong,
     borderWidth: 1,
-    borderColor: colors.borderStrong,
+    borderColor: overrideTheme.color,
   },
   overrideSaveText: {
     fontFamily: typography.fontMedium,
     fontSize: 14,
-    color: colors.text,
+    color: overrideTheme.color,
   },
   overrideCancel: {
     fontFamily: typography.fontMedium,
     fontSize: 14,
     color: colors.textMuted,
   },
+  overridePressed: {
+    opacity: 0.72,
+  },
   addOverrideBtn: {
     alignSelf: 'flex-start',
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: overrideTheme.color,
     borderRadius: radii.sm,
-    borderStyle: 'dashed',
+    backgroundColor: overrideTheme.wash,
   },
   addOverrideText: {
     fontFamily: typography.fontMedium,
     fontSize: 14,
-    color: colors.dusk,
+    color: overrideTheme.color,
   },
 });

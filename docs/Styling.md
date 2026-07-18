@@ -26,6 +26,14 @@ OttoLog uses a warm dusk visual language that should feel personal, focused, and
 
 The interface should not feel like a dashboard unless the content truly requires one. Prefer one clear purpose per screen.
 
+The nested template hierarchy is one intentional, tightly scoped exception to
+the warm-only direction: Block and Cluster may use cool blue/violet accents
+only for their structural rails, card borders, chips, and overflow icons.
+Session and Exercise bookend them with warm accents. Cool colors must not spread
+to general buttons, CTAs, ambient washes, or the brand gradient. The narrow
+exception is the solid-outline “Add cluster” control, which uses the Cluster
+token because add controls identify the layer they create.
+
 ## Implementation Rules
 
 - Use React Native `StyleSheet`, not CSS, NativeWind, or Tailwind.
@@ -373,16 +381,55 @@ All four template builders hide bottom nav. Library lists are top-aligned with `
 
 ### Nestable form layers
 
-Each template layer owns a background and accent (see `formTokens.ts`). Used by `NodeShell` left rail, hairline border, `IconButton`, and `MorePanel` (dashed left rail + tinted wash):
+Each template layer resolves its complete structural treatment from
+`layer` in `src/theme/tokens.ts`. `NestedLayer`, chevrons, add controls,
+`IconButton`, and `MorePanel` must consume those shared tokens rather than
+hardcoding per-component colors.
 
-| Layer | Background | Accent |
-|-------|------------|--------|
-| Session | `bg` | sunset |
-| Block | `bgPanel` | sunrise |
-| Cluster | `bgElevated` | dusk |
-| Exercise | `bgInset` | gold |
+| Layer | Background | Structural accent | Rail |
+|-------|------------|-------------------|------|
+| Session | `#0c0a0e` | muted warm red `#d65b4b` | solid 4px |
+| Block | `#0d0b0f` | cool blue `#4a7fb5` | solid 4px |
+| Cluster | `#0f0d11` | cool violet `#7a6bc9` | solid 4px |
+| Exercise | `#100e12` | muted warm gold `#d6aa66` | solid 4px with glow |
 
-Clusters show a circuit-style sequence diagram (chips left→right, wrap onto the next line, dashed return loop), per-round subitem editors, and an overrides list for round-range exceptions. Visualize and Overrides use a tight `Disclosure`.
+The backgrounds are solid and progress monotonically from Session to Exercise;
+card borders are 1-point outlines at 12% of the layer color. Every nested card
+escapes its parent's horizontal inset so all outer bounds and 4-point rails
+overlap at the same x-position. Each card then applies the same 12-point
+horizontal content inset. Eight-point vertical gaps reveal the parent rail
+between child boxes, while the child accent visually covers it over the child's
+own height. The 4-point accent runs the full left edge, curves around the
+bottom-left corner, and continues across the full bottom edge. Header count/type
+pills are intentionally omitted to keep the name field clear. Collapse state is
+local to each card; the layer chevron rotates `-90deg` when collapsed, and
+collapsing a card also closes its More panel.
+
+Overflow triggers use a dashed layer-colored square. Their expanded More panel
+uses the same 1-point dashed outline as the card hairline, on all sides, with
+centered option content.
+
+Nesting is constrained by role: Session adds Blocks; Block adds an ordered mix
+of Clusters and standalone Exercises; Cluster adds Exercises only. Each
+solid-outline add control uses the shared color token of the layer it creates.
+New blocks start with one Exercise, and new Sessions start with one Block
+containing one Exercise.
+Cluster round overrides retain a dusk-pink semantic accent across their add
+button, disclosure, editable panels, selectors, steppers, and save controls.
+
+Clusters show a circuit-style sequence diagram (chips left→right, wrap onto the
+next line, dashed return loop), per-round subitem editors, and an overrides list
+for round-range exceptions. Its blueprint grid uses the Cluster structural
+color; gold arrows and chips remain warm. Cluster Type uses a two-option
+non-searchable selector and defaults to Superset. A compact, violet Map on/off
+toggle shares the Exercises per-round heading row and mounts the diagram
+directly below it. Overrides continues to use a tight `Disclosure`.
+
+More-panel duration controls stay left-aligned. All four layers reserve the
+HH/MM/SS label row even while duration is off, preventing the toggle and time
+inputs from shifting when duration is enabled. Name fields use layer-tinted
+`TemplateNameSearch` typeaheads. Selecting a hit copies contents into the
+current draft without changing save identity.
 
 ## Native Implementation Notes
 

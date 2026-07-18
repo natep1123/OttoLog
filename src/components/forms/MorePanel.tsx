@@ -1,8 +1,7 @@
-import { useState, type ReactNode } from 'react';
-import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
-import Svg, { Line } from 'react-native-svg';
-import { radii, spacing, typography } from '../../theme/tokens';
-import { FormNodeKind, moreAccents } from './formTokens';
+import { type ReactNode } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { layer, radii, spacing, typography } from '../../theme/tokens';
+import { FormNodeKind } from './formTokens';
 
 type Props = {
   open: boolean;
@@ -11,17 +10,10 @@ type Props = {
 };
 
 /**
- * Secondary fields behind ⋯ — inset panel tinted to the node kind’s primary,
- * with a dashed accent rail so it reads as more-options, not primary chrome.
+ * Secondary fields behind ⋯ — centered inside a full 4px dashed layer border.
  */
 export function MorePanel({ open, kind, children }: Props) {
-  const accent = moreAccents[kind];
-  const [railH, setRailH] = useState(0);
-
-  const onPanelLayout = (e: LayoutChangeEvent) => {
-    const h = e.nativeEvent.layout.height;
-    if (h > 0 && Math.abs(h - railH) > 1) setRailH(h);
-  };
+  const token = layer[kind];
 
   if (!open) return null;
 
@@ -30,29 +22,12 @@ export function MorePanel({ open, kind, children }: Props) {
       style={[
         styles.panel,
         {
-          borderColor: accent.border,
-          backgroundColor: accent.wash,
+          borderColor: token.chip.color,
+          backgroundColor: token.bg,
         },
       ]}
-      onLayout={onPanelLayout}
     >
-      <View style={styles.rail} pointerEvents="none">
-        {railH > 0 ? (
-          <Svg width={3} height={railH}>
-            <Line
-              x1={1.5}
-              y1={6}
-              x2={1.5}
-              y2={railH - 6}
-              stroke={accent.rail}
-              strokeWidth={2}
-              strokeDasharray="5 4"
-              strokeLinecap="round"
-            />
-          </Svg>
-        ) : null}
-      </View>
-      <Text style={[styles.eyebrow, { color: accent.eyebrow }]}>
+      <Text style={[styles.eyebrow, { color: token.chip.color }]}>
         More options
       </Text>
       <View style={styles.body}>{children}</View>
@@ -65,29 +40,23 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginTop: spacing.sm,
     marginBottom: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm + 2,
-    paddingLeft: spacing.md + 2,
-    paddingRight: spacing.md,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderWidth: 1,
+    borderStyle: 'dashed',
     borderRadius: radii.sm,
-    gap: 4,
-    overflow: 'hidden',
-  },
-  rail: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 3,
+    gap: spacing.sm,
   },
   eyebrow: {
     fontFamily: typography.fontSemiBold,
     fontSize: 10,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
+    textAlign: 'center',
   },
   body: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
     gap: spacing.sm + 4,
   },
 });

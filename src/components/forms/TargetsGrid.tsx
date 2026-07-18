@@ -45,10 +45,11 @@ export function TargetsGrid({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={styles.viewport}
       contentContainerStyle={styles.scroll}
       keyboardShouldPersistTaps="handled"
     >
-      <View>
+      <View style={styles.table}>
         <View style={styles.head}>
           <View style={[styles.colSet, styles.headCell]}>
             <Text style={styles.th}>Set</Text>
@@ -226,10 +227,18 @@ export function TargetsGrid({
 }
 
 const styles = StyleSheet.create({
+  viewport: {
+    width: '100%',
+  },
   scroll: {
+    flexGrow: 1,
     paddingBottom: 4,
   },
+  table: {
+    minWidth: '100%',
+  },
   head: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingBottom: 2,
@@ -247,6 +256,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   unitHead: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: -4,
@@ -274,6 +284,7 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   row: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 5,
@@ -288,10 +299,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   colSet: { width: 28, alignItems: 'center', justifyContent: 'center' },
-  colTime: { width: 148, paddingHorizontal: 4, alignItems: 'center' },
-  colReps: { minWidth: 128, paddingHorizontal: 4, alignItems: 'center' },
-  colDist: { minWidth: 148, paddingHorizontal: 4, alignItems: 'center' },
-  colLoad: { minWidth: 148, paddingHorizontal: 4, alignItems: 'center' },
+  colTime: {
+    minWidth: 148,
+    flexGrow: 1,
+    flexBasis: 0,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+  },
+  colReps: {
+    minWidth: 148,
+    flexGrow: 1,
+    flexBasis: 0,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+  },
+  colDist: {
+    minWidth: 148,
+    flexGrow: 1,
+    flexBasis: 0,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+  },
+  colLoad: {
+    minWidth: 148,
+    flexGrow: 1,
+    flexBasis: 0,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+  },
   colAnalytics: {
     width: 72,
     alignItems: 'center',

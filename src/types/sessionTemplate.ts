@@ -2,7 +2,12 @@
  * Session template — ordered list of nested block blobs + category.
  */
 
-import type { BlockClusterItem, BlockTemplateInput } from './blockTemplate';
+import type {
+  BlockClusterItem,
+  BlockExerciseItem,
+  BlockItem,
+  BlockTemplateInput,
+} from './blockTemplate';
 
 /** Block embedded inside a session. */
 export type SessionBlockItem = BlockTemplateInput & {
@@ -37,4 +42,4 @@ export type SessionTemplateInput = {
   blocks: SessionBlockItem[];
 };
 
-export type { BlockClusterItem };
+export type { BlockClusterItem, BlockExerciseItem, BlockItem };

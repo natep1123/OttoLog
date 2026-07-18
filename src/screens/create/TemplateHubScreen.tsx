@@ -36,7 +36,7 @@ export function TemplateHubScreen({
         />
         <HubAction
           title="Block"
-          body="Reusable block of ordered clusters."
+          body="Reusable block of ordered exercises and clusters."
           onPress={onBlock}
         />
         <HubAction

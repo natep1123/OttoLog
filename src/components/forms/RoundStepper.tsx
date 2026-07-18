@@ -17,6 +17,12 @@ type Props = {
   max?: number;
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
+  compact?: boolean;
+  accent?: {
+    color: string;
+    border: string;
+    background: string;
+  };
 };
 
 function clamp(n: number, min: number, max: number): number {
@@ -35,6 +41,8 @@ export function RoundStepper({
   max = 99,
   accessibilityLabel = 'Rounds',
   style,
+  compact = false,
+  accent,
 }: Props) {
   const [text, setText] = useState(String(value));
 
@@ -69,12 +77,19 @@ export function RoundStepper({
         disabled={current <= min}
         style={({ pressed }) => [
           styles.btn,
+          compact && styles.btnCompact,
+          accent ? { borderColor: accent.border } : null,
           pressed && styles.btnPressed,
+          pressed && accent
+            ? { borderColor: accent.color, backgroundColor: accent.background }
+            : null,
           current <= min && styles.btnDisabled,
         ]}
         accessibilityLabel={`Decrease ${accessibilityLabel}`}
       >
-        <Text style={styles.btnText}>−</Text>
+        <Text style={[styles.btnText, accent ? { color: accent.color } : null]}>
+          −
+        </Text>
       </Pressable>
       <TextInput
         value={text}
@@ -86,7 +101,13 @@ export function RoundStepper({
         onSubmitEditing={() => commit(text)}
         keyboardType="number-pad"
         selectTextOnFocus
-        style={styles.input}
+        style={[
+          styles.input,
+          compact && styles.inputCompact,
+          accent
+            ? { borderColor: accent.border, color: accent.color }
+            : null,
+        ]}
         accessibilityLabel={accessibilityLabel}
       />
       <Pressable
@@ -94,12 +115,19 @@ export function RoundStepper({
         disabled={current >= max}
         style={({ pressed }) => [
           styles.btn,
+          compact && styles.btnCompact,
+          accent ? { borderColor: accent.border } : null,
           pressed && styles.btnPressed,
+          pressed && accent
+            ? { borderColor: accent.color, backgroundColor: accent.background }
+            : null,
           current >= max && styles.btnDisabled,
         ]}
         accessibilityLabel={`Increase ${accessibilityLabel}`}
       >
-        <Text style={styles.btnText}>+</Text>
+        <Text style={[styles.btnText, accent ? { color: accent.color } : null]}>
+          +
+        </Text>
       </Pressable>
     </View>
   );
@@ -125,6 +153,10 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     backgroundColor: colors.amberGlow,
   },
+  btnCompact: {
+    width: 32,
+    height: 32,
+  },
   btnDisabled: {
     opacity: 0.4,
   },
@@ -144,5 +176,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.sm,
+  },
+  inputCompact: {
+    width: 46,
+    paddingVertical: 6,
+    fontSize: 14,
   },
 });

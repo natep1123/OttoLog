@@ -8,6 +8,11 @@ type Props = {
   onPress: () => void;
   /** Smaller chip for set-row per-side control */
   size?: 'default' | 'compact';
+  accent?: {
+    color: string;
+    border: string;
+    background: string;
+  };
 };
 
 /**
@@ -20,6 +25,7 @@ export function ToggleChip({
   active,
   onPress,
   size = 'default',
+  accent,
 }: Props) {
   const compact = size === 'compact';
 
@@ -32,11 +38,37 @@ export function ToggleChip({
         styles.base,
         compact && styles.baseCompact,
         !active && styles.off,
+        !active && accent ? { borderColor: accent.border } : null,
         !active && pressed && styles.offPressed,
+        !active && pressed && accent
+          ? { backgroundColor: accent.background }
+          : null,
         active && styles.onWrap,
       ]}
     >
-      {active ? (
+      {active && accent ? (
+        <View
+          style={[
+            styles.gradient,
+            compact && styles.gradientCompact,
+            {
+              backgroundColor: accent.background,
+              borderWidth: 1,
+              borderColor: accent.border,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.labelOn,
+              compact && styles.labelCompact,
+              { color: accent.color },
+            ]}
+          >
+            {label}
+          </Text>
+        </View>
+      ) : active ? (
         <LinearGradient
           colors={[colors.sunrise, colors.gold]}
           start={{ x: 0, y: 0 }}

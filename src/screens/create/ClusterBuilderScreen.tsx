@@ -174,11 +174,7 @@ export function ClusterBuilderScreen({
           onBrandPress={onBrandPress}
         />
 
-        <ClusterEditor
-          value={draft}
-          onChange={setDraft}
-          coordMeta="Cluster"
-        />
+        <ClusterEditor value={draft} onChange={setDraft} />
 
         <View style={styles.footer}>
           {error ? <Text style={styles.error}>{error}</Text> : null}

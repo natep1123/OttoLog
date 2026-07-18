@@ -29,12 +29,11 @@ import type {
   ExerciseTemplateInput,
 } from '../../types/exerciseTemplate';
 import { colors, radii, typography } from '../../theme/tokens';
-import { CoordRow } from './CoordRow';
 import { ExerciseNameSearch } from './ExerciseNameSearch';
 import { FormSelect } from './FormSelect';
 import { IconButton } from './IconButton';
 import { MorePanel } from './MorePanel';
-import { NodeShell } from './NodeShell';
+import { NestedLayer } from './NestedLayer';
 import { SearchableSelect } from './SearchableSelect';
 import { TargetsGrid } from './TargetsGrid';
 import { TimePartsInput } from './TimePartsInput';
@@ -43,18 +42,16 @@ import { ToggleChip } from './ToggleChip';
 type Props = {
   value: ExerciseTemplateInput;
   onChange: (next: ExerciseTemplateInput) => void;
-  /** Nesting context for future cluster/block hosts */
+  /** Nesting context for cluster/block hosts */
   nested?: boolean;
   /**
    * Cluster/block subitem: targets are per-round (or per-block) prescription,
    * not consecutive solo sets. Relabels Sets → Per round.
    */
   subitem?: boolean;
-  coord?: string | null;
-  coordMeta?: string;
-  onCoordPress?: () => void;
   onDelete?: () => void;
   showDelete?: boolean;
+  deleteLabel?: string;
   /** When search picks a library row — parent may load that template */
   onPickTemplate?: (template: ExerciseTemplateRow) => void;
 };
@@ -71,11 +68,9 @@ export function ExerciseEditor({
   onChange,
   nested = false,
   subitem = false,
-  coord = null,
-  coordMeta = 'Exercise',
-  onCoordPress,
   onDelete,
   showDelete = false,
+  deleteLabel,
   onPickTemplate,
 }: Props) {
   const { user } = useAuth();
@@ -161,37 +156,35 @@ export function ExerciseEditor({
   };
 
   return (
-    <NodeShell kind="exercise" nested={nested}>
-      <CoordRow
-        meta={coordMeta}
-        coord={coord}
-        onCoordPress={onCoordPress}
-        expanded={expanded}
-        onToggleExpand={() => setExpanded((e) => !e)}
-        title={
-          <ExerciseNameSearch
-            value={value.name}
-            onChangeText={(name) => patch({ name })}
-            onPickTemplate={onPickTemplate}
-            style={styles.titleField}
-            placeholder="Exercise name"
-            accessibilityLabel="Exercise name"
-          />
-        }
-        trailing={
-          <IconButton
-            kind="exercise"
-            active={moreOpen}
-            onPress={() => {
-              setExpanded(true);
-              setMoreOpen((o) => !o);
-            }}
-          />
-        }
-      />
-
-      {expanded ? (
-        <>
+    <NestedLayer
+      layer="exercise"
+      nested={nested}
+      expanded={expanded}
+      onExpandedChange={(next) => {
+        setExpanded(next);
+        if (!next) setMoreOpen(false);
+      }}
+      title={
+        <ExerciseNameSearch
+          value={value.name}
+          onChangeText={(name) => patch({ name })}
+          onPickTemplate={onPickTemplate}
+          style={styles.titleField}
+          placeholder="Exercise name"
+          accessibilityLabel="Exercise name"
+        />
+      }
+      trailing={({ expand }) => (
+        <IconButton
+          kind="exercise"
+          active={moreOpen}
+          onPress={() => {
+            expand();
+            setMoreOpen((o) => !o);
+          }}
+        />
+      )}
+    >
           <View style={styles.controlsRow}>
             <View style={styles.controlCol}>
               <Text style={styles.controlLabel}>Tool</Text>
@@ -371,7 +364,8 @@ export function ExerciseEditor({
                 ]}
               >
                 <Text style={styles.deleteText}>
-                  {subitem ? 'Remove from cluster' : 'Delete exercise'}
+                  {deleteLabel ??
+                    (subitem ? 'Remove from cluster' : 'Delete exercise')}
                 </Text>
               </Pressable>
             ) : null}
@@ -383,9 +377,7 @@ export function ExerciseEditor({
             trackAnalytics={value.track_analytics}
             onChangeTarget={onChangeTarget}
           />
-        </>
-      ) : null}
-    </NodeShell>
+    </NestedLayer>
   );
 }
 
@@ -448,15 +440,17 @@ const styles = StyleSheet.create({
     color: colors.textDim,
   },
   durationRow: {
+    width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-start',
     gap: 10,
+    // Always reserve the unit-label row so enabling duration moves nothing.
+    paddingTop: 14,
   },
   durationPicker: {
     position: 'relative',
-    // Room for HH/MM/SS floating above the time boxes only
-    paddingTop: 14,
   },
   durationUnitLabels: {
     position: 'absolute',
@@ -483,9 +477,12 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   analyticsBlock: {
+    width: '100%',
+    alignItems: 'center',
     gap: 10,
   },
   analyticsFields: {
+    alignSelf: 'stretch',
     gap: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
@@ -495,6 +492,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 154, 90, 0.04)',
   },
   field: {
+    width: '100%',
     gap: 6,
   },
   fieldLabel: {
@@ -526,7 +524,7 @@ const styles = StyleSheet.create({
     borderColor: colors.sunrise,
   },
   deleteBtn: {
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderWidth: 1,

@@ -99,7 +99,7 @@ export function LibraryBlocksScreen({
             </Text>
           ) : null}
           {filteredRows.map((row) => {
-            const clusterCount = row.content.items?.length ?? 0;
+            const itemCount = row.content.items?.length ?? 0;
             return (
               <Pressable
                 key={row.id}
@@ -111,8 +111,7 @@ export function LibraryBlocksScreen({
               >
                 <Text style={styles.itemTitle}>{row.name}</Text>
                 <Text style={styles.itemMeta}>
-                  {clusterCount}{' '}
-                  {clusterCount === 1 ? 'cluster' : 'clusters'}
+                  {itemCount} {itemCount === 1 ? 'item' : 'items'}
                 </Text>
               </Pressable>
             );

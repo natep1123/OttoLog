@@ -10,6 +10,11 @@ type Props = {
   onChange: (id: string) => void;
   /** Keep chips on one row (no wrap). Use for short enums like Type. */
   singleLine?: boolean;
+  accent?: {
+    color: string;
+    border: string;
+    background: string;
+  };
 };
 
 /** Compact single-select chips for enums (target shape, units, etc.). */
@@ -19,6 +24,7 @@ export function ChoiceChips({
   value,
   onChange,
   singleLine,
+  accent,
 }: Props) {
   return (
     <View style={styles.wrap}>
@@ -34,10 +40,20 @@ export function ChoiceChips({
                 styles.chip,
                 singleLine && styles.chipSingle,
                 selected && styles.chipSelected,
+                selected && accent
+                  ? {
+                      borderColor: accent.border,
+                      backgroundColor: accent.background,
+                    }
+                  : null,
               ]}
             >
               <Text
-                style={[styles.chipText, selected && styles.chipTextSelected]}
+                style={[
+                  styles.chipText,
+                  selected && styles.chipTextSelected,
+                  selected && accent ? { color: accent.color } : null,
+                ]}
                 numberOfLines={1}
               >
                 {opt.label}

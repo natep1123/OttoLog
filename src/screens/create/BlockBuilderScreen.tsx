@@ -152,12 +152,12 @@ export function BlockBuilderScreen({
       >
         <ScreenHeader
           title={savedId ? 'Edit block' : 'Block'}
-          subtitle="Ordered clusters for one section of a session."
+          subtitle="Ordered exercises and clusters for one session section."
           onBack={onBack}
           onBrandPress={onBrandPress}
         />
 
-        <BlockEditor value={draft} onChange={setDraft} coordMeta="Block" />
+        <BlockEditor value={draft} onChange={setDraft} />
 
         <View style={styles.footer}>
           {error ? <Text style={styles.error}>{error}</Text> : null}

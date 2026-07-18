@@ -82,6 +82,30 @@ export function defaultClusterDraft(): ClusterTemplateInput {
   };
 }
 
+/** Copy a library cluster into an editable draft (does not change save identity). */
+export function clusterTemplateToDraft(
+  row: ClusterTemplateRow,
+): ClusterTemplateInput {
+  const content = row.content;
+  return {
+    name: row.name,
+    cluster_type: row.cluster_type,
+    notes: content.notes,
+    track_duration: content.track_duration,
+    duration: content.duration,
+    rounds: content.rounds,
+    items: content.items.map((item) => ({
+      ...item,
+      analytics_tag_ids: [...(item.analytics_tag_ids ?? [])],
+      targets: item.targets.map((t) => ({ ...t })),
+    })),
+    overrides: (content.overrides ?? []).map((o) => ({
+      ...o,
+      patch: { ...o.patch },
+    })),
+  };
+}
+
 function normalizePatch(raw: unknown): ClusterOverridePatch {
   if (!raw || typeof raw !== 'object') return {};
   const p = raw as Record<string, unknown>;

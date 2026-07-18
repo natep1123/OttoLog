@@ -53,9 +53,9 @@ Bottom nav hides on Session / Block / Cluster / Exercise builders (Create or Lib
 |------|------|
 | `supabase.ts` | Supabase client |
 | `exerciseTemplates.ts` | List, get, save, delete exercise templates; default draft |
-| `clusterTemplates.ts` | List, get, save, archive / hard-delete; rounds + overrides; `expandClusterRounds` for future denest |
-| `blockTemplates.ts` | List, get, save, archive / hard-delete; nested cluster items |
-| `sessionTemplates.ts` | List, get, save, archive / hard-delete; nested blocks; default Uncategorized |
+| `clusterTemplates.ts` | List, get, save, archive / hard-delete; rounds + overrides; `clusterTemplateToDraft`; `expandClusterRounds` for future denest |
+| `blockTemplates.ts` | List, get, save, archive / hard-delete; mixed exercise/cluster items; `blockTemplateToDraft` |
+| `sessionTemplates.ts` | List, get, save, archive / hard-delete; nested blocks; `sessionTemplateToDraft`; default Uncategorized |
 | `taxonomy.ts` | Picker lists and Account taxonomy CRUD |
 | `localTime.ts` | Local greeting and week strip (`dayjs`) |
 
@@ -63,7 +63,7 @@ Bottom nav hides on Session / Block / Cluster / Exercise builders (Create or Lib
 
 Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `ConfirmDialog`, `ListSearchBar`, `BottomNav`, `BrandWordmark`.
 
-**`components/forms/`**: Nestable editors — `SessionEditor` → `BlockEditor` → `ClusterEditor` → `ExerciseEditor`, plus `MorePanel`, `Disclosure`, `ClusterSequenceDiagram`, `CoordRow`, `NodeShell`, etc.
+**`components/forms/`**: Nestable editors — `SessionEditor` → `BlockEditor` → `ClusterEditor` → `ExerciseEditor`, plus `NestedLayer`, `TemplateNameSearch` / `ExerciseNameSearch`, `MorePanel`, `Disclosure`, `ClusterSequenceDiagram`, `CoordRow`, etc.
 
 ### `src/screens/`
 
@@ -83,7 +83,7 @@ Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `Co
 - **`targetShapeFields.ts`**: Which columns each shape shows in the targets grid
 - **`types/exerciseTemplate.ts`**: Exercise template row and editor input types
 - **`types/clusterTemplate.ts`**: Cluster template row, content blob, and editor input types
-- **`types/blockTemplate.ts`**: Block template row and nested cluster items
+- **`types/blockTemplate.ts`**: Block template row and mixed exercise/cluster items
 - **`types/sessionTemplate.ts`**: Session template row and nested blocks
 
 ## Data flow (templates)
@@ -98,11 +98,11 @@ ClusterBuilderScreen
   → saveClusterTemplate() → cluster_templates (content jsonb)
 
 BlockBuilderScreen
-  → BlockEditor → nested ClusterEditor leaves
+  → BlockEditor → nested ExerciseEditor and/or ClusterEditor items
   → saveBlockTemplate() → block_templates (content jsonb)
 
 SessionBuilderScreen
-  → SessionEditor → nested BlockEditor → ClusterEditor leaves
+  → SessionEditor → nested BlockEditor → mixed Block items
   → saveSessionTemplate() → session_templates (content jsonb)
 
 Library* screens / HomeDashboardScreen
@@ -114,4 +114,4 @@ Account TaxonomyListScreen
 
 ## Forms layer accents
 
-See `formTokens.ts` / `docs/Styling.md`. Session → Block → Cluster → Exercise each own a background + accent rail used by `NodeShell`, `IconButton`, and `MorePanel`.
+See `formTokens.ts` / `docs/Styling.md`. Session → Block → Cluster → Exercise each own a background + accent rail used by `NestedLayer`, `IconButton`, and `MorePanel`. Name fields use `TemplateNameSearch` (Exercise wraps it) to copy library templates into the current draft without changing save identity.

@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
-import { colors, radii, typography } from '../../theme/tokens';
-import { FormNodeKind, moreAccents } from './formTokens';
+import { layer, radii, typography } from '../../theme/tokens';
+import { FormNodeKind } from './formTokens';
 
 type Props = {
   label?: string;
@@ -19,7 +19,7 @@ export function IconButton({
   accessibilityLabel = 'More options',
   kind = 'exercise',
 }: Props) {
-  const accent = moreAccents[kind];
+  const token = layer[kind];
 
   return (
     <Pressable
@@ -28,19 +28,16 @@ export function IconButton({
       accessibilityLabel={accessibilityLabel}
       style={({ pressed }) => [
         styles.btn,
-        (pressed || active) && { backgroundColor: accent.iconActiveBg },
+        {
+          borderColor: token.chip.color,
+          backgroundColor: active ? token.chip.background : token.bg,
+        },
+        pressed && styles.btnPressed,
       ]}
     >
-      {({ pressed }) => (
-        <Text
-          style={[
-            styles.text,
-            (pressed || active) && { color: accent.iconActive },
-          ]}
-        >
-          {label}
-        </Text>
-      )}
+      <Text style={[styles.text, { color: token.chip.color }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -51,12 +48,16 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
     borderRadius: radii.sm,
+  },
+  btnPressed: {
+    opacity: 0.75,
   },
   text: {
     fontFamily: typography.fontMedium,
     fontSize: 18,
     lineHeight: 20,
-    color: colors.textDim,
   },
 });

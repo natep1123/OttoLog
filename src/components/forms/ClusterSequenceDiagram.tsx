@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import Svg, { Line, Path, Rect } from 'react-native-svg';
-import { colors, radii, typography } from '../../theme/tokens';
+import { colors, layer, radii, typography } from '../../theme/tokens';
 
 type Item = { id: string; name: string };
 
@@ -23,8 +23,7 @@ const LOOP_BOTTOM = 20;
 /** Room for the inbound loop arrow into the first chip. */
 const LEFT_PAD = 28;
 /**
- * Chart palette — mixed theme accents so it reads as a schematic, not form chrome.
- * Gold paths; shared warm chip treatment for every node.
+ * Cluster-purple blueprint grid; gold paths and chips remain unchanged.
  */
 const STROKE = colors.gold;
 const STROKE_W = 1.75;
@@ -33,9 +32,9 @@ const PANEL_PAD_X = 4;
 const PANEL_PAD_Y = 10;
 const GRID_STEP = 12;
 const GRID_MAJOR_EVERY = 4;
-const GRID_MINOR = 'rgba(255, 180, 120, 0.05)';
-const GRID_MAJOR = 'rgba(232, 184, 109, 0.14)';
-const PANEL_BORDER = colors.borderStrong;
+const GRID_MINOR = layer.cluster.border;
+const GRID_MAJOR = layer.cluster.chip.background;
+const PANEL_BORDER = layer.cluster.border;
 
 /** Blueprint-style major/minor grid behind the flowchart. */
 function GraphGrid({ width, height }: { width: number; height: number }) {
@@ -78,7 +77,7 @@ function GraphGrid({ width, height }: { width: number; height: number }) {
 
   return (
     <>
-      <Rect x={0} y={0} width={w} height={h} fill={colors.bgInset} />
+      <Rect x={0} y={0} width={w} height={h} fill={layer.cluster.bg} />
       {vertical}
       {horizontal}
     </>
@@ -394,7 +393,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: PANEL_BORDER,
     borderRadius: radii.sm,
-    backgroundColor: colors.bgInset,
+    backgroundColor: layer.cluster.bg,
     overflow: 'hidden',
   },
   /** Absolute wrapper so react-native-svg cannot expand the panel. */
