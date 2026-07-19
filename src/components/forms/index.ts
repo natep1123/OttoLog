@@ -24,5 +24,6 @@ export {
   useExpansionController,
 } from './ExpansionController';
 export { EditorChrome, EditorTools } from './EditorTools';
+export { FormArrow } from './FormArrow';
 export { formRadii } from './formTokens';
 export type { FormNodeKind } from './formTokens';

@@ -47,9 +47,10 @@ sql/009_block_templates.sql
 sql/010_session_templates.sql
 sql/011_layer_labels.sql
 sql/012_standard_sequence_label.sql
+sql/013_kind_system_null_labels.sql
 ```
 
-After `004`, **No Tool** and **Uncategorized** exist once for the whole project (fixed UUIDs). Signup does not create copies per user. Session templates require Uncategorized (`010` depends on `004`).
+After `004`, **No Tool** and the Session system-null label exist once for the whole project (fixed UUIDs). Signup does not create copies per user. Session templates require the Session sentinel (`010` depends on `004`; rename in `013`).
 
 **Auth vs profile:** credentials in `auth.users`; profile `username` in `public.users` where `id = auth.uid()`.
 

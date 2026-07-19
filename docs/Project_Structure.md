@@ -8,7 +8,7 @@ Where code lives and how the signed-in app is organized.
 ottolog-app/
 ├── App.tsx                 Entry: fonts, splash, auth gate, then HomeScreen or auth stack
 ├── index.ts                Expo registerRootComponent
-├── sql/                    Supabase migrations (001 through 012), run in order
+├── sql/                    Supabase migrations (001 through 013), run in order
 ├── docs/                   Official project docs (this folder)
 │   ├── Database_Outline.md
 │   ├── Project_Structure.md
@@ -57,10 +57,10 @@ Bottom nav hides on Session / Block / Sequence / Exercise builders (Create or Li
 | `exerciseTemplates.ts` | List, get, save, delete exercise templates; default draft |
 | `clusterTemplates.ts` | Sequence persistence (legacy internal name): list, get, save, archive / hard-delete; rounds + overrides; `clusterTemplateToDraft`; `expandClusterRounds` for future denest |
 | `blockTemplates.ts` | List, get, save, archive / hard-delete; mixed exercise/sequence items; `blockTemplateToDraft` |
-| `sessionTemplates.ts` | List, get, save, archive / hard-delete; nested blocks; `sessionTemplateToDraft`; default Uncategorized |
+| `sessionTemplates.ts` | List, get, save, archive / hard-delete; nested blocks; `sessionTemplateToDraft`; default Session label |
 | `taxonomy.ts` | Picker lists and Account taxonomy CRUD (tools, analytics, session/block/sequence labels) |
 | `localTime.ts` | Local greeting and week strip (`dayjs`) |
-| `displayTitles.ts` | Resolved titles from label/tool + optional Name/Brief |
+| `displayTitles.ts` | Resolved titles: custom Name/Brief as typed, else bare kind (Session/Block/Sequence/Exercise) |
 | `targetSummaries.ts` | Compress/expand set groups; coach-shorthand summaries for all layers |
 
 ### `src/components/`
@@ -82,7 +82,7 @@ Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `Co
 
 ### `src/constants/` and `src/types/`
 
-- **`sentinelIds.ts`**: `NO_TOOL_ID`, `UNCATEGORIZED_ID`, `GENERAL_BLOCK_LABEL_ID`, `CLUSTER_LABEL_NULL_ID` (must match `sql/004` / `sql/011`)
+- **`sentinelIds.ts`**: `NO_TOOL_ID`, `UNCATEGORIZED_ID` (Session), `GENERAL_BLOCK_LABEL_ID` (Block), `CLUSTER_LABEL_NULL_ID` (Sequence) — must match `sql/004` / `sql/011` / `sql/013`
 - **`lockedAtoms.ts`**: Target shape UUIDs from `sql/003`
 - **`targetShapeFields.ts`**: Which columns each shape shows in the targets grid
 - **`types/exerciseTemplate.ts`**: Exercise template row and editor input types
@@ -118,4 +118,4 @@ Account TaxonomyListScreen
 
 ## Forms layer accents
 
-See `formTokens.ts` / `docs/Styling.md`. Session → Block → Sequence → Exercise each own a background + accent rail used by `NestedLayer`, `IconButton`, and `MorePanel`. Session/Block/Sequence headers are label-first; Name/Brief and a `⌕` search shortcut live in the More panel; Exercise keeps its inline name search. Cards show scrollable summary chips from `targetSummaries.ts`, colored by the layer each pill describes with host-colored arrows between them.
+See `formTokens.ts` / `docs/Styling.md`. Session → Block → Sequence → Exercise each own a background + accent rail used by `NestedLayer`, `IconButton`, and `MorePanel`. Session/Block/Sequence headers are label-first; Name/Brief and a `⌕` search shortcut live in the More panel; Exercise keeps its inline name search. Cards show scrollable summary chips from `targetSummaries.ts`, colored by the layer each pill describes with host-colored arrows between them. Resolved titles are custom Name/Brief as typed, else the bare kind word.

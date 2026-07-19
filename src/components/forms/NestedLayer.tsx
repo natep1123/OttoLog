@@ -102,7 +102,8 @@ export function NestedLayer({
           borderColor: token.border,
           borderRadius: radius,
           paddingHorizontal: nodePaddingX,
-          paddingVertical: 12,
+          paddingTop: 10,
+          paddingBottom: 10,
         },
         style,
       ]}

@@ -46,7 +46,7 @@ export function defaultBlockDraft(): BlockTemplateInput {
   return {
     name: '',
     label_id: GENERAL_BLOCK_LABEL_ID,
-    label_name: 'General',
+    label_name: 'Block',
     notes: null,
     track_duration: false,
     duration: null,
@@ -103,9 +103,10 @@ export function normalizeClusterItem(raw: unknown): BlockClusterItem {
   const labelName =
     labelId === CLUSTER_LABEL_NULL_ID &&
     (!storedLabel ||
-      storedLabel.trim().toLowerCase() === 'cluster' ||
-      storedLabel.trim().toLowerCase() === 'untyped cluster')
-      ? 'Standard'
+      ['cluster', 'untyped cluster', 'standard', 'sequence'].includes(
+        storedLabel.trim().toLowerCase(),
+      ))
+      ? 'Sequence'
       : storedLabel;
   const draft: ClusterTemplateInput = {
     name: typeof r.name === 'string' ? r.name : '',

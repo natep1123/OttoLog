@@ -118,7 +118,7 @@ export function LibraryClustersScreen({
               <ListCard
                 key={row.id}
                 title={titleOf(row, index)}
-                meta={`${row.label_name ?? 'Standard'} · ${rounds} ${
+                meta={`${row.label_name ?? 'Sequence'} · ${rounds} ${
                   rounds === 1 ? 'round' : 'rounds'
                 } · ${exerciseCount} ${
                   exerciseCount === 1 ? 'exercise' : 'exercises'

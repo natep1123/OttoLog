@@ -60,7 +60,8 @@ Applied migrations:
 - `sql/009_block_templates.sql`
 - `sql/010_session_templates.sql`
 - `sql/011_layer_labels.sql` — block/sequence labels, nullable names, seed RPC
-- `sql/012_standard_sequence_label.sql` — rename the sequence system-null row and keep editable defaults stable
+- `sql/012_standard_sequence_label.sql` — sequence system-null rename (superseded display word by 013)
+- `sql/013_kind_system_null_labels.sql` — system nulls → Session / Block / Sequence
 
 ---
 
@@ -76,8 +77,8 @@ OttoLog is an infinite workout canvas:
 **Structural defaults are global sentinels, not per-user copies:**
 
 1. **No Tool**: one global row in `tools`
-2. **Uncategorized**: one global row in `session_categories`
-2b. **General** / **Standard**: global null rows in `block_labels` / `cluster_labels`
+2. **Session**: one global row in `session_categories` (system null label)
+2b. **Block** / **Sequence**: global null rows in `block_labels` / `cluster_labels`
 
 They are null-buckets (so FKs never need to be null), immutable, and shared by every account. They are **not** seeded on signup.
 
@@ -134,7 +135,7 @@ tools
 session_categories
   id              uuid PK   -- FIXED known UUID for Uncategorized
   user_id         uuid NULL
-  name            text      -- 'Uncategorized'
+  name            text      -- 'Session' (system null label word)
   is_system_default boolean
   archived_at     timestamptz NULL
 ```
@@ -144,9 +145,9 @@ Fixed UUIDs (locked; must match `sql/003_locked_atoms.sql`, `sql/004_taxonomy.sq
 | Constant | UUID | Row |
 |----------|------|-----|
 | `NO_TOOL_ID` | `40000000-0000-4000-8000-000000000001` | tools → No Tool |
-| `UNCATEGORIZED_ID` | `40000000-0000-4000-8000-000000000002` | session_categories → Uncategorized |
-| `GENERAL_BLOCK_LABEL_ID` | `50000000-0000-4000-8000-000000000001` | block_labels → General |
-| `CLUSTER_LABEL_NULL_ID` | `60000000-0000-4000-8000-000000000001` | cluster_labels → Standard sequence |
+| `UNCATEGORIZED_ID` | `40000000-0000-4000-8000-000000000002` | session_categories → Session |
+| `GENERAL_BLOCK_LABEL_ID` | `50000000-0000-4000-8000-000000000001` | block_labels → Block |
+| `CLUSTER_LABEL_NULL_ID` | `60000000-0000-4000-8000-000000000001` | cluster_labels → Sequence |
 
 Locked-atom IDs are listed at the top of `sql/003_locked_atoms.sql` and in `src/constants/lockedAtoms.ts`.
 
@@ -313,7 +314,7 @@ Mixed ownership on tools / session categories; analytics tables are user-only.
 | Sentinel | Table | Rules |
 |----------|--------|-------|
 | **No Tool** | `tools` | Fixed UUID PK, `user_id IS NULL`, `is_system_default = true`. Exercises always have a non-null `tool_id`; unequipped work points here. UI may show “None”. |
-| **Uncategorized** | `session_categories` | Fixed UUID PK, `user_id IS NULL`, `is_system_default = true`. Sessions/templates always have a non-null `category_id`. |
+| **Session** (system null) | `session_categories` | Fixed UUID PK, `user_id IS NULL`, `is_system_default = true`. Sessions/templates always have a non-null `category_id`. Display name: **Session**. |
 
 Sentinels cannot be renamed, archived, or deleted. User taxonomy rows may be soft-archived (`archived_at`). Hard delete is restricted while referenced.
 
@@ -341,9 +342,9 @@ Personal library objects for Create → Build templates.
 | Table | Storage style | Notes |
 |-------|---------------|--------|
 | `exercise_templates` | Columns + `default_target_shape` jsonb | Presets. Always `tool_id` + `target_shape_id`. Optional `track_analytics` + `primary_group_id` (required iff tracking). Tags via `analytics_tag_links`, not a column on this table. `default_target_shape` holds the targets[] payload for that shape. Active names are unique per user (case-insensitive), enforced app-side and by a partial unique index (`sql/007`). |
-| `cluster_templates` | Columns + `content` jsonb | Standalone Sequence blob (internal legacy table name). Mandatory `label_id` → `cluster_labels` (system null **Standard**). Optional `name` (Name/Brief). Legacy `cluster_type` kept for dual-write. `content` holds `{ rounds, notes, track_duration, duration, items[], overrides[] }`. Nested items are per-round prescriptions. Active **nonblank** names unique per user. Soft-archive preferred. |
-| `block_templates` | Columns + `content` jsonb | Mandatory `label_id` → `block_labels` (system null **General**). Optional `name`. `content` holds mixed exercise/sequence items (`kind = 'cluster'` internally). Active **nonblank** names unique per user. Soft-archive preferred. |
-| `session_templates` | `content` jsonb + `category_id` | Full session tree. `category_id` is the session **label** (never null; default Uncategorized). Optional `name` (Name/Brief). `content` holds `{ notes, track_duration, duration, blocks[] }`. Active **nonblank** names unique per user. Soft-archive preferred. |
+| `cluster_templates` | Columns + `content` jsonb | Standalone Sequence blob (internal legacy table name). Mandatory `label_id` → `cluster_labels` (system null **Sequence**). Optional `name` (Name/Brief). Legacy `cluster_type` kept for dual-write. `content` holds `{ rounds, notes, track_duration, duration, items[], overrides[] }`. Nested items are per-round prescriptions. Active **nonblank** names unique per user. Soft-archive preferred. |
+| `block_templates` | Columns + `content` jsonb | Mandatory `label_id` → `block_labels` (system null **Block**). Optional `name`. `content` holds mixed exercise/sequence items (`kind = 'cluster'` internally). Active **nonblank** names unique per user. Soft-archive preferred. |
+| `session_templates` | `content` jsonb + `category_id` | Full session tree. `category_id` is the session **label** (never null; default Session). Optional `name` (Name/Brief). `content` holds `{ notes, track_duration, duration, blocks[] }`. Active **nonblank** names unique per user. Soft-archive preferred. |
 
 ### Independence rule (v1)
 
@@ -477,7 +478,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 - Extra load units (`% 1RM`, etc.) or cluster types beyond `superset` / `circuit`
 - Soft propagation between template layers
 - Log-instance tag join tables beyond template defaults (revisit later)
-- Per-user copies of system nulls (No Tool / Uncategorized / General / Standard) — rejected; see Global Sentinels. Editable **seeded defaults** (Strength, Warmup, Superset, Circuit, …) are ordinary user-owned rows via `ensure_default_template_labels()`.
+- Per-user copies of system nulls (No Tool / Session / Block / Sequence) — rejected; see Global Sentinels. Editable **seeded defaults** (Strength, Warmup, Superset, Circuit, …) are ordinary user-owned rows via `ensure_default_template_labels()`.
 
 ---
 

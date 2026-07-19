@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import { colors, layer as layerTokens, radii, typography } from '../../theme/tokens';
+import { FormArrow } from './FormArrow';
 import {
   FormNodeKind,
   formChevron,
@@ -32,10 +33,13 @@ type Props = {
   label?: ReactNode;
   /**
    * Line 2 Name/Brief editor when expanded *and* `brief` is provided.
-   * When name/brief lives in More, omit `brief` so this band only appears collapsed.
+   * When name/brief lives in More, omit `brief` so this band is unused.
    */
   brief?: ReactNode;
-  /** Resolved title shown on line 2 when collapsed. */
+  /**
+   * @deprecated Collapsed resolved titles are no longer shown under the label.
+   * Kept optional for call-site compatibility.
+   */
   collapsedBrief?: string | null;
   /** Exercise (and legacy) single-line title — used when `label` is omitted. */
   title?: ReactNode;
@@ -47,7 +51,7 @@ type Props = {
 /**
  * Card header bands:
  * 1. chevron · label|title · trailing
- * 2. Name/Brief (editable, if provided) or collapsed resolved title
+ * 2. Name/Brief editor only when an expanded `brief` node is passed
  * 3. scrollable chips
  */
 export function CoordRow({
@@ -56,7 +60,6 @@ export function CoordRow({
   metaChips,
   label,
   brief,
-  collapsedBrief,
   title,
   trailing,
   expanded,
@@ -66,7 +69,7 @@ export function CoordRow({
   const chips = (metaChips?.length ? metaChips : meta ? [meta] : []).map(
     (chip) => (typeof chip === 'string' ? { label: chip, kind: layer } : chip),
   );
-  if (!hasLine1 && !brief && !collapsedBrief && !chips.length) return null;
+  if (!hasLine1 && !brief && !chips.length) return null;
 
   const collapsible = typeof onToggleExpand === 'function';
   const isExpanded = expanded !== false;
@@ -83,12 +86,9 @@ export function CoordRow({
           background: layerTokens[kind].chip.background,
           color: layerTokens[kind].chip.color,
         };
-  // Expanded brief band only when an editor is passed; otherwise show
-  // the resolved title solely while collapsed (name lives in More).
-  const showBriefBand =
-    Boolean(label) &&
-    ((isExpanded && Boolean(brief)) ||
-      (!isExpanded && Boolean(collapsedBrief)));
+  // Name/Brief lives in More for Session/Block/Sequence; only show this band
+  // when a caller still passes an expanded brief editor.
+  const showBriefBand = Boolean(label) && isExpanded && Boolean(brief);
 
   return (
     <View style={styles.stack}>
@@ -133,15 +133,7 @@ export function CoordRow({
       {showBriefBand ? (
         <View style={styles.briefRow}>
           <View style={styles.toggleSpacer} />
-          <View style={styles.brief}>
-            {isExpanded && brief ? (
-              brief
-            ) : (
-              <Text style={styles.collapsedBrief} numberOfLines={1}>
-                {collapsedBrief || ' '}
-              </Text>
-            )}
-          </View>
+          <View style={styles.brief}>{brief}</View>
           {trailing ? <View style={styles.trailingSpacer} /> : null}
         </View>
       ) : null}
@@ -162,14 +154,9 @@ export function CoordRow({
               return (
                 <Fragment key={`${chip.label}-${index}`}>
                   {index > 0 ? (
-                    <Text
-                      style={[styles.chipArrow, { color: token.chip.color }]}
-                      accessible={false}
-                      accessibilityElementsHidden
-                      importantForAccessibility="no"
-                    >
-                      →
-                    </Text>
+                    <View style={styles.chipArrow}>
+                      <FormArrow color={token.chip.color} width={20} height={12} />
+                    </View>
                   ) : null}
                   <View
                     style={[
@@ -209,14 +196,9 @@ export function CoordRow({
               return (
                 <Fragment key={`${chip.label}-${index}`}>
                   {index > 0 ? (
-                    <Text
-                      style={[styles.chipArrow, { color: token.chip.color }]}
-                      accessible={false}
-                      accessibilityElementsHidden
-                      importantForAccessibility="no"
-                    >
-                      →
-                    </Text>
+                    <View style={styles.chipArrow}>
+                      <FormArrow color={token.chip.color} width={20} height={12} />
+                    </View>
                   ) : null}
                   <View
                     style={[
@@ -247,7 +229,7 @@ export function CoordRow({
 const styles = StyleSheet.create({
   stack: {
     gap: 6,
-    paddingBottom: 8,
+    paddingBottom: 4,
     zIndex: 30,
   },
   row: {
@@ -267,6 +249,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginTop: 0,
   },
   toggle: {
     width: layerHeaderLeadingWidth,
@@ -303,13 +286,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  collapsedBrief: {
-    fontFamily: typography.font,
-    fontSize: 12,
-    lineHeight: 16,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
   chipViewport: {
     flex: 1,
     minWidth: 0,
@@ -319,7 +295,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
     paddingHorizontal: 2,
   },
   trailing: {
@@ -349,8 +325,8 @@ const styles = StyleSheet.create({
   },
   chipArrow: {
     alignSelf: 'center',
-    fontFamily: typography.fontMedium,
-    fontSize: 12,
-    lineHeight: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 20,
   },
 });

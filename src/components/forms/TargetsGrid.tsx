@@ -33,6 +33,7 @@ import {
 } from '../../theme/tokens';
 import { AnalyticsCheckbox } from './AnalyticsCheckbox';
 import { DecimalMetricInput } from './DecimalMetricInput';
+import { FormArrow } from './FormArrow';
 import { FormSelect } from './FormSelect';
 import { TimePartsInput } from './TimePartsInput';
 import { ToggleChip } from './ToggleChip';
@@ -457,8 +458,12 @@ export function TargetsGrid({
             accessibilityLabel={`Add sets to ${referenceTitle}`}
           >
             <View style={styles.addContent}>
-              <Text style={styles.addText}>+ Add sets</Text>
-              <Text style={styles.addArrow}>→</Text>
+              <Text style={styles.addText} numberOfLines={1}>
+                + Add sets
+              </Text>
+              <View style={styles.addArrowSlot}>
+                <FormArrow color={colors.textDim} />
+              </View>
               <Text style={styles.addReference} numberOfLines={1}>
                 {referenceTitle}
               </Text>
@@ -693,28 +698,25 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
   },
   addText: {
-    width: 104,
-    flexShrink: 0,
+    flex: 1,
+    minWidth: 0,
     fontFamily: typography.fontMedium,
     fontSize: 13,
     color: colors.sunrise,
     textAlign: 'left',
   },
-  addArrow: {
-    width: 16,
+  addArrowSlot: {
+    width: 28,
     flexShrink: 0,
-    fontFamily: typography.font,
-    fontSize: 13,
-    color: colors.textDim,
-    textAlign: 'center',
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addReference: {
-    minWidth: 0,
     flex: 1,
-    flexShrink: 1,
+    minWidth: 0,
     fontFamily: typography.fontMedium,
     fontSize: 13,
     color: colors.sunrise,

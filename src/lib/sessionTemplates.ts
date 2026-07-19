@@ -90,7 +90,7 @@ function normalizeBlockItem(raw: unknown): SessionBlockItem {
     name: typeof r.name === 'string' ? r.name : '',
     label_id:
       typeof r.label_id === 'string' ? r.label_id : GENERAL_BLOCK_LABEL_ID,
-    label_name: typeof r.label_name === 'string' ? r.label_name : 'General',
+    label_name: typeof r.label_name === 'string' ? r.label_name : 'Block',
     notes: typeof r.notes === 'string' ? r.notes : null,
     track_duration: Boolean(r.track_duration),
     duration:

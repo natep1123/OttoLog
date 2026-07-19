@@ -17,7 +17,7 @@ export function ExerciseNameSearch({
   value,
   onChangeText,
   onPickTemplate,
-  placeholder = 'Exercise name',
+  placeholder = 'Search library or type a name…',
   ...rest
 }: Props) {
   return (

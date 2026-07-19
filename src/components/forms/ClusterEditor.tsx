@@ -69,6 +69,7 @@ import {
 import { TimePartsInput } from './TimePartsInput';
 import { ToggleChip } from './ToggleChip';
 import { clusterItemsLayout } from './formTokens';
+import { FormArrow } from './FormArrow';
 const overrideControlAccent = {
   color: overrideTheme.color,
   border: overrideTheme.border,
@@ -1236,8 +1237,12 @@ export function ClusterEditor({
             ]}
           >
             <View style={styles.addOverrideContent}>
-              <Text style={styles.addOverrideText}>+ Add override</Text>
-              <Text style={styles.addOverrideArrow}>→</Text>
+              <Text style={styles.addOverrideText} numberOfLines={1}>
+                + Add override
+              </Text>
+              <View style={styles.addOverrideArrowSlot}>
+                <FormArrow color={colors.textDim} />
+              </View>
               <Text
                 style={styles.addOverrideReference}
                 numberOfLines={1}
@@ -1657,28 +1662,25 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
   },
   addOverrideText: {
-    width: 104,
-    flexShrink: 0,
+    flex: 1,
+    minWidth: 0,
     fontFamily: typography.fontMedium,
     fontSize: 13,
     color: overrideTheme.color,
     textAlign: 'left',
   },
-  addOverrideArrow: {
-    width: 16,
+  addOverrideArrowSlot: {
+    width: 28,
     flexShrink: 0,
-    fontFamily: typography.font,
-    fontSize: 13,
-    color: colors.textDim,
-    textAlign: 'center',
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addOverrideReference: {
-    minWidth: 0,
     flex: 1,
-    flexShrink: 1,
+    minWidth: 0,
     fontFamily: typography.fontMedium,
     fontSize: 13,
     color: overrideTheme.color,

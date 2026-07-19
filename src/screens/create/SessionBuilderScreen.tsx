@@ -145,7 +145,7 @@ export function SessionBuilderScreen({
       >
         <ScreenHeader
           title={savedId ? 'Edit session' : 'Session'}
-          subtitle="Full day blueprint of blocks and sequences. Category defaults to Uncategorized."
+          subtitle="Full day blueprint of blocks and sequences. Label defaults to Session."
           onBack={onBack}
           onBrandPress={onBrandPress}
         />

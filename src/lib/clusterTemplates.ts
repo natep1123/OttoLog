@@ -78,7 +78,7 @@ export function defaultClusterDraft(): ClusterTemplateInput {
   return {
     name: '',
     label_id: CLUSTER_LABEL_NULL_ID,
-    label_name: 'Standard',
+    label_name: 'Sequence',
     cluster_type: 'superset',
     notes: null,
     track_duration: false,

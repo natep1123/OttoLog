@@ -15,7 +15,7 @@ Four tabs when signed in: **Home**, **Create**, **Library**, **Account**.
 | **Library** | Browse, search, edit session / block / sequence / exercise templates |
 | **Account** | Taxonomy (tools, primary groups, tags, labels); Settings with account delete |
 
-Also in place: auth, global **No Tool**, **Uncategorized**, **General**, and **Standard** sentinels, searchable taxonomy pickers in the exercise editor, unique active template names per user (per layer). Composition is Session → Block → Sequence → Exercise (JSON copy, no cross-template FKs). Sequences use rounds × per-round exercises with sparse overrides; soft archive preferred.
+Also in place: auth, global **No Tool**, and kind-named system null labels (**Session**, **Block**, **Sequence**), searchable taxonomy pickers in the exercise editor, unique active template names per user (per layer). Composition is Session → Block → Sequence → Exercise (JSON copy, no cross-template FKs). Sequences use rounds × per-round exercises with sparse overrides; soft archive preferred.
 
 **Next:** session logging and denest/renest.
 

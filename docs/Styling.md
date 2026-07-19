@@ -442,7 +442,7 @@ Sequences show a circuit-style diagram (chips left→right, wrap onto the
 next line, dashed return loop), per-round subitem editors, and an overrides list
 for round-range exceptions. Its blueprint grid uses the Sequence structural
 color; gold arrows and chips remain warm. Sequence labels replace the old
-non-searchable Type selector; Standard is the system default. A compact violet Map on/off
+non-searchable Type selector; **Sequence** is the system-null default. A compact violet Map on/off
 toggle shares the Exercises heading row with the ROUNDS box and mounts the diagram
 directly below it. Overrides continues to use a tight `Disclosure`.
 

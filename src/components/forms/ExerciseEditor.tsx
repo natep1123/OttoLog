@@ -200,7 +200,7 @@ export function ExerciseEditor({
           onChangeText={(name) => patch({ name })}
           onPickTemplate={onPickTemplate}
           style={styles.titleField}
-          placeholder="Exercise name"
+          placeholder="Search library or type a name…"
           accessibilityLabel="Exercise name"
         />
       }

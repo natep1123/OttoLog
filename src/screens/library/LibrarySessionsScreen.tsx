@@ -112,7 +112,7 @@ export function LibrarySessionsScreen({
               <ListCard
                 key={row.id}
                 title={titleOf(row)}
-                meta={`${row.label_name ?? 'Uncategorized'} · ${blockCount} ${
+                meta={`${row.label_name ?? 'Session'} · ${blockCount} ${
                   blockCount === 1 ? 'block' : 'blocks'
                 }`}
                 onPress={() => onOpenSession(row.id)}

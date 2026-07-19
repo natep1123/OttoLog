@@ -114,7 +114,7 @@ export function LibraryBlocksScreen({
               <ListCard
                 key={row.id}
                 title={titleOf(row, index)}
-                meta={`${row.label_name ?? 'General'} · ${itemCount} ${
+                meta={`${row.label_name ?? 'Block'} · ${itemCount} ${
                   itemCount === 1 ? 'item' : 'items'
                 }`}
                 onPress={() => onOpenBlock(row.id)}

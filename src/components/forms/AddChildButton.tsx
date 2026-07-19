@@ -7,6 +7,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { colors, radii, typography } from '../../theme/tokens';
+import { FormArrow } from './FormArrow';
 import { addLayerButtonColors, type FormNodeKind } from './formTokens';
 
 type Props = {
@@ -16,7 +17,11 @@ type Props = {
   style?: StyleProp<ViewStyle>;
 };
 
-/** Add action with explicit destination context for nested builders. */
+/**
+ * Add action with explicit destination context.
+ * Three equal bands: action (left) · arrow (center) · destination (left-aligned
+ * in the right band) so arrows stack vertically across sibling buttons.
+ */
 export function AddChildButton({
   childKind,
   parentTitle,
@@ -42,15 +47,14 @@ export function AddChildButton({
       accessibilityLabel={`Add ${childLabel} to ${parentTitle}`}
     >
       <View style={styles.content}>
-        <Text style={[styles.action, { color: token.label }]}>
+        <Text style={[styles.action, { color: token.label }]} numberOfLines={1}>
           + Add {childLabel}
         </Text>
-        <Text style={styles.arrow}>→</Text>
+        <View style={styles.arrowSlot}>
+          <FormArrow color={colors.textDim} />
+        </View>
         <Text
-          style={[
-            styles.destination,
-            { color: token.label, opacity: 0.62 },
-          ]}
+          style={[styles.destination, { color: token.label, opacity: 0.62 }]}
           numberOfLines={1}
         >
           {parentTitle}
@@ -75,27 +79,24 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
   },
   action: {
-    width: 104,
-    flexShrink: 0,
+    flex: 1,
+    minWidth: 0,
     fontFamily: typography.fontMedium,
     fontSize: 13,
     textAlign: 'left',
   },
-  arrow: {
-    width: 16,
+  arrowSlot: {
+    width: 28,
     flexShrink: 0,
-    fontFamily: typography.font,
-    fontSize: 13,
-    color: colors.textDim,
-    textAlign: 'center',
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   destination: {
-    minWidth: 0,
     flex: 1,
-    flexShrink: 1,
+    minWidth: 0,
     fontFamily: typography.fontMedium,
     fontSize: 13,
     textAlign: 'left',

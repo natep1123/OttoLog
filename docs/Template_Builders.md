@@ -32,11 +32,11 @@ stack vertically when a parent offers more than one child type.
 
 ## Defaults
 
-- New Exercise: one target row; name optional.
-- New Sequence: label system null **Standard**, one round, one exercise.
+- New Exercise: one target row; name optional (blank → referred to as **Exercise**).
+- New Sequence: label system null **Sequence**, one round, one exercise.
   **Superset** and **Circuit** are editable seeded defaults.
-- New Block: label **General**, one Exercise.
-- New Session: label **Uncategorized**, one Block containing one Exercise.
+- New Block: label **Block**, one Exercise.
+- New Session: label **Session**, one Block containing one Exercise.
 
 ## Shared card chrome
 
@@ -115,18 +115,14 @@ floats above card `elevation`.
 
 Session, Block, and Sequence have a **mandatory Label** (taxonomy) and an optional
 **Name/Brief**. Empty brief is stored as null. Display titles are resolved in
-`displayTitles.ts` and never overwrite a custom brief:
+`displayTitles.ts`:
 
-- Session template: `[Label] Session` (e.g. `Cardio Session`)
-- Block: `[Label] Block` (e.g. `Warmup Block`, `General Block`)
-- Sequence: `[Label] Sequence` (e.g. `Circuit Sequence`, `Standard Sequence`)
-- Exercise: name optional; blank → `[Tool] Exercise N` or bare `Exercise N` (N
-  resets per direct parent). No exercise label taxonomy; exempt from Label+Kind.
+- Custom Name/Brief wins **exactly as typed** (no auto-append of “Block” / “Sequence”).
+- Empty name → bare kind word: `Session`, `Block`, `Sequence`, or `Exercise`.
+- Labels do not compose into titles. Want “Warmup Block”? Type that into Name/Brief.
+- Exercise: blank name → always `Exercise` (no tool prefix, no order number).
 
-Parent chips list those resolved sibling titles. Custom Name/Brief still wins
-over the calculated Label+Kind signature when set.
-
-System null words: Uncategorized (session), General (block), Standard (sequence).
+System null label rows (fixed UUIDs): **Session**, **Block**, **Sequence**.
 Seeded user defaults (Strength/Cardio/…, Warmup/Workout/Cooldown, Superset/Circuit)
 are editable ordinary taxonomy rows via `ensure_default_template_labels()`.
 
@@ -244,7 +240,7 @@ built yet.
 - Exercise saves to columns plus `default_target_shape` jsonb plus
   `analytics_tag_links`. Sequence, Block, and Session save their tree into a
   `content` jsonb column. Session also stores `category_id`, defaulting to
-  Uncategorized.
+  Session (system null).
 - Removal prefers soft archive, which drops the template from library lists and
   frees the name. Hard delete is offered only when the template is not referenced.
   Sequence checks references; the other layers have no cross-template FKs in v1, so
@@ -259,5 +255,5 @@ propagate to templates that already copied it.
 ## Not built yet
 
 - Session logging and denest/renest into relational log tables (log titles use
-  `[Label] Session - [Weekday, Month D, YYYY]` with same-day `(session N)`).
+  owned name or `Session - [Weekday, Month D, YYYY]` with same-day `(session N)`).
 - Dropping legacy `cluster_templates.cluster_type` after full label cutover.
