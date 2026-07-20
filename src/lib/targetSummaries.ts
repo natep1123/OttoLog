@@ -19,9 +19,10 @@ import type {
 } from '../types/exerciseTemplate';
 import type { SessionTemplateInput } from '../types/sessionTemplate';
 import {
-  blockTitle,
-  clusterTitle,
+  blockUiTitle,
+  clusterUiTitle,
   exerciseTitle,
+  sessionUiTitle,
 } from './displayTitles';
 import { emptyTarget } from './exerciseTemplates';
 
@@ -374,26 +375,17 @@ function summarizeBlockItem(
 }
 
 /**
- * Block chips: immediate next layer only (sequence / exercise titles in order).
+ * Block chips: immediate next layer only (sequence labels / exercise names).
  * Example: Circuit · Pull-ups · Push-ups
  */
 export function summarizeBlockChips(
   draft: Pick<BlockTemplateInput, 'items'>,
 ): string[] {
   const chips: string[] = [];
-  let clusterIndex = 0;
   let exerciseIndex = 0;
   for (const item of draft.items ?? []) {
     if (item.kind === 'cluster') {
-      chips.push(
-        clusterTitle(
-          item.label_id,
-          item.label_name,
-          item.name,
-          clusterIndex,
-        ),
-      );
-      clusterIndex += 1;
+      chips.push(clusterUiTitle(item.label_name));
     } else {
       exerciseIndex += 1;
       chips.push(
@@ -444,8 +436,8 @@ export function summarizeSession(
   }
 
   const lines = blocks
-    .map((block, index) => {
-      const name = blockTitle(block.label_name, block.name, index + 1);
+    .map((block) => {
+      const name = blockUiTitle(block.label_name);
       const body = summarizeBlock(block);
       return body ? `${name}\n${body}` : name;
     })
@@ -453,13 +445,148 @@ export function summarizeSession(
   return lines.length ? lines.join('\n\n') : null;
 }
 
-/** Session chips: immediate next layer only (block titles). */
+/** Session chips: immediate next layer only (block labels). */
 export function summarizeSessionChips(
   draft: Pick<SessionTemplateInput, 'blocks'>,
 ): string[] {
-  return (draft.blocks ?? []).map((block, index) =>
-    blockTitle(block.label_name, block.name, index + 1),
+  return (draft.blocks ?? []).map((block) => blockUiTitle(block.label_name));
+}
+
+/** Structured coach-grammar outline for locked / view mode. */
+export type OutlineNode = {
+  title: string;
+  /** Secondary head line (e.g. `4 rounds`). */
+  meta?: string;
+  /** Leaf prescription / override one-liners. */
+  lines?: string[];
+  children?: OutlineNode[];
+  kind?: 'session' | 'block' | 'cluster' | 'exercise' | 'set';
+};
+
+/** Exercise outline: title + set-group grammar lines. */
+export function outlineExercise(
+  draft: Pick<
+    ExerciseTemplateInput,
+    'name' | 'target_shape_id' | 'default_target_shape'
+  > & { tool_id?: string | null; tool_name?: string | null },
+  options?: { orderIndex?: number },
+): OutlineNode {
+  const title = exerciseTitle(
+    draft.tool_id,
+    draft.tool_name,
+    draft.name,
+    (options?.orderIndex ?? 0) + 1,
   );
+  const groups = compressTargets(
+    draft.default_target_shape,
+    draft.target_shape_id,
+  );
+  const forceCount = groups.length > 1;
+  const lines = groups
+    .map((group) =>
+      formatTargetGroup(group, draft.target_shape_id, { forceCount }),
+    )
+    .filter((s): s is string => Boolean(s));
+  return {
+    title,
+    kind: 'exercise',
+    lines: lines.length ? lines : undefined,
+  };
+}
+
+/** Sequence outline: rounds meta, nested exercises, override one-liners. */
+export function outlineCluster(
+  draft: Pick<
+    ClusterTemplateInput,
+    'label_id' | 'label_name' | 'name' | 'rounds' | 'items' | 'overrides'
+  >,
+  options?: { orderIndex?: number },
+): OutlineNode {
+  const rounds = Math.max(1, draft.rounds || 1);
+  const overrides = draft.overrides ?? [];
+  const children = (draft.items ?? []).map((item, index) => {
+    const node = outlineExercise(
+      {
+        name: item.name,
+        tool_id: item.tool_id,
+        tool_name: item.tool_name,
+        target_shape_id: item.target_shape_id,
+        default_target_shape: item.targets,
+      },
+      { orderIndex: index },
+    );
+    const ownOverrides = overrides.filter((o) => o.exercise_id === item.id);
+    if (ownOverrides.length) {
+      const overrideLines = ownOverrides.map(formatOverrideChipBit);
+      return {
+        ...node,
+        lines: [...(node.lines ?? []), ...overrideLines],
+      };
+    }
+    return node;
+  });
+
+  return {
+    title: clusterUiTitle(draft.label_name),
+    kind: 'cluster',
+    meta: `${rounds} round${rounds === 1 ? '' : 's'}`,
+    children: children.length ? children : undefined,
+  };
+}
+
+/** Block outline: nested sequences and exercises. */
+export function outlineBlock(
+  draft: Pick<BlockTemplateInput, 'label_name' | 'name' | 'items'>,
+  options?: { orderIndex?: number },
+): OutlineNode {
+  let clusterIndex = 0;
+  let exerciseIndex = 0;
+  const children: OutlineNode[] = [];
+  for (const item of draft.items ?? []) {
+    if (item.kind === 'cluster') {
+      const { kind: _k, id: _id, ...cluster } = item;
+      children.push(
+        outlineCluster(cluster, { orderIndex: clusterIndex }),
+      );
+      clusterIndex += 1;
+    } else {
+      children.push(
+        outlineExercise(
+          {
+            name: item.name,
+            tool_id: item.tool_id,
+            tool_name: item.tool_name,
+            target_shape_id: item.target_shape_id,
+            default_target_shape: item.targets,
+          },
+          { orderIndex: exerciseIndex },
+        ),
+      );
+      exerciseIndex += 1;
+    }
+  }
+
+  return {
+    title: blockUiTitle(draft.label_name),
+    kind: 'block',
+    children: children.length ? children : undefined,
+  };
+}
+
+/** Session outline: nested blocks → … → sets. */
+export function outlineSession(
+  draft: Pick<SessionTemplateInput, 'label_name' | 'name' | 'blocks'>,
+): OutlineNode {
+  const children = (draft.blocks ?? []).map((block, index) => {
+    const { kind: _k, id: _id, ...blockDraft } = block;
+    return outlineBlock(blockDraft, { orderIndex: index });
+  });
+
+  return {
+    title: sessionUiTitle(draft.label_name),
+    kind: 'session',
+    children: children.length ? children : undefined,
+  };
 }
 
 /** Patch one group and re-expand into numbered targets. */

@@ -23,6 +23,13 @@ export {
   ExpansionControllerProvider,
   useExpansionController,
 } from './ExpansionController';
+export {
+  LOCK_ROOT,
+  LockControllerProvider,
+  useLockController,
+  useNodeLock,
+} from './LockController';
+export { LockedOutline } from './LockedOutline';
 export { EditorChrome, EditorTools } from './EditorTools';
 export { FormArrow } from './FormArrow';
 export { formRadii } from './formTokens';

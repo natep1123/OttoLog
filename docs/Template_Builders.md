@@ -41,11 +41,12 @@ stack vertically when a parent offers more than one child type.
 ## Shared card chrome
 
 Every layer uses `NestedLayer` for its card: left rail, tinted border, collapse
-chevron, and a header (`CoordRow`):
+chevron, lock toggle, and a header (`CoordRow`):
 
-1. Label selector (Session/Block/Sequence) or exercise name search, plus a search
-   shortcut and overflow (Session/Block/Sequence). Exercise keeps its inline name
-   search and a single overflow.
+1. Chevron (expand/collapse), then lock (view mode), then Label selector
+   (Session/Block/Sequence) or exercise name search, plus a search shortcut and
+   overflow (Session/Block/Sequence). Exercise keeps its inline name search and a
+   single overflow.
 2. Resolved title line, shown **only when collapsed** (Session/Block/Sequence).
    Session/Block/Sequence no longer edit Name/Brief inline in the header; the
    field lives in the More panel (see below). Expanded cards keep the header clear.
@@ -55,15 +56,16 @@ chevron, and a header (`CoordRow`):
    Arrows between chips stay the **host layer's** color and make execution order
    explicit; each pill is colored by **what it describes** (see Chip colors).
 
-Collapse state is local to each card. Collapsing a card also closes its More
-panel.
+Collapse and lock are independent axes. Collapse state is local to each card.
+Collapsing a card also closes its More panel. Lock state is ephemeral UI only
+(see Lock / view mode) — not written to draft JSON or the database.
 
 Session/Block/Sequence headers carry two trailing buttons: a **search icon**
 (`⌕`) and the **overflow** (`⋯`). The search icon opens the More panel and jumps
 focus straight to Name/Brief; pressing it again while open just refocuses that
 field. Overflow toggles the same panel without moving focus. Exercise keeps only
 the overflow. Both use `IconButton`, which now renders a Feather glyph or the `⋯`
-label.
+label. Trailing edit chrome hides while the card is effectively locked.
 
 The overflow button opens `MorePanel`, a dashed layer-colored panel labeled
 "More options". Each layer's More panel holds:
@@ -103,13 +105,44 @@ control. `CoordRow` accepts either plain strings (colored by the host layer) or
 ## Editor tools tray
 
 Each builder screen wraps its editor tree in `EditorChrome`, which renders an
-`EditorTools` dropdown above the form (outside the nested card chrome) and an
-`ExpansionControllerProvider`. The **Tools** button opens a small tray whose
-first action is **Collapse exercises** — it folds every exercise card while
-leaving blocks and sequences open, via a broadcast signal each `ExerciseEditor`
-listens for. The tray is the intended home for future workspace actions (reset,
-undo/redo, expand all). It renders in a `Modal` anchored to the button so it
-floats above card `elevation`.
+`EditorTools` dropdown above the form (outside the nested card chrome), an
+`ExpansionControllerProvider`, and a `LockControllerProvider`. The **Tools**
+button opens a small tray whose first action is **Collapse exercises** — it folds
+every exercise card while leaving blocks and sequences open, via a broadcast
+signal each `ExerciseEditor` listens for. The tray is the intended home for
+future workspace actions (reset, undo/redo). It also offers **Unlock & Expand
+All**, which clears every ephemeral lock and expands every card in the builder.
+It renders in a `Modal` anchored to the button so it floats above card
+`elevation`.
+
+## Lock / view mode
+
+Ephemeral **locked × expanded** presentation, orthogonal to collapse. Lock state
+lives only in `LockController` (per-node map + parent tree) — no schema fields.
+
+- **Header:** `chevron · lock · label/title · trailing`. Lock works while
+  collapsed. Ancestor lock forces descendants locked. Unlocking a node unlocks
+  that node and **own-locks each immediate child** (so unlocking a session leaves
+  every block locked; unlocking a block leaves its sequences/exercises locked).
+  A child’s own lock only matters when no ancestor is locked (child toggle is
+  disabled while forced). **Tools → Unlock & Expand All** clears every lock and
+  expands every card in the open template.
+- **Expand cascade (independent of lock):** Opening a collapsed card collapses
+  its immediate children. Expanding via Tools → Unlock & Expand All does not
+  run that cascade — every card stays open.
+- **Collapsed + locked:** Same header + immediate-child pills; no editing.
+- **Expanded + locked (Session / Block / Sequence):** Form body is replaced by
+  `LockedOutline` — a nested coach-grammar outline of everything below (blocks →
+  sequences → exercises → sets, including sequence override one-liners). Nested
+  outline spines use each child’s layer color (blue / violet / gold) on the
+  thin left rule. Map, overrides, More, and add controls are hidden.
+- **Exercise locked:** Locking stops at the exercise leaf. No per-set-row locks.
+  A locked exercise always shows the compact header + prescription pills view
+  (identical whether the card would otherwise be expanded or collapsed) — no
+  outline body, Tool/Shape, or targets grid.
+-   Outline builders: `outlineExercise` / `outlineCluster` / `outlineBlock` /
+  `outlineSession` in `targetSummaries.ts` (used by parent-layer outlines).
+  Session/Block/Sequence outline titles use Label words; exercises use names.
 
 ## Labels, Name/Brief, and resolved titles
 
@@ -117,9 +150,14 @@ Session, Block, and Sequence have a **mandatory Label** (taxonomy) and an option
 **Name/Brief**. Empty brief is stored as null. Display titles are resolved in
 `displayTitles.ts`:
 
-- Custom Name/Brief wins **exactly as typed** (no auto-append of “Block” / “Sequence”).
-- Empty name → bare kind word: `Session`, `Block`, `Sequence`, or `Exercise`.
-- Labels do not compose into titles. Want “Warmup Block”? Type that into Name/Brief.
+- **Library / search / owned identity:** Custom Name/Brief wins **exactly as
+  typed** (no auto-append of “Block” / “Sequence”). Empty name → bare kind word:
+  `Session`, `Block`, `Sequence`, or `Exercise`.
+- **Compact builder chrome (summary pills, locked outline):** Session / Block /
+  Sequence show the **Label** word only (`Warmup`, `Circuit`, …) so a long brief
+  never crowds the nest. Exercise pills/outline still use the exercise name.
+- Labels never compose with briefs — no `Warmup - Incline Walking…` generation.
+  Put detail in Name/Brief; keep Label short for the tree.
 - Exercise: blank name → always `Exercise` (no tool prefix, no order number).
 
 System null label rows (fixed UUIDs): **Session**, **Block**, **Sequence**.

@@ -1,9 +1,13 @@
 /**
  * Resolved display titles for template layers.
  *
- * Custom Name/Brief wins, exactly as typed. Empty name → the bare kind word
- * (Session / Block / Sequence / Exercise). Labels are taxonomy only and do not
- * compose into titles — no "Warmup Block" / "Circuit Sequence" generation.
+ * **Library / search / owned identity:** Custom Name/Brief wins, exactly as
+ * typed. Empty name → the bare kind word (Session / Block / Sequence / Exercise).
+ *
+ * **Compact builder chrome (pills, locked outline):** Session / Block / Sequence
+ * use the taxonomy Label word so a long Name/Brief stays out of tight UI.
+ * Exercise still uses its name. Labels never compose with briefs
+ * ("Warmup - …" is not generated).
  */
 
 export function isBriefOwned(brief: string | null | undefined): boolean {
@@ -33,6 +37,11 @@ export function sessionTemplateTitle(
   return normalizeBrief(brief) ?? 'Session';
 }
 
+/** Compact UI (pills / locked outline): Label word, not Name/Brief. */
+export function sessionUiTitle(labelWord: string | null | undefined): string {
+  return labelWord?.trim() || 'Session';
+}
+
 /** Future logs — not used by templates. */
 export function sessionLogTitle(
   _labelWord: string | null | undefined,
@@ -55,6 +64,11 @@ export function blockTitle(
   return normalizeBrief(brief) ?? 'Block';
 }
 
+/** Compact UI (pills / locked outline): Label word, not Name/Brief. */
+export function blockUiTitle(labelWord: string | null | undefined): string {
+  return labelWord?.trim() || 'Block';
+}
+
 export function clusterTitle(
   _labelId: string | null | undefined,
   _labelWord: string | null | undefined,
@@ -62,6 +76,11 @@ export function clusterTitle(
   _letterIndex0?: number,
 ): string {
   return normalizeBrief(brief) ?? 'Sequence';
+}
+
+/** Compact UI (pills / locked outline): Label word, not Name/Brief. */
+export function clusterUiTitle(labelWord: string | null | undefined): string {
+  return labelWord?.trim() || 'Sequence';
 }
 
 export function exerciseTitle(

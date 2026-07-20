@@ -50,15 +50,21 @@ import {
   buildTargets,
   getExerciseTemplate,
 } from '../../lib/exerciseTemplates';
-import { clusterTitle } from '../../lib/displayTitles';
-import { summarizeClusterChips } from '../../lib/targetSummaries';
+import { clusterTitle, clusterUiTitle } from '../../lib/displayTitles';
+import {
+  outlineCluster,
+  summarizeClusterChips,
+} from '../../lib/targetSummaries';
 import { AddChildButton } from './AddChildButton';
 import { ClusterSequenceDiagram } from './ClusterSequenceDiagram';
 import { Disclosure } from './Disclosure';
 import { ExerciseEditor } from './ExerciseEditor';
+import { useExpansionController } from './ExpansionController';
 import { FormSelect } from './FormSelect';
 import { IconButton } from './IconButton';
 import { LayerLabelSelect } from './LayerLabelSelect';
+import { LOCK_ROOT, useNodeLock } from './LockController';
+import { LockedOutline } from './LockedOutline';
 import { MorePanel } from './MorePanel';
 import { NestedLayer } from './NestedLayer';
 import { RoundStepper } from './RoundStepper';
@@ -83,6 +89,8 @@ type Props = {
   nested?: boolean;
   /** 0-based index among sequences in the parent block */
   orderIndex?: number;
+  lockId?: string;
+  parentLockId?: string | null;
   onDelete?: () => void;
   showDelete?: boolean;
 };
@@ -271,11 +279,27 @@ export function ClusterEditor({
   onChange,
   nested = false,
   orderIndex = 0,
+  lockId = LOCK_ROOT.cluster,
+  parentLockId = null,
   onDelete,
   showDelete = false,
 }: Props) {
+  const expansion = useExpansionController();
+  const expandAllSignal = expansion?.expandAllSignal ?? 0;
+  const collapseChildrenSignal = expansion?.collapseChildrenSignal ?? 0;
+  const collapseChildrenParentId = expansion?.collapseChildrenParentId ?? null;
+  const {
+    locked,
+    ownLocked,
+    forcedByAncestor,
+    canToggle,
+    toggle: toggleLock,
+  } = useNodeLock(lockId, parentLockId, () =>
+    value.items.map((item) => item.id),
+  );
   const [moreOpen, setMoreOpen] = useState(false);
-  const [expanded, setExpanded] = useState(true);
+  // Mount locked (parent just unlocked → own-locked) → start collapsed.
+  const [expanded, setExpanded] = useState(() => !locked);
   const [visualizeOpen, setVisualizeOpen] = useState(false);
   const [overridesOpen, setOverridesOpen] = useState(false);
   const [notesFocused, setNotesFocused] = useState(false);
@@ -283,6 +307,27 @@ export function ClusterEditor({
   const [focusNamePending, setFocusNamePending] = useState(false);
   const nameSearchRef = useRef<TemplateNameSearchHandle>(null);
   const [addingOverride, setAddingOverride] = useState(false);
+
+  useEffect(() => {
+    if (expandAllSignal === 0) return;
+    setExpanded(true);
+  }, [expandAllSignal]);
+
+  useEffect(() => {
+    if (collapseChildrenSignal === 0) return;
+    if (collapseChildrenParentId !== parentLockId) return;
+    setExpanded(false);
+    setMoreOpen(false);
+  }, [collapseChildrenSignal, collapseChildrenParentId, parentLockId]);
+
+  useEffect(() => {
+    if (locked) {
+      setMoreOpen(false);
+      setVisualizeOpen(false);
+      setOverridesOpen(false);
+      setAddingOverride(false);
+    }
+  }, [locked]);
 
   useEffect(() => {
     if (!moreOpen || !focusNamePending) return;
@@ -629,30 +674,49 @@ export function ClusterEditor({
       nested={nested}
       expanded={expanded}
       onExpandedChange={(next) => {
+        const opening = next && !expanded;
         setExpanded(next);
         if (!next) setMoreOpen(false);
+        if (opening) expansion?.collapseChildrenOf(lockId);
       }}
+      locked={locked}
+      onToggleLock={
+        canToggle || forcedByAncestor
+          ? () => {
+              const unlocking = ownLocked;
+              toggleLock();
+              if (unlocking) expansion?.collapseChildrenOf(lockId);
+            }
+          : undefined
+      }
+      lockDisabled={forcedByAncestor}
       metaChips={summarizeClusterChips(value).map((label) => ({
         label,
         kind: 'exercise',
       }))}
       label={
-        <LayerLabelSelect
-          kind="cluster_label"
-          value={value.label_id}
-          labelName={value.label_name}
-          onChange={(label_id, label_name) =>
-            patch({
-              label_id,
-              label_name,
-              cluster_type:
-                label_name.trim().toLowerCase() === 'circuit'
-                  ? 'circuit'
-                  : 'superset',
-            })
-          }
-          accessibilityLabel="Sequence label"
-        />
+        locked ? (
+          <Text style={styles.lockedLabel} numberOfLines={1}>
+            {value.label_name?.trim() || 'Sequence'}
+          </Text>
+        ) : (
+          <LayerLabelSelect
+            kind="cluster_label"
+            value={value.label_id}
+            labelName={value.label_name}
+            onChange={(label_id, label_name) =>
+              patch({
+                label_id,
+                label_name,
+                cluster_type:
+                  label_name.trim().toLowerCase() === 'circuit'
+                    ? 'circuit'
+                    : 'superset',
+              })
+            }
+            accessibilityLabel="Sequence label"
+          />
+        )
       }
       collapsedBrief={clusterTitle(
         value.label_id,
@@ -660,30 +724,41 @@ export function ClusterEditor({
         value.name,
         orderIndex,
       )}
-      trailing={({ expand }) => (
-        <>
-          <IconButton
-            kind="cluster"
-            icon="search"
-            active={moreOpen && (nameFocused || focusNamePending)}
-            accessibilityLabel="Name, brief, or search library"
-            onPress={() => {
-              expand();
-              setMoreOpen(true);
-              setFocusNamePending(true);
-            }}
-          />
-          <IconButton
-            kind="cluster"
-            active={moreOpen}
-            onPress={() => {
-              expand();
-              setMoreOpen((o) => !o);
-            }}
-          />
-        </>
-      )}
+      trailing={
+        locked
+          ? undefined
+          : ({ expand }) => (
+              <>
+                <IconButton
+                  kind="cluster"
+                  icon="search"
+                  active={moreOpen && (nameFocused || focusNamePending)}
+                  accessibilityLabel="Name, brief, or search library"
+                  onPress={() => {
+                    expand();
+                    setMoreOpen(true);
+                    setFocusNamePending(true);
+                  }}
+                />
+                <IconButton
+                  kind="cluster"
+                  active={moreOpen}
+                  onPress={() => {
+                    expand();
+                    setMoreOpen((o) => !o);
+                  }}
+                />
+              </>
+            )
+      }
     >
+      {locked ? (
+        <LockedOutline
+          node={outlineCluster(value, { orderIndex })}
+          layer="cluster"
+        />
+      ) : (
+        <>
           <MorePanel open={moreOpen} kind="cluster">
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Name / Brief</Text>
@@ -823,30 +898,27 @@ export function ClusterEditor({
 
           <View style={styles.items}>
             {value.items.map((item: ClusterExerciseItem, index: number) => (
-                <ExerciseEditor
-                  key={item.id}
-                  value={clusterItemToExerciseDraft(item)}
-                  onChange={(draft) => updateItem(index, draft)}
-                  nested
-                  subitem
-                  orderIndex={index}
-                  showDelete
-                  onDelete={() => removeItem(index)}
-                  onPickTemplate={(row) => {
-                    void onPickExerciseTemplate(index, row);
-                  }}
-                />
+              <ExerciseEditor
+                key={item.id}
+                value={clusterItemToExerciseDraft(item)}
+                onChange={(draft) => updateItem(index, draft)}
+                nested
+                subitem
+                orderIndex={index}
+                lockId={item.id}
+                parentLockId={lockId}
+                showDelete
+                onDelete={() => removeItem(index)}
+                onPickTemplate={(row) => {
+                  void onPickExerciseTemplate(index, row);
+                }}
+              />
             ))}
           </View>
 
           <AddChildButton
             childKind="exercise"
-            parentTitle={clusterTitle(
-              value.label_id,
-              value.label_name,
-              value.name,
-              orderIndex,
-            )}
+            parentTitle={clusterUiTitle(value.label_name)}
             onPress={addItem}
             style={styles.addBtn}
           />
@@ -1224,11 +1296,8 @@ export function ClusterEditor({
             onPress={startAddOverride}
             disabled={value.items.length === 0}
             accessibilityRole="button"
-            accessibilityLabel={`Add override to ${clusterTitle(
-              value.label_id,
+            accessibilityLabel={`Add override to ${clusterUiTitle(
               value.label_name,
-              value.name,
-              orderIndex,
             )}`}
             style={({ pressed }) => [
               styles.addOverrideBtn,
@@ -1247,18 +1316,15 @@ export function ClusterEditor({
                 style={styles.addOverrideReference}
                 numberOfLines={1}
               >
-                {clusterTitle(
-                  value.label_id,
-                  value.label_name,
-                  value.name,
-                  orderIndex,
-                )}
+                {clusterUiTitle(value.label_name)}
               </Text>
             </View>
           </Pressable>
         )}
             </Disclosure>
           </View>
+        </>
+      )}
     </NestedLayer>
   );
 }
@@ -1267,6 +1333,11 @@ const styles = StyleSheet.create({
   titleField: {
     flex: 1,
     minWidth: 0,
+  },
+  lockedLabel: {
+    fontFamily: typography.fontMedium,
+    fontSize: 15,
+    color: colors.text,
   },
   nameField: {
     width: '100%',

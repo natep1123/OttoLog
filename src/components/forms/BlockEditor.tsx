@@ -33,14 +33,20 @@ import {
   clusterItemToExerciseDraft,
   exerciseDraftToClusterItem,
 } from '../../lib/clusterTemplates';
-import { blockTitle } from '../../lib/displayTitles';
+import { blockTitle, blockUiTitle } from '../../lib/displayTitles';
 import { getExerciseTemplate } from '../../lib/exerciseTemplates';
-import { summarizeBlockChips } from '../../lib/targetSummaries';
+import {
+  outlineBlock,
+  summarizeBlockChips,
+} from '../../lib/targetSummaries';
 import { AddChildButton } from './AddChildButton';
 import { ClusterEditor } from './ClusterEditor';
 import { ExerciseEditor } from './ExerciseEditor';
+import { useExpansionController } from './ExpansionController';
 import { IconButton } from './IconButton';
 import { LayerLabelSelect } from './LayerLabelSelect';
+import { LOCK_ROOT, useNodeLock } from './LockController';
+import { LockedOutline } from './LockedOutline';
 import { MorePanel } from './MorePanel';
 import { NestedLayer } from './NestedLayer';
 import {
@@ -57,6 +63,8 @@ type Props = {
   nested?: boolean;
   /** 0-based index among blocks in the parent session */
   orderIndex?: number;
+  lockId?: string;
+  parentLockId?: string | null;
   showDelete?: boolean;
   onDelete?: () => void;
 };
@@ -69,15 +77,47 @@ export function BlockEditor({
   onChange,
   nested = false,
   orderIndex = 0,
+  lockId = LOCK_ROOT.block,
+  parentLockId = null,
   showDelete = false,
   onDelete,
 }: Props) {
+  const expansion = useExpansionController();
+  const expandAllSignal = expansion?.expandAllSignal ?? 0;
+  const collapseChildrenSignal = expansion?.collapseChildrenSignal ?? 0;
+  const collapseChildrenParentId = expansion?.collapseChildrenParentId ?? null;
+  const {
+    locked,
+    ownLocked,
+    forcedByAncestor,
+    canToggle,
+    toggle: toggleLock,
+  } = useNodeLock(lockId, parentLockId, () =>
+    value.items.map((item) => item.id),
+  );
   const [moreOpen, setMoreOpen] = useState(false);
-  const [expanded, setExpanded] = useState(true);
+  // Mount locked (parent just unlocked → own-locked) → start collapsed.
+  const [expanded, setExpanded] = useState(() => !locked);
   const [notesFocused, setNotesFocused] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
   const [focusNamePending, setFocusNamePending] = useState(false);
   const nameSearchRef = useRef<TemplateNameSearchHandle>(null);
+
+  useEffect(() => {
+    if (expandAllSignal === 0) return;
+    setExpanded(true);
+  }, [expandAllSignal]);
+
+  useEffect(() => {
+    if (collapseChildrenSignal === 0) return;
+    if (collapseChildrenParentId !== parentLockId) return;
+    setExpanded(false);
+    setMoreOpen(false);
+  }, [collapseChildrenSignal, collapseChildrenParentId, parentLockId]);
+
+  useEffect(() => {
+    if (locked) setMoreOpen(false);
+  }, [locked]);
 
   useEffect(() => {
     if (!moreOpen || !focusNamePending) return;
@@ -168,198 +208,231 @@ export function BlockEditor({
       nested={nested}
       expanded={expanded}
       onExpandedChange={(next) => {
+        const opening = next && !expanded;
         setExpanded(next);
         if (!next) setMoreOpen(false);
+        if (opening) expansion?.collapseChildrenOf(lockId);
       }}
+      locked={locked}
+      onToggleLock={
+        canToggle || forcedByAncestor
+          ? () => {
+              const unlocking = ownLocked;
+              toggleLock();
+              if (unlocking) expansion?.collapseChildrenOf(lockId);
+            }
+          : undefined
+      }
+      lockDisabled={forcedByAncestor}
       metaChips={summarizeBlockChips(value).map((label, index) => ({
         label,
         kind:
           value.items[index]?.kind === 'cluster' ? 'cluster' : 'exercise',
       }))}
       label={
-        <LayerLabelSelect
-          kind="block_label"
-          value={value.label_id}
-          labelName={value.label_name}
-          onChange={(label_id, label_name) => patch({ label_id, label_name })}
-          accessibilityLabel="Block label"
-        />
+        locked ? (
+          <Text style={styles.lockedLabel} numberOfLines={1}>
+            {value.label_name?.trim() || 'Block'}
+          </Text>
+        ) : (
+          <LayerLabelSelect
+            kind="block_label"
+            value={value.label_id}
+            labelName={value.label_name}
+            onChange={(label_id, label_name) => patch({ label_id, label_name })}
+            accessibilityLabel="Block label"
+          />
+        )
       }
       collapsedBrief={blockTitle(
         value.label_name,
         value.name,
         orderIndex + 1,
       )}
-      trailing={({ expand }) => (
-        <>
-          <IconButton
-            kind="block"
-            icon="search"
-            active={moreOpen && (nameFocused || focusNamePending)}
-            accessibilityLabel="Name, brief, or search library"
-            onPress={() => openMoreToName(expand)}
-          />
-          <IconButton
-            kind="block"
-            active={moreOpen}
-            onPress={() => {
-              expand();
-              setMoreOpen((o) => !o);
-            }}
-          />
-        </>
-      )}
+      trailing={
+        locked
+          ? undefined
+          : ({ expand }) => (
+              <>
+                <IconButton
+                  kind="block"
+                  icon="search"
+                  active={moreOpen && (nameFocused || focusNamePending)}
+                  accessibilityLabel="Name, brief, or search library"
+                  onPress={() => openMoreToName(expand)}
+                />
+                <IconButton
+                  kind="block"
+                  active={moreOpen}
+                  onPress={() => {
+                    expand();
+                    setMoreOpen((o) => !o);
+                  }}
+                />
+              </>
+            )
+      }
     >
-      <MorePanel open={moreOpen} kind="block">
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Name / Brief</Text>
-          <TemplateNameSearch
-            ref={nameSearchRef}
-            kind="block"
-            value={value.name}
-            onChangeText={(name) => patch({ name })}
-            listTemplates={listBlockTemplates}
-            getDisplayTitle={(row) =>
-              blockTitle(row.label_name, row.name, 1)
-            }
-            onPickTemplate={(row) => {
-              void onPickBlockTemplate(row);
-            }}
-            onFocusChange={setNameFocused}
-            placeholder="Search library or type a brief…"
-            accessibilityLabel="Block name or brief"
-            style={styles.nameField}
-          />
-        </View>
-
-        <View style={styles.durationRow}>
-          <ToggleChip
-            label={
-              value.track_duration ? 'Duration on' : 'Track duration'
-            }
-            active={value.track_duration}
-            onPress={onToggleDuration}
-          />
-          {value.track_duration ? (
-            <View style={styles.durationPicker}>
-              <View style={styles.durationUnitLabels} pointerEvents="none">
-                <Text style={styles.durationUnitLabel}>HH</Text>
-                <Text style={styles.durationUnitColon}>:</Text>
-                <Text style={styles.durationUnitLabel}>MM</Text>
-                <Text style={styles.durationUnitColon}>:</Text>
-                <Text style={styles.durationUnitLabel}>SS</Text>
-              </View>
-              <TimePartsInput
-                value={value.duration}
-                onChange={(duration) => patch({ duration })}
-                emptyAsNull={false}
+      {locked ? (
+        <LockedOutline
+          node={outlineBlock(value, { orderIndex })}
+          layer="block"
+        />
+      ) : (
+        <>
+          <MorePanel open={moreOpen} kind="block">
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Name / Brief</Text>
+              <TemplateNameSearch
+                ref={nameSearchRef}
+                kind="block"
+                value={value.name}
+                onChangeText={(name) => patch({ name })}
+                listTemplates={listBlockTemplates}
+                getDisplayTitle={(row) =>
+                  blockTitle(row.label_name, row.name, 1)
+                }
+                onPickTemplate={(row) => {
+                  void onPickBlockTemplate(row);
+                }}
+                onFocusChange={setNameFocused}
+                placeholder="Search library or type a brief…"
+                accessibilityLabel="Block name or brief"
+                style={styles.nameField}
               />
             </View>
-          ) : null}
-        </View>
 
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Coaching notes</Text>
-          <TextInput
-            value={value.notes ?? ''}
-            onChangeText={(notes) => patch({ notes: notes || null })}
-            onFocus={() => setNotesFocused(true)}
-            onBlur={() => setNotesFocused(false)}
-            placeholder="e.g., Warm-up block, then strength…"
-            placeholderTextColor={colors.textDim}
-            multiline
-            style={[
-              styles.fieldInput,
-              styles.notes,
-              notesFocused && styles.notesFocused,
-            ]}
-          />
-        </View>
-
-        {showDelete && onDelete ? (
-          <Pressable
-            onPress={onDelete}
-            style={({ pressed }) => [
-              styles.deleteBtn,
-              pressed && styles.deletePressed,
-            ]}
-          >
-            <Text style={styles.deleteText}>
-              {nested ? 'Remove from session' : 'Delete block'}
-            </Text>
-          </Pressable>
-        ) : null}
-      </MorePanel>
-
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Items</Text>
-      </View>
-      <View style={styles.items}>
-        {value.items.map((item, index) => {
-          if (item.kind === 'exercise') {
-            const exerciseOrder = value.items
-              .slice(0, index)
-              .filter((i) => i.kind === 'exercise').length;
-            return (
-              <ExerciseEditor
-                key={item.id}
-                value={clusterItemToExerciseDraft(item)}
-                onChange={(draft) => updateExercise(index, draft)}
-                nested
-                orderIndex={exerciseOrder}
-                showDelete={value.items.length > 1}
-                onDelete={() => removeItem(index)}
-                deleteLabel="Remove from block"
-                onPickTemplate={(row) => {
-                  void onPickExerciseTemplate(index, row);
-                }}
+            <View style={styles.durationRow}>
+              <ToggleChip
+                label={
+                  value.track_duration ? 'Duration on' : 'Track duration'
+                }
+                active={value.track_duration}
+                onPress={onToggleDuration}
               />
-            );
-          }
-          const clusterOrder = value.items
-            .slice(0, index)
-            .filter((i) => i.kind === 'cluster').length;
-          const { kind: _k, id: _id, ...clusterDraft } = item;
-          return (
-            <ClusterEditor
-              key={item.id}
-              value={clusterDraft}
-              onChange={(draft) => updateCluster(index, draft)}
-              nested
-              orderIndex={clusterOrder}
-              showDelete={value.items.length > 1}
-              onDelete={() => removeItem(index)}
-            />
-          );
-        })}
-      </View>
+              {value.track_duration ? (
+                <View style={styles.durationPicker}>
+                  <View style={styles.durationUnitLabels} pointerEvents="none">
+                    <Text style={styles.durationUnitLabel}>HH</Text>
+                    <Text style={styles.durationUnitColon}>:</Text>
+                    <Text style={styles.durationUnitLabel}>MM</Text>
+                    <Text style={styles.durationUnitColon}>:</Text>
+                    <Text style={styles.durationUnitLabel}>SS</Text>
+                  </View>
+                  <TimePartsInput
+                    value={value.duration}
+                    onChange={(duration) => patch({ duration })}
+                    emptyAsNull={false}
+                  />
+                </View>
+              ) : null}
+            </View>
 
-      <View style={styles.addActions}>
-        <AddChildButton
-          childKind="cluster"
-          parentTitle={blockTitle(
-            value.label_name,
-            value.name,
-            orderIndex + 1,
-          )}
-          onPress={addCluster}
-        />
-        <AddChildButton
-          childKind="exercise"
-          parentTitle={blockTitle(
-            value.label_name,
-            value.name,
-            orderIndex + 1,
-          )}
-          onPress={addExercise}
-        />
-      </View>
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Coaching notes</Text>
+              <TextInput
+                value={value.notes ?? ''}
+                onChangeText={(notes) => patch({ notes: notes || null })}
+                onFocus={() => setNotesFocused(true)}
+                onBlur={() => setNotesFocused(false)}
+                placeholder="e.g., Warm-up block, then strength…"
+                placeholderTextColor={colors.textDim}
+                multiline
+                style={[
+                  styles.fieldInput,
+                  styles.notes,
+                  notesFocused && styles.notesFocused,
+                ]}
+              />
+            </View>
+
+            {showDelete && onDelete ? (
+              <Pressable
+                onPress={onDelete}
+                style={({ pressed }) => [
+                  styles.deleteBtn,
+                  pressed && styles.deletePressed,
+                ]}
+              >
+                <Text style={styles.deleteText}>
+                  {nested ? 'Remove from session' : 'Delete block'}
+                </Text>
+              </Pressable>
+            ) : null}
+          </MorePanel>
+
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Items</Text>
+          </View>
+          <View style={styles.items}>
+            {value.items.map((item, index) => {
+              if (item.kind === 'exercise') {
+                const exerciseOrder = value.items
+                  .slice(0, index)
+                  .filter((i) => i.kind === 'exercise').length;
+                return (
+                  <ExerciseEditor
+                    key={item.id}
+                    value={clusterItemToExerciseDraft(item)}
+                    onChange={(draft) => updateExercise(index, draft)}
+                    nested
+                    orderIndex={exerciseOrder}
+                    lockId={item.id}
+                    parentLockId={lockId}
+                    showDelete={value.items.length > 1}
+                    onDelete={() => removeItem(index)}
+                    deleteLabel="Remove from block"
+                    onPickTemplate={(row) => {
+                      void onPickExerciseTemplate(index, row);
+                    }}
+                  />
+                );
+              }
+              const clusterOrder = value.items
+                .slice(0, index)
+                .filter((i) => i.kind === 'cluster').length;
+              const { kind: _k, id: _id, ...clusterDraft } = item;
+              return (
+                <ClusterEditor
+                  key={item.id}
+                  value={clusterDraft}
+                  onChange={(draft) => updateCluster(index, draft)}
+                  nested
+                  orderIndex={clusterOrder}
+                  lockId={item.id}
+                  parentLockId={lockId}
+                  showDelete={value.items.length > 1}
+                  onDelete={() => removeItem(index)}
+                />
+              );
+            })}
+          </View>
+
+          <View style={styles.addActions}>
+            <AddChildButton
+              childKind="cluster"
+              parentTitle={blockUiTitle(value.label_name)}
+              onPress={addCluster}
+            />
+            <AddChildButton
+              childKind="exercise"
+              parentTitle={blockUiTitle(value.label_name)}
+              onPress={addExercise}
+            />
+          </View>
+        </>
+      )}
     </NestedLayer>
   );
 }
 
 const styles = StyleSheet.create({
   nameField: { width: '100%', minWidth: 0 },
+  lockedLabel: {
+    fontFamily: typography.fontMedium,
+    fontSize: 15,
+    color: colors.text,
+  },
   durationRow: {
     width: '100%',
     flexDirection: 'row',

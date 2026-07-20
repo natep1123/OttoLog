@@ -40,6 +40,10 @@ type Props = {
   /** Tinted summary chips under the brief/title. */
   metaChips?: Array<string | CoordChip>;
   trailing?: ReactNode | ((api: ExpandApi) => ReactNode);
+  /** Ephemeral locked / view mode (orthogonal to expand). */
+  locked?: boolean;
+  onToggleLock?: () => void;
+  lockDisabled?: boolean;
   children?: ReactNode;
   style?: ViewStyle;
 };
@@ -60,6 +64,9 @@ export function NestedLayer({
   title,
   metaChips,
   trailing,
+  locked = false,
+  onToggleLock,
+  lockDisabled = false,
   children,
   style,
 }: Props) {
@@ -158,6 +165,9 @@ export function NestedLayer({
         collapsedBrief={collapsedBrief}
         title={title}
         trailing={trailingNode}
+        locked={locked}
+        onToggleLock={onToggleLock}
+        lockDisabled={lockDisabled}
       />
 
       {collapsible && !expanded ? null : (

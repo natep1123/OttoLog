@@ -5,41 +5,51 @@ import {
   ExpansionControllerProvider,
   useExpansionController,
 } from './ExpansionController';
+import {
+  LockControllerProvider,
+  useLockController,
+} from './LockController';
 
 type ToolAction = {
   id: string;
   label: string;
   hint: string;
   onPress: () => void;
+  /** Optional glyph accent; defaults to exercise gold. */
+  kind?: 'session' | 'block' | 'cluster' | 'exercise';
+  glyph?: string;
 };
 
 const MENU_WIDTH = 300;
 
 /**
- * Wraps a builder's form tree: Tools tray + expansion broadcast for exercises.
+ * Wraps a builder's form tree: Tools tray + expansion/lock controllers.
  */
 export function EditorChrome({ children }: { children: ReactNode }) {
   return (
     <ExpansionControllerProvider>
-      <View style={styles.chrome}>
-        <EditorTools />
-        {children}
-      </View>
+      <LockControllerProvider>
+        <View style={styles.chrome}>
+          <EditorTools />
+          {children}
+        </View>
+      </LockControllerProvider>
     </ExpansionControllerProvider>
   );
 }
 
 /**
  * Editor QoL tray — sits outside the nested form chrome.
- * Starts with collapse-all exercises; room for reset / undo later.
+ * Collapse exercises + unlock & expand all; room for reset / undo later.
  */
 export function EditorTools() {
-  const controller = useExpansionController();
+  const expansion = useExpansionController();
+  const locks = useLockController();
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState({ x: 0, y: 0, w: 0, h: 0 });
   const triggerRef = useRef<View>(null);
 
-  if (!controller) return null;
+  if (!expansion) return null;
 
   const openMenu = () => {
     triggerRef.current?.measureInWindow((x, y, w, h) => {
@@ -55,14 +65,26 @@ export function EditorTools() {
       id: 'collapse-exercises',
       label: 'Collapse exercises',
       hint: 'Fold every exercise card — leave blocks & sequences open',
+      kind: 'exercise',
+      glyph: '▸▸',
       onPress: () => {
-        controller.collapseAllExercises();
+        expansion.collapseAllExercises();
+        close();
+      },
+    },
+    {
+      id: 'unlock-expand-all',
+      label: 'Unlock & Expand All',
+      hint: 'Clear every lock and open every card in this template',
+      kind: 'session',
+      glyph: '◌',
+      onPress: () => {
+        locks?.unlockAll();
+        expansion.expandAll();
         close();
       },
     },
   ];
-
-  const exerciseAccent = layer.exercise.chip.color;
 
   return (
     <View style={styles.wrap}>
@@ -108,39 +130,42 @@ export function EditorTools() {
             accessibilityRole="menu"
           >
             <Text style={styles.menuEyebrow}>Workspace</Text>
-            {actions.map((action, index) => (
-              <Pressable
-                key={action.id}
-                onPress={action.onPress}
-                accessibilityRole="menuitem"
-                accessibilityLabel={action.label}
-                style={({ pressed }) => [
-                  styles.action,
-                  index < actions.length - 1 && styles.actionDivider,
-                  pressed && styles.actionPressed,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.actionGlyph,
-                    {
-                      borderColor: exerciseAccent,
-                      backgroundColor: layer.exercise.chip.background,
-                    },
+            {actions.map((action, index) => {
+              const accent = layer[action.kind ?? 'exercise'].chip;
+              return (
+                <Pressable
+                  key={action.id}
+                  onPress={action.onPress}
+                  accessibilityRole="menuitem"
+                  accessibilityLabel={action.label}
+                  style={({ pressed }) => [
+                    styles.action,
+                    index < actions.length - 1 && styles.actionDivider,
+                    pressed && styles.actionPressed,
                   ]}
                 >
-                  <Text
-                    style={[styles.actionGlyphText, { color: exerciseAccent }]}
+                  <View
+                    style={[
+                      styles.actionGlyph,
+                      {
+                        borderColor: accent.color,
+                        backgroundColor: accent.background,
+                      },
+                    ]}
                   >
-                    ▸▸
-                  </Text>
-                </View>
-                <View style={styles.actionCopy}>
-                  <Text style={styles.actionLabel}>{action.label}</Text>
-                  <Text style={styles.actionHint}>{action.hint}</Text>
-                </View>
-              </Pressable>
-            ))}
+                    <Text
+                      style={[styles.actionGlyphText, { color: accent.color }]}
+                    >
+                      {action.glyph ?? '▸▸'}
+                    </Text>
+                  </View>
+                  <View style={styles.actionCopy}>
+                    <Text style={styles.actionLabel}>{action.label}</Text>
+                    <Text style={styles.actionHint}>{action.hint}</Text>
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
       </Modal>

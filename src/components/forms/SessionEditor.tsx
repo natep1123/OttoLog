@@ -17,18 +17,24 @@ import {
   spacing,
   typography,
 } from '../../theme/tokens';
-import { sessionTemplateTitle } from '../../lib/displayTitles';
+import { sessionTemplateTitle, sessionUiTitle } from '../../lib/displayTitles';
 import {
   defaultSessionBlockItem,
   getSessionTemplate,
   listSessionTemplates,
   sessionTemplateToDraft,
 } from '../../lib/sessionTemplates';
-import { summarizeSessionChips } from '../../lib/targetSummaries';
+import {
+  outlineSession,
+  summarizeSessionChips,
+} from '../../lib/targetSummaries';
 import { AddChildButton } from './AddChildButton';
 import { BlockEditor } from './BlockEditor';
+import { useExpansionController } from './ExpansionController';
 import { IconButton } from './IconButton';
 import { LayerLabelSelect } from './LayerLabelSelect';
+import { LOCK_ROOT, useNodeLock } from './LockController';
+import { LockedOutline } from './LockedOutline';
 import { MorePanel } from './MorePanel';
 import { NestedLayer } from './NestedLayer';
 import {
@@ -46,12 +52,32 @@ type Props = {
 
 /** Session editor — label-first header, hosts nested BlockEditors. */
 export function SessionEditor({ value, onChange }: Props) {
+  const expansion = useExpansionController();
+  const expandAllSignal = expansion?.expandAllSignal ?? 0;
+  const {
+    locked,
+    ownLocked,
+    forcedByAncestor,
+    canToggle,
+    toggle: toggleLock,
+  } = useNodeLock(LOCK_ROOT.session, null, () =>
+    value.blocks.map((block) => block.id),
+  );
   const [moreOpen, setMoreOpen] = useState(false);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(() => !locked);
   const [notesFocused, setNotesFocused] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
   const [focusNamePending, setFocusNamePending] = useState(false);
   const nameSearchRef = useRef<TemplateNameSearchHandle>(null);
+
+  useEffect(() => {
+    if (expandAllSignal === 0) return;
+    setExpanded(true);
+  }, [expandAllSignal]);
+
+  useEffect(() => {
+    if (locked) setMoreOpen(false);
+  }, [locked]);
 
   useEffect(() => {
     if (!moreOpen || !focusNamePending) return;
@@ -108,144 +134,182 @@ export function SessionEditor({ value, onChange }: Props) {
       layer="session"
       expanded={expanded}
       onExpandedChange={(next) => {
+        const opening = next && !expanded;
         setExpanded(next);
         if (!next) setMoreOpen(false);
+        if (opening) expansion?.collapseChildrenOf(LOCK_ROOT.session);
       }}
+      locked={locked}
+      onToggleLock={
+        canToggle || forcedByAncestor
+          ? () => {
+              const unlocking = ownLocked;
+              toggleLock();
+              if (unlocking) {
+                expansion?.collapseChildrenOf(LOCK_ROOT.session);
+              }
+            }
+          : undefined
+      }
+      lockDisabled={forcedByAncestor}
       metaChips={summarizeSessionChips(value).map((label) => ({
         label,
         kind: 'block',
       }))}
       label={
-        <LayerLabelSelect
-          kind="session_label"
-          value={value.category_id}
-          labelName={value.label_name}
-          onChange={(category_id, label_name) =>
-            patch({ category_id, label_name })
-          }
-          accessibilityLabel="Session label"
-        />
+        locked ? (
+          <Text style={styles.lockedLabel} numberOfLines={1}>
+            {value.label_name?.trim() || 'Session'}
+          </Text>
+        ) : (
+          <LayerLabelSelect
+            kind="session_label"
+            value={value.category_id}
+            labelName={value.label_name}
+            onChange={(category_id, label_name) =>
+              patch({ category_id, label_name })
+            }
+            accessibilityLabel="Session label"
+          />
+        )
       }
       collapsedBrief={sessionTemplateTitle(value.label_name, value.name)}
-      trailing={({ expand }) => (
+      trailing={
+        locked
+          ? undefined
+          : ({ expand }) => (
+              <>
+                <IconButton
+                  kind="session"
+                  icon="search"
+                  active={moreOpen && (nameFocused || focusNamePending)}
+                  accessibilityLabel="Name, brief, or search library"
+                  onPress={() => openMoreToName(expand)}
+                />
+                <IconButton
+                  kind="session"
+                  active={moreOpen}
+                  onPress={() => {
+                    expand();
+                    setMoreOpen((o) => !o);
+                  }}
+                />
+              </>
+            )
+      }
+    >
+      {locked ? (
+        <LockedOutline node={outlineSession(value)} layer="session" />
+      ) : (
         <>
-          <IconButton
-            kind="session"
-            icon="search"
-            active={moreOpen && (nameFocused || focusNamePending)}
-            accessibilityLabel="Name, brief, or search library"
-            onPress={() => openMoreToName(expand)}
-          />
-          <IconButton
-            kind="session"
-            active={moreOpen}
-            onPress={() => {
-              expand();
-              setMoreOpen((o) => !o);
-            }}
+          <MorePanel open={moreOpen} kind="session">
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Name / Brief</Text>
+              <TemplateNameSearch
+                ref={nameSearchRef}
+                kind="session"
+                value={value.name}
+                onChangeText={(name) => patch({ name })}
+                listTemplates={listSessionTemplates}
+                getDisplayTitle={(row) =>
+                  sessionTemplateTitle(row.label_name, row.name)
+                }
+                onPickTemplate={(row) => {
+                  void onPickSessionTemplate(row);
+                }}
+                onFocusChange={setNameFocused}
+                placeholder="Search library or type a brief…"
+                accessibilityLabel="Session name or brief"
+                style={styles.nameField}
+              />
+            </View>
+
+            <View style={styles.durationRow}>
+              <ToggleChip
+                label={
+                  value.track_duration ? 'Duration on' : 'Track duration'
+                }
+                active={value.track_duration}
+                onPress={onToggleDuration}
+              />
+              {value.track_duration ? (
+                <View style={styles.durationPicker}>
+                  <View style={styles.durationUnitLabels} pointerEvents="none">
+                    <Text style={styles.durationUnitLabel}>HH</Text>
+                    <Text style={styles.durationUnitColon}>:</Text>
+                    <Text style={styles.durationUnitLabel}>MM</Text>
+                    <Text style={styles.durationUnitColon}>:</Text>
+                    <Text style={styles.durationUnitLabel}>SS</Text>
+                  </View>
+                  <TimePartsInput
+                    value={value.duration}
+                    onChange={(duration) => patch({ duration })}
+                    emptyAsNull={false}
+                  />
+                </View>
+              ) : null}
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.fieldLabel}>Coaching notes</Text>
+              <TextInput
+                value={value.notes ?? ''}
+                onChangeText={(notes) => patch({ notes: notes || null })}
+                onFocus={() => setNotesFocused(true)}
+                onBlur={() => setNotesFocused(false)}
+                placeholder="e.g., Full body day — keep rest short…"
+                placeholderTextColor={colors.textDim}
+                multiline
+                style={[
+                  styles.fieldInput,
+                  styles.notes,
+                  notesFocused && styles.notesFocused,
+                ]}
+              />
+            </View>
+          </MorePanel>
+
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Blocks</Text>
+          </View>
+          <View style={styles.items}>
+            {value.blocks.map((block, index) => {
+              const { kind: _k, id: _id, ...blockDraft } = block;
+              return (
+                <BlockEditor
+                  key={block.id}
+                  value={blockDraft}
+                  onChange={(draft) => updateBlock(index, draft)}
+                  nested
+                  orderIndex={index}
+                  lockId={block.id}
+                  parentLockId={LOCK_ROOT.session}
+                  showDelete={value.blocks.length > 1}
+                  onDelete={() => removeBlock(index)}
+                />
+              );
+            })}
+          </View>
+
+          <AddChildButton
+            childKind="block"
+            parentTitle={sessionUiTitle(value.label_name)}
+            onPress={addBlock}
+            style={styles.addBtn}
           />
         </>
       )}
-    >
-      <MorePanel open={moreOpen} kind="session">
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Name / Brief</Text>
-          <TemplateNameSearch
-            ref={nameSearchRef}
-            kind="session"
-            value={value.name}
-            onChangeText={(name) => patch({ name })}
-            listTemplates={listSessionTemplates}
-            getDisplayTitle={(row) =>
-              sessionTemplateTitle(row.label_name, row.name)
-            }
-            onPickTemplate={(row) => {
-              void onPickSessionTemplate(row);
-            }}
-            onFocusChange={setNameFocused}
-            placeholder="Search library or type a brief…"
-            accessibilityLabel="Session name or brief"
-            style={styles.nameField}
-          />
-        </View>
-
-        <View style={styles.durationRow}>
-          <ToggleChip
-            label={
-              value.track_duration ? 'Duration on' : 'Track duration'
-            }
-            active={value.track_duration}
-            onPress={onToggleDuration}
-          />
-          {value.track_duration ? (
-            <View style={styles.durationPicker}>
-              <View style={styles.durationUnitLabels} pointerEvents="none">
-                <Text style={styles.durationUnitLabel}>HH</Text>
-                <Text style={styles.durationUnitColon}>:</Text>
-                <Text style={styles.durationUnitLabel}>MM</Text>
-                <Text style={styles.durationUnitColon}>:</Text>
-                <Text style={styles.durationUnitLabel}>SS</Text>
-              </View>
-              <TimePartsInput
-                value={value.duration}
-                onChange={(duration) => patch({ duration })}
-                emptyAsNull={false}
-              />
-            </View>
-          ) : null}
-        </View>
-
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Coaching notes</Text>
-          <TextInput
-            value={value.notes ?? ''}
-            onChangeText={(notes) => patch({ notes: notes || null })}
-            onFocus={() => setNotesFocused(true)}
-            onBlur={() => setNotesFocused(false)}
-            placeholder="e.g., Full body day — keep rest short…"
-            placeholderTextColor={colors.textDim}
-            multiline
-            style={[
-              styles.fieldInput,
-              styles.notes,
-              notesFocused && styles.notesFocused,
-            ]}
-          />
-        </View>
-      </MorePanel>
-
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Blocks</Text>
-      </View>
-      <View style={styles.items}>
-        {value.blocks.map((block, index) => {
-          const { kind: _k, id: _id, ...blockDraft } = block;
-          return (
-            <BlockEditor
-              key={block.id}
-              value={blockDraft}
-              onChange={(draft) => updateBlock(index, draft)}
-              nested
-              orderIndex={index}
-              showDelete={value.blocks.length > 1}
-              onDelete={() => removeBlock(index)}
-            />
-          );
-        })}
-      </View>
-
-      <AddChildButton
-        childKind="block"
-        parentTitle={sessionTemplateTitle(value.label_name, value.name)}
-        onPress={addBlock}
-        style={styles.addBtn}
-      />
     </NestedLayer>
   );
 }
 
 const styles = StyleSheet.create({
   nameField: { width: '100%', minWidth: 0 },
+  lockedLabel: {
+    fontFamily: typography.fontMedium,
+    fontSize: 15,
+    color: colors.text,
+  },
   durationRow: {
     width: '100%',
     flexDirection: 'row',

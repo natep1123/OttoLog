@@ -32,6 +32,7 @@ import { ExerciseNameSearch } from './ExerciseNameSearch';
 import { useExpansionController } from './ExpansionController';
 import { FormSelect } from './FormSelect';
 import { IconButton } from './IconButton';
+import { LOCK_ROOT, useNodeLock } from './LockController';
 import { MorePanel } from './MorePanel';
 import { NestedLayer } from './NestedLayer';
 import { SearchableSelect } from './SearchableSelect';
@@ -57,6 +58,10 @@ type Props = {
   subitem?: boolean;
   /** 0-based index among exercises in the direct parent */
   orderIndex?: number;
+  /** Stable lock-tree id; defaults to exercise-root / parent-provided. */
+  lockId?: string;
+  /** Parent node in the lock tree (null at builder root). */
+  parentLockId?: string | null;
   onDelete?: () => void;
   showDelete?: boolean;
   deleteLabel?: string;
@@ -78,6 +83,8 @@ export function ExerciseEditor({
   nested = false,
   subitem = false,
   orderIndex = 0,
+  lockId = LOCK_ROOT.exercise,
+  parentLockId = null,
   onDelete,
   showDelete = false,
   deleteLabel,
@@ -86,35 +93,59 @@ export function ExerciseEditor({
   const { user } = useAuth();
   const userId = user?.id;
   const expansion = useExpansionController();
-  const collapseSignal = expansion?.collapseSignal ?? 0;
-  const expandSignal = expansion?.expandSignal ?? 0;
+  const collapseExercisesSignal = expansion?.collapseExercisesSignal ?? 0;
+  const expandAllSignal = expansion?.expandAllSignal ?? 0;
+  const collapseChildrenSignal = expansion?.collapseChildrenSignal ?? 0;
+  const collapseChildrenParentId = expansion?.collapseChildrenParentId ?? null;
+  const {
+    locked,
+    ownLocked,
+    forcedByAncestor,
+    canToggle,
+    toggle: toggleLock,
+  } = useNodeLock(lockId, parentLockId);
 
   const [moreOpen, setMoreOpen] = useState(false);
-  const [expanded, setExpanded] = useState(true);
+  // Mount locked (e.g. parent just unlocked → own-locked children) → start collapsed.
+  const [expanded, setExpanded] = useState(() => !locked);
   const [notesFocused, setNotesFocused] = useState(false);
   const [tools, setTools] = useState<TaxonomyOption[]>([]);
   const [groups, setGroups] = useState<TaxonomyOption[]>([]);
   const [tags, setTags] = useState<TaxonomyOption[]>([]);
 
-  // Tools → Collapse/Expand exercises (signals start at 0; skip initial).
+  // Tools → Collapse exercises (signals start at 0; skip initial).
   useEffect(() => {
-    if (collapseSignal === 0) return;
+    if (collapseExercisesSignal === 0) return;
     setExpanded(false);
     setMoreOpen(false);
-  }, [collapseSignal]);
+  }, [collapseExercisesSignal]);
+
+  // Tools → Unlock & Expand All
+  useEffect(() => {
+    if (expandAllSignal === 0) return;
+    setExpanded(true);
+  }, [expandAllSignal]);
+
+  // Parent opened → present this card collapsed (independent of lock).
+  useEffect(() => {
+    if (collapseChildrenSignal === 0) return;
+    if (collapseChildrenParentId !== parentLockId) return;
+    setExpanded(false);
+    setMoreOpen(false);
+  }, [collapseChildrenSignal, collapseChildrenParentId, parentLockId]);
 
   useEffect(() => {
-    if (expandSignal === 0) return;
-    setExpanded(true);
-  }, [expandSignal]);
+    if (locked) setMoreOpen(false);
+  }, [locked]);
 
   const metaChips = summarizeExerciseChips(value).map((label) => ({
     label,
     kind: 'set' as const,
   }));
+  const toolWord = tools.find((tool) => tool.id === value.tool_id)?.label;
   const resolvedExerciseTitle = exerciseTitle(
     value.tool_id,
-    tools.find((tool) => tool.id === value.tool_id)?.label,
+    toolWord,
     value.name,
     orderIndex + 1,
   );
@@ -188,33 +219,61 @@ export function ExerciseEditor({
     <NestedLayer
       layer="exercise"
       nested={nested}
-      expanded={expanded}
+      // Locked exercises always present as the compact header + pills view —
+      // expand/collapse do not change the layout while locked.
+      expanded={locked ? false : expanded}
       onExpandedChange={(next) => {
+        if (locked) return;
+        const opening = next && !expanded;
         setExpanded(next);
         if (!next) setMoreOpen(false);
+        if (opening) expansion?.collapseChildrenOf(lockId);
       }}
+      locked={locked}
+      onToggleLock={
+        canToggle || forcedByAncestor
+          ? () => {
+              const unlocking = ownLocked;
+              toggleLock();
+              if (unlocking) expansion?.collapseChildrenOf(lockId);
+            }
+          : undefined
+      }
+      lockDisabled={forcedByAncestor}
       metaChips={metaChips}
       title={
-        <ExerciseNameSearch
-          value={value.name}
-          onChangeText={(name) => patch({ name })}
-          onPickTemplate={onPickTemplate}
-          style={styles.titleField}
-          placeholder="Search library or type a name…"
-          accessibilityLabel="Exercise name"
-        />
+        locked ? (
+          <Text style={styles.lockedTitle} numberOfLines={1}>
+            {resolvedExerciseTitle}
+          </Text>
+        ) : (
+          <ExerciseNameSearch
+            value={value.name}
+            onChangeText={(name) => patch({ name })}
+            onPickTemplate={onPickTemplate}
+            style={styles.titleField}
+            placeholder="Search library or type a name…"
+            accessibilityLabel="Exercise name"
+          />
+        )
       }
-      trailing={({ expand }) => (
-        <IconButton
-          kind="exercise"
-          active={moreOpen}
-          onPress={() => {
-            expand();
-            setMoreOpen((o) => !o);
-          }}
-        />
-      )}
+      trailing={
+        locked
+          ? undefined
+          : ({ expand }) => (
+              <IconButton
+                kind="exercise"
+                active={moreOpen}
+                onPress={() => {
+                  expand();
+                  setMoreOpen((o) => !o);
+                }}
+              />
+            )
+      }
     >
+      {locked ? null : (
+        <>
           <View style={styles.controlsRow}>
             <View style={styles.controlCol}>
               <Text style={styles.controlLabel}>Tool</Text>
@@ -390,6 +449,8 @@ export function ExerciseEditor({
             onChangeTargets={onChangeTargets}
             lockedSingle={subitem}
           />
+        </>
+      )}
     </NestedLayer>
   );
 }
@@ -400,6 +461,11 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexBasis: 0,
     minWidth: 0,
+  },
+  lockedTitle: {
+    fontFamily: typography.fontMedium,
+    fontSize: 15,
+    color: colors.text,
   },
   controlsRow: {
     flexDirection: 'row',

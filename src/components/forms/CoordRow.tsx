@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { colors, layer as layerTokens, radii, typography } from '../../theme/tokens';
 import { FormArrow } from './FormArrow';
 import {
@@ -46,11 +47,16 @@ type Props = {
   trailing?: ReactNode;
   expanded?: boolean;
   onToggleExpand?: () => void;
+  /** Ephemeral locked / view mode (orthogonal to expand). */
+  locked?: boolean;
+  onToggleLock?: () => void;
+  /** Ancestor-forced lock — icon stays locked, press is no-op. */
+  lockDisabled?: boolean;
 };
 
 /**
  * Card header bands:
- * 1. chevron · label|title · trailing
+ * 1. chevron · lock · label|title · trailing
  * 2. Name/Brief editor only when an expanded `brief` node is passed
  * 3. scrollable chips
  */
@@ -64,14 +70,20 @@ export function CoordRow({
   trailing,
   expanded,
   onToggleExpand,
+  locked = false,
+  onToggleLock,
+  lockDisabled = false,
 }: Props) {
-  const hasLine1 = Boolean(label || title || trailing || onToggleExpand);
+  const hasLine1 = Boolean(
+    label || title || trailing || onToggleExpand || onToggleLock,
+  );
   const chips = (metaChips?.length ? metaChips : meta ? [meta] : []).map(
     (chip) => (typeof chip === 'string' ? { label: chip, kind: layer } : chip),
   );
   if (!hasLine1 && !brief && !chips.length) return null;
 
   const collapsible = typeof onToggleExpand === 'function';
+  const lockable = typeof onToggleLock === 'function';
   const isExpanded = expanded !== false;
   const token = layerTokens[layer];
   const chipToken = (kind: CoordChip['kind']) =>
@@ -91,7 +103,14 @@ export function CoordRow({
   const showBriefBand = Boolean(label) && isExpanded && Boolean(brief);
 
   return (
-    <View style={styles.stack}>
+    <View
+      style={[
+        styles.stack,
+        // Extra breath under pills only when lock-view body sits below
+        // (expanded outline). Collapsed+locked must match unlocked height.
+        locked && isExpanded && styles.stackLockedBreathing,
+      ]}
+    >
       {hasLine1 ? (
         <View style={[styles.row, !isExpanded && styles.rowCollapsed]}>
           {collapsible ? (
@@ -121,6 +140,33 @@ export function CoordRow({
           ) : (
             <View style={styles.toggleSpacer} />
           )}
+
+          {lockable ? (
+            <Pressable
+              onPress={onToggleLock}
+              disabled={lockDisabled}
+              accessibilityRole="button"
+              accessibilityState={{
+                checked: locked,
+                disabled: lockDisabled,
+              }}
+              accessibilityLabel={
+                locked ? 'Unlock card' : 'Lock card for view mode'
+              }
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              style={({ pressed }) => [
+                styles.lockToggle,
+                pressed && !lockDisabled && styles.togglePressed,
+                lockDisabled && styles.lockDisabled,
+              ]}
+            >
+              <Feather
+                name={locked ? 'lock' : 'unlock'}
+                size={14}
+                color={token.chip.color}
+              />
+            </Pressable>
+          ) : null}
 
           <View style={styles.primary}>
             {label ? label : title}
@@ -232,6 +278,9 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     zIndex: 30,
   },
+  stackLockedBreathing: {
+    paddingBottom: 8,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -262,6 +311,17 @@ const styles = StyleSheet.create({
   toggleSpacer: {
     width: layerHeaderLeadingWidth,
     flexShrink: 0,
+  },
+  lockToggle: {
+    width: layerHeaderLeadingWidth,
+    flexShrink: 0,
+    paddingVertical: 4,
+    minHeight: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockDisabled: {
+    opacity: 0.45,
   },
   togglePressed: {
     opacity: 0.75,

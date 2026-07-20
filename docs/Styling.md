@@ -405,12 +405,16 @@ between child boxes, while the child accent visually covers it over the child's
 own height. The 4-point accent runs the full left edge, curves around the
 bottom-left corner, and continues across the full bottom edge. Collapse state is
 local to each card; the layer chevron rotates `-90deg` when collapsed, and
-collapsing a card also closes its More panel.
+collapsing a card also closes its More panel. A lock toggle sits immediately
+after the chevron (`chevron · lock · label/title · trailing`); locked cards use
+the same layer wash for a compact `LockedOutline` grammar view when expanded.
+Lock is ephemeral UI state only (see Template_Builders.md).
 
 Session/Block/Sequence headers keep Name/Brief out of the header entirely: an
 expanded card shows only the Label selector, a `⌕` search shortcut, and the `⋯`
 overflow; a collapsed card shows the resolved title line. Name/Brief moves into
 the More panel, and the `⌕` shortcut opens that panel focused on the field.
+Trailing search/overflow hide while the card is effectively locked.
 
 Summary pills are colored by the layer of the item each pill names, while the
 arrows between pills stay the host card's color: red arrows in Session, blue in
@@ -426,9 +430,10 @@ sides, with centered option content.
 
 Each builder screen wraps its editor in `EditorChrome`, which shows an
 `EditorTools` dropdown (the **Tools** tray) above the form and outside the card
-chrome. Its first action collapses every exercise card while leaving blocks and
-sequences open. The tray renders in a `Modal` anchored to its button so it floats
-above card `elevation`; it is the intended home for future workspace actions.
+chrome, plus expansion and lock controllers. Its first action collapses every
+exercise card while leaving blocks and sequences open. The tray renders in a
+`Modal` anchored to its button so it floats above card `elevation`; it is the
+intended home for future workspace actions.
 
 Nesting is constrained by role: Session adds Blocks; Block adds an ordered mix
 of Sequences and standalone Exercises; Sequence adds Exercises only. Each

@@ -9,48 +9,71 @@ import {
 
 type ExpansionControllerValue = {
   /** Bumps when Tools asks every exercise card to collapse. */
-  collapseSignal: number;
-  /** Bumps when Tools asks every exercise card to expand. */
-  expandSignal: number;
+  collapseExercisesSignal: number;
+  /** Bumps when Tools asks every card in the tree to expand. */
+  expandAllSignal: number;
+  /**
+   * Bumps when a parent card is opened by the user — immediate children
+   * whose `parentLockId` matches `collapseChildrenParentId` should collapse.
+   * Independent of lock state. Not used by expandAll.
+   */
+  collapseChildrenSignal: number;
+  collapseChildrenParentId: string | null;
   collapseAllExercises: () => void;
-  expandAllExercises: () => void;
+  expandAll: () => void;
+  collapseChildrenOf: (parentId: string) => void;
 };
 
 const ExpansionControllerContext =
   createContext<ExpansionControllerValue | null>(null);
 
 /**
- * Broadcasts expand/collapse to every `ExerciseEditor` under a builder screen.
- * Keeps per-card open state local — tools only send one-shot signals.
+ * Broadcasts expand/collapse across builder cards.
+ * Per-card open state stays local — tools and parent-open cascade send signals.
  */
 export function ExpansionControllerProvider({
   children,
 }: {
   children: ReactNode;
 }) {
-  const [collapseSignal, setCollapseSignal] = useState(0);
-  const [expandSignal, setExpandSignal] = useState(0);
+  const [collapseExercisesSignal, setCollapseExercisesSignal] = useState(0);
+  const [expandAllSignal, setExpandAllSignal] = useState(0);
+  const [collapseChildrenSignal, setCollapseChildrenSignal] = useState(0);
+  const [collapseChildrenParentId, setCollapseChildrenParentId] = useState<
+    string | null
+  >(null);
 
   const collapseAllExercises = useCallback(() => {
-    setCollapseSignal((n) => n + 1);
+    setCollapseExercisesSignal((n) => n + 1);
   }, []);
 
-  const expandAllExercises = useCallback(() => {
-    setExpandSignal((n) => n + 1);
+  const expandAll = useCallback(() => {
+    setExpandAllSignal((n) => n + 1);
+  }, []);
+
+  const collapseChildrenOf = useCallback((parentId: string) => {
+    setCollapseChildrenParentId(parentId);
+    setCollapseChildrenSignal((n) => n + 1);
   }, []);
 
   const value = useMemo(
     () => ({
-      collapseSignal,
-      expandSignal,
+      collapseExercisesSignal,
+      expandAllSignal,
+      collapseChildrenSignal,
+      collapseChildrenParentId,
       collapseAllExercises,
-      expandAllExercises,
+      expandAll,
+      collapseChildrenOf,
     }),
     [
-      collapseSignal,
-      expandSignal,
+      collapseExercisesSignal,
+      expandAllSignal,
+      collapseChildrenSignal,
+      collapseChildrenParentId,
       collapseAllExercises,
-      expandAllExercises,
+      expandAll,
+      collapseChildrenOf,
     ],
   );
 
