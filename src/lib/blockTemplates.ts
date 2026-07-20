@@ -10,6 +10,8 @@ import {
 } from './clusterTemplates';
 import {
   buildTargets,
+  coerceToolIds,
+  primaryToolId,
   sanitizeTargetsForShape,
 } from './exerciseTemplates';
 import type {
@@ -160,11 +162,16 @@ export function normalizeExerciseItem(raw: unknown): BlockExerciseItem {
       ? r.target_shape_id
       : base.target_shape_id;
   const track_analytics = Boolean(r.track_analytics);
+  const tool_ids = coerceToolIds({
+    tool_ids: Array.isArray(r.tool_ids) ? (r.tool_ids as string[]) : undefined,
+    tool_id: typeof r.tool_id === 'string' ? r.tool_id : undefined,
+  });
   const item: ClusterExerciseItem = {
     kind: 'exercise',
     id: typeof r.id === 'string' ? r.id : base.id,
     name: typeof r.name === 'string' ? r.name : '',
-    tool_id: typeof r.tool_id === 'string' ? r.tool_id : base.tool_id,
+    tool_ids,
+    tool_id: primaryToolId(tool_ids),
     tool_name:
       typeof r.tool_name === 'string' ? r.tool_name : base.tool_name ?? null,
     target_shape_id,
@@ -286,10 +293,13 @@ export type SaveBlockArgs = {
 
 export function prepareBlockItemForSave(item: BlockItem): BlockItem {
   if (item.kind === 'exercise') {
+    const tool_ids = coerceToolIds(item);
     return {
       ...item,
       kind: 'exercise',
       name: item.name.trim(),
+      tool_ids,
+      tool_id: primaryToolId(tool_ids),
       notes: item.notes?.trim() || null,
       primary_group_id: item.track_analytics ? item.primary_group_id : null,
       analytics_tag_ids: item.track_analytics
@@ -305,6 +315,14 @@ export function prepareBlockItemForSave(item: BlockItem): BlockItem {
     label_id: item.label_id || CLUSTER_LABEL_NULL_ID,
     label_name: item.label_name?.trim() || null,
     notes: item.notes?.trim() || null,
+    items: item.items.map((ex) => {
+      const tool_ids = coerceToolIds(ex);
+      return {
+        ...ex,
+        tool_ids,
+        tool_id: primaryToolId(tool_ids),
+      };
+    }),
   };
 }
 

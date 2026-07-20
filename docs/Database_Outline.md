@@ -24,11 +24,11 @@ When outline, archived docs, and live SQL disagree, use this order:
 | Locked atoms | `target_shapes`, `load_units`, `distance_units` |
 | Taxonomy | `tools`, `session_categories`, `block_labels`, `cluster_labels` + global nulls |
 | Analytics taxonomy | `analytics_primary_groups`, `analytics_tags` |
-| Exercise templates | `exercise_templates`, `analytics_tag_links` |
+| Exercise templates | `exercise_templates`, `analytics_tag_links`, `exercise_template_tool_links` |
 | Sequence templates | `cluster_templates` (legacy internal name) |
 | Block templates | `block_templates` |
 | Session templates | `session_templates` |
-| Session logs | `session_logs`, `log_blocks`, `log_items`, `log_sub_items`, `log_sets` |
+| Session logs | `session_logs`, `log_blocks`, `log_items`, `log_sub_items`, `log_sets`, `log_item_tools`, `log_sub_item_tools` |
 
 **App slice live**
 
@@ -68,6 +68,7 @@ Applied migrations:
 - `sql/012_standard_sequence_label.sql` — sequence system-null rename (superseded display word by 013)
 - `sql/013_kind_system_null_labels.sql` — system nulls → Session / Block / Sequence
 - `sql/014_session_logs.sql` — relational session log tables + RLS
+- `sql/015_exercise_tools.sql` — multi-tool links for exercise templates + log items
 
 ---
 
@@ -180,12 +181,13 @@ Use these names consistently in SQL, app code, and docs. Do not invent synonyms.
 
 | Concept | Table | FK / field | Notes |
 |---------|--------|------------|--------|
-| Tool | `tools` | `tool_id` | Equipment. Global sentinel: **No Tool**. |
+| Tool | `tools` | `tool_id` / `tool_ids[]` | Equipment. Global sentinel: **No Tool**. Primary = first selected; extras via tool link tables. |
 | Session category | `session_categories` | `category_id` | Session/template label. Global sentinel: **Uncategorized**. Not a target shape. |
 | Target shape | `target_shapes` | `target_shape_id` | Which **set/target input fields** an exercise uses (Reps, Time, Time & Distance, Time & Reps, Distance). Locked atom. Not tree `kind`. Not session category. |
 | Primary analytics group | `analytics_primary_groups` | `primary_group_id` | **One** optional reporting bucket per exercise when `track_analytics = true`. Not the exercise display name. |
 | Analytics tag | `analytics_tags` | via `analytics_tag_links.tag_id` | Many optional filters per exercise template. |
 | Tag link | `analytics_tag_links` | `exercise_template_id`, `tag_id` | M2M join only. No “groups” join table. |
+| Tool link | `exercise_template_tool_links` | `exercise_template_id`, `tool_id`, `sort_order` | Ordered M2M for multi-tool exercises. Log mirrors: `log_item_tools` / `log_sub_item_tools`. |
 
 **Target shape (important)**
 
@@ -201,6 +203,7 @@ Use these names consistently in SQL, app code, and docs. Do not invent synonyms.
 - **Group** = `analytics_primary_groups` / `primary_group_id`: singular aggregation identity.
 - **Tag** = `analytics_tags` / `analytics_tag_links`: plural free-form labels.
 - Editor JSON may carry `analytics_tag_ids: uuid[]`; that array is expanded into `analytics_tag_links` rows for templates, not stored as a column named `analytics_tag_ids` on the template table.
+- Editor JSON may carry `tool_ids: uuid[]` on exercise leaves; expanded into `exercise_template_tool_links` (library) or `log_*_tools` (logs). Singular `tool_id` remains the primary (= first) for compatibility. **No Tool** is exclusive: real tools clear it; empty selection restores it.
 - Legacy prototype names `master_exercise_name` / `group_tags` are **not** used.
 - How to choose values in practice: `docs/Analytics_Labeling.md`.
 
@@ -227,6 +230,7 @@ taxonomy
   analytics_primary_groups                 ← LIVE (user only)
   analytics_tags                           ← LIVE (user only)
   analytics_tag_links                      ← LIVE (via exercise_templates)
+  exercise_template_tool_links             ← LIVE (via exercise_templates)
 
 templates (library / blueprints)
   exercise_templates                       ← LIVE
@@ -234,11 +238,13 @@ templates (library / blueprints)
   block_templates               (jsonb content)  ← LIVE
   session_templates             (jsonb content)  ← LIVE
 
-logs (relational facts)                    ← LIVE (`sql/014`)
+logs (relational facts)                    ← LIVE (`sql/014` + `sql/015` tool links)
   session_logs
     └── log_blocks              (X)
           └── log_items         (Y: exercise | cluster)
+                ├── log_item_tools (exercise only)
                 ├── log_sub_items (Z, cluster children only)
+                │     └── log_sub_item_tools
                 └── log_sets
 ```
 
@@ -315,12 +321,13 @@ Mixed ownership on tools / session categories; analytics tables are user-only.
 | `analytics_primary_groups` | User only | Reporting buckets. Referenced by `primary_group_id`. |
 | `analytics_tags` | User only | Free-form filters. Referenced by `analytics_tag_links.tag_id`. |
 | `analytics_tag_links` | User only (via owning exercise template) | M2M: `exercise_template_id` ↔ `tag_id`. |
+| `exercise_template_tool_links` | User only (via owning exercise template) | Ordered M2M: `exercise_template_id` ↔ `tool_id` (`sort_order`). |
 
 ### Structural sentinels (global)
 
 | Sentinel | Table | Rules |
 |----------|--------|-------|
-| **No Tool** | `tools` | Fixed UUID PK, `user_id IS NULL`, `is_system_default = true`. Exercises always have a non-null `tool_id`; unequipped work points here. UI may show “None”. |
+| **No Tool** | `tools` | Fixed UUID PK, `user_id IS NULL`, `is_system_default = true`. Exercises always have ≥1 tool id; unequipped work points here as the exclusive selection. Singular `tool_id` columns stay NOT NULL as primary. UI may show “None”. |
 | **Session** (system null) | `session_categories` | Fixed UUID PK, `user_id IS NULL`, `is_system_default = true`. Sessions/templates always have a non-null `category_id`. Display name: **Session**. |
 
 Sentinels cannot be renamed, archived, or deleted. User taxonomy rows may be soft-archived (`archived_at`). Hard delete is restricted while referenced.
@@ -348,7 +355,7 @@ Personal library objects for Create → Build templates.
 
 | Table | Storage style | Notes |
 |-------|---------------|--------|
-| `exercise_templates` | Columns + `default_target_shape` jsonb | Presets. Always `tool_id` + `target_shape_id`. Optional `track_analytics` + `primary_group_id` (required iff tracking). Tags via `analytics_tag_links`, not a column on this table. `default_target_shape` holds the targets[] payload for that shape. Active names are unique per user (case-insensitive), enforced app-side and by a partial unique index (`sql/007`). |
+| `exercise_templates` | Columns + `default_target_shape` jsonb | Presets. Always primary `tool_id` + `target_shape_id`. Full tool list via `exercise_template_tool_links` (ordered); editor `tool_ids[]`. Optional `track_analytics` + `primary_group_id` (required iff tracking). Tags via `analytics_tag_links`, not a column on this table. `default_target_shape` holds the targets[] payload for that shape. Active names are unique per user (case-insensitive), enforced app-side and by a partial unique index (`sql/007`). |
 | `cluster_templates` | Columns + `content` jsonb | Standalone Sequence blob (internal legacy table name). Mandatory `label_id` → `cluster_labels` (system null **Sequence**). Optional `name` (Name/Brief). Legacy `cluster_type` kept for dual-write. `content` holds `{ rounds, notes, track_duration, duration, items[], overrides[] }`. Nested items are per-round prescriptions. Active **nonblank** names unique per user. Soft-archive preferred. |
 | `block_templates` | Columns + `content` jsonb | Mandatory `label_id` → `block_labels` (system null **Block**). Optional `name`. `content` holds mixed exercise/sequence items (`kind = 'cluster'` internally). Active **nonblank** names unique per user. Soft-archive preferred. |
 | `session_templates` | `content` jsonb + `category_id` | Full session tree. `category_id` is the session **label** (never null; default Session). Optional `name` (Name/Brief). `content` holds `{ notes, track_duration, duration, blocks[] }`. Active **nonblank** names unique per user. Soft-archive preferred. |
@@ -371,7 +378,7 @@ Personal library objects for Create → Build templates.
 
 ## 5. Logs (relational fact layer)
 
-Logged sessions are fully relational so analytics can query sets. Tables and RLS ship in `sql/014`. Denest (editor tree → rows) and renest (rows → editor tree) live in `src/lib/sessionLogs.ts` for v1; optional Postgres RPCs can wrap the same shape later.
+Logged sessions are fully relational so analytics can query sets. Tables and RLS ship in `sql/014`; multi-tool links in `sql/015`. Denest (editor tree → rows) and renest (rows → editor tree) live in `src/lib/sessionLogs.ts` for v1; optional Postgres RPCs can wrap the same shape later.
 
 | Table | Role |
 |-------|------|
@@ -380,10 +387,12 @@ Logged sessions are fully relational so analytics can query sets. Tables and RLS
 | `log_items` | Item level (Y): `kind = 'exercise'` or `'cluster'` |
 | `log_sub_items` | Nested exercise inside a cluster (Z) |
 | `log_sets` | One row per set; exactly one of `log_item_id` / `log_sub_item_id` is set |
+| `log_item_tools` | Ordered tools for exercise-kind `log_items` (`sql/015`) |
+| `log_sub_item_tools` | Ordered tools for `log_sub_items` (`sql/015`) |
 
 ### `log_items` rules
 
-- `kind = 'exercise'` → `tool_id` + `target_shape_id` required; `cluster_type` null; `primary_group_id` required iff `track_analytics`
+- `kind = 'exercise'` → primary `tool_id` + `target_shape_id` required; full list in `log_item_tools`; `cluster_type` null; `primary_group_id` required iff `track_analytics`
 - `kind = 'cluster'` → `cluster_type` required (`superset` \| `circuit`); `label_id` + `rounds`; exercise-only FKs null
 
 ### Tree → rows (denest)
@@ -391,9 +400,9 @@ Logged sessions are fully relational so analytics can query sets. Tables and RLS
 ```
 session header          → session_logs
 blocks[]                → log_blocks
-  items[] exercise      → log_items + log_sets
+  items[] exercise      → log_items + log_item_tools + log_sets
   items[] cluster       → log_items
-    nested exercises    → log_sub_items + log_sets (rounds × overrides expanded)
+    nested exercises    → log_sub_items + log_sub_item_tools + log_sets (rounds × overrides expanded)
 ```
 
 App API (`src/lib/sessionLogs.ts`):
@@ -421,7 +430,7 @@ tools / session_categories
   ├── global sentinels (No Tool, Uncategorized)
   └── user-owned rows
   └── session_templates.category_id / session_logs.category_id → session_categories
-  └── exercise tool_id → tools (No Tool allowed)
+  └── exercise tool_id / exercise_template_tool_links → tools (No Tool allowed)
 
 analytics_primary_groups
   └── exercise_templates.primary_group_id
@@ -437,7 +446,9 @@ block_templates / cluster_templates
 session_logs
   └── log_blocks
         └── log_items (exercise | cluster)
+              ├── log_item_tools (if exercise)
               ├── log_sub_items (if cluster)
+              │     └── log_sub_item_tools
               └── log_sets
 ```
 
@@ -469,6 +480,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 | 5 | `cluster_templates` | Sequence Create → save → Library *(done)* |
 | 5b | `block_templates` / `session_templates` | Full template library *(done — run `sql/009`, `sql/010`)* |
 | 6 | Log tables (`sql/014`) + app denest/renest | Session logging *(done)*; Insights/analytics still open |
+| 6b | Multi-tool links (`sql/015`) | Exercises with multiple tools *(done)* |
 
 ---
 

@@ -35,8 +35,11 @@ export type ClusterExerciseItem = {
   id: string;
   /** Optional; blank resolves to tool/order title */
   name: string;
+  /** Primary tool — first of tool_ids (compat for older blobs) */
   tool_id: string;
-  /** Snapshot for display when name is blank */
+  /** Ordered tools; prefer this over tool_id when present */
+  tool_ids?: string[];
+  /** Snapshot for display when name is blank (joined tool labels) */
   tool_name?: string | null;
   target_shape_id: string;
   track_analytics: boolean;

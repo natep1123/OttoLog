@@ -110,6 +110,7 @@ function displayLabelName(
 async function countColumnValues(
   table:
     | 'exercise_templates'
+    | 'exercise_template_tool_links'
     | 'analytics_tag_links'
     | 'session_templates'
     | 'block_templates'
@@ -133,6 +134,36 @@ async function countColumnValues(
     if (!id) continue;
     counts.set(id, (counts.get(id) ?? 0) + 1);
   }
+  return counts;
+}
+
+/** Distinct exercise templates that reference a tool via primary column or links. */
+async function countToolUsage(ids: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (ids.length === 0) return counts;
+
+  const byTool = new Map<string, Set<string>>();
+  for (const id of ids) byTool.set(id, new Set());
+
+  const { data: colRows } = await supabase
+    .from('exercise_templates')
+    .select('id, tool_id')
+    .in('tool_id', ids);
+  for (const row of colRows ?? []) {
+    byTool.get(row.tool_id as string)?.add(row.id as string);
+  }
+
+  const { data: linkRows } = await supabase
+    .from('exercise_template_tool_links')
+    .select('exercise_template_id, tool_id')
+    .in('tool_id', ids);
+  for (const row of linkRows ?? []) {
+    byTool
+      .get(row.tool_id as string)
+      ?.add(row.exercise_template_id as string);
+  }
+
+  for (const [id, set] of byTool) counts.set(id, set.size);
   return counts;
 }
 
@@ -494,7 +525,7 @@ export async function listManagedTaxonomy(
 
     let usage = new Map<string, number>();
     if (kind === 'tool') {
-      usage = await countColumnValues('exercise_templates', 'tool_id', ids);
+      usage = await countToolUsage(ids);
     } else if (kind === 'session_label') {
       usage = await countColumnValues('session_templates', 'category_id', ids);
     } else if (kind === 'block_label') {
@@ -621,7 +652,7 @@ export async function deleteTaxonomy(
 
   let usage = new Map<string, number>();
   if (kind === 'tool') {
-    usage = await countColumnValues('exercise_templates', 'tool_id', [id]);
+    usage = await countToolUsage([id]);
   } else if (kind === 'primary_group') {
     usage = await countColumnValues('exercise_templates', 'primary_group_id', [
       id,

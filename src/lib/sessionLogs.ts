@@ -29,7 +29,7 @@ import {
   defaultClusterExerciseItem,
   expandClusterPerformedSets,
 } from './clusterTemplates';
-import { buildTargets, sanitizeTargetsForShape } from './exerciseTemplates';
+import { buildTargets, coerceToolIds, primaryToolId, sanitizeTargetsForShape } from './exerciseTemplates';
 import { defaultSessionBlockItem, defaultSessionDraft } from './sessionTemplates';
 import type {
   BlockClusterItem,
@@ -220,6 +220,48 @@ async function denestBlock(
   return null;
 }
 
+async function replaceLogItemTools(
+  logItemId: string,
+  toolIds: string[],
+): Promise<string | null> {
+  const ids = coerceToolIds({ tool_ids: toolIds });
+  const { error: delError } = await supabase
+    .from('log_item_tools')
+    .delete()
+    .eq('log_item_id', logItemId);
+  if (delError) return delError.message;
+
+  const { error } = await supabase.from('log_item_tools').insert(
+    ids.map((tool_id, sort_order) => ({
+      log_item_id: logItemId,
+      tool_id,
+      sort_order,
+    })),
+  );
+  return error?.message ?? null;
+}
+
+async function replaceLogSubItemTools(
+  logSubItemId: string,
+  toolIds: string[],
+): Promise<string | null> {
+  const ids = coerceToolIds({ tool_ids: toolIds });
+  const { error: delError } = await supabase
+    .from('log_sub_item_tools')
+    .delete()
+    .eq('log_sub_item_id', logSubItemId);
+  if (delError) return delError.message;
+
+  const { error } = await supabase.from('log_sub_item_tools').insert(
+    ids.map((tool_id, sort_order) => ({
+      log_sub_item_id: logSubItemId,
+      tool_id,
+      sort_order,
+    })),
+  );
+  return error?.message ?? null;
+}
+
 async function denestExerciseItem(
   logBlockId: string,
   item: BlockExerciseItem,
@@ -227,6 +269,7 @@ async function denestExerciseItem(
 ): Promise<string | null> {
   const itemDur = durationPair(item.track_duration, item.duration);
   const trackAnalytics = Boolean(item.track_analytics);
+  const tool_ids = coerceToolIds(item);
   const { data: itemRow, error: itemError } = await supabase
     .from('log_items')
     .insert({
@@ -239,7 +282,7 @@ async function denestExerciseItem(
       cluster_type: null,
       label_id: null,
       rounds: null,
-      tool_id: item.tool_id || NO_TOOL_ID,
+      tool_id: primaryToolId(tool_ids),
       target_shape_id: item.target_shape_id || TARGET_SHAPE_IDS.reps,
       track_analytics: trackAnalytics,
       primary_group_id: trackAnalytics ? item.primary_group_id : null,
@@ -250,6 +293,9 @@ async function denestExerciseItem(
   if (itemError || !itemRow) {
     return itemError?.message ?? 'Could not save exercise.';
   }
+
+  const toolErr = await replaceLogItemTools(itemRow.id, tool_ids);
+  if (toolErr) return toolErr;
 
   const targets = item.targets.length
     ? sanitizeTargetsForShape(item.target_shape_id, item.targets)
@@ -299,6 +345,7 @@ async function denestClusterItem(
     const ex = item.items[subOrder];
     const exDur = durationPair(ex.track_duration, ex.duration);
     const trackAnalytics = Boolean(ex.track_analytics);
+    const tool_ids = coerceToolIds(ex);
     const { data: subRow, error: subError } = await supabase
       .from('log_sub_items')
       .insert({
@@ -306,7 +353,7 @@ async function denestClusterItem(
         sub_item_order: subOrder + 1,
         name: normalizeBrief(ex.name),
         notes: ex.notes?.trim() || null,
-        tool_id: ex.tool_id || NO_TOOL_ID,
+        tool_id: primaryToolId(tool_ids),
         target_shape_id: ex.target_shape_id || TARGET_SHAPE_IDS.reps,
         track_analytics: trackAnalytics,
         primary_group_id: trackAnalytics ? ex.primary_group_id : null,
@@ -318,6 +365,8 @@ async function denestClusterItem(
     if (subError || !subRow) {
       return subError?.message ?? 'Could not save sequence exercise.';
     }
+    const toolErr = await replaceLogSubItemTools(subRow.id, tool_ids);
+    if (toolErr) return toolErr;
     subIdByExerciseId.set(ex.id, subRow.id);
   }
 
@@ -576,16 +625,22 @@ async function fetchSetsForParents(args: {
 function renestExerciseFromRows(
   item: Record<string, unknown>,
   setRows: Record<string, unknown>[],
+  toolIdsByItem: Map<string, string[]>,
 ): BlockExerciseItem {
   const targets = setRows.length
     ? setRows.map((r, i) => setRowToTarget(r, i))
     : buildTargets(1);
   const base = defaultClusterExerciseItem();
+  const tool_ids = coerceToolIds({
+    tool_ids: toolIdsByItem.get(item.id as string),
+    tool_id: (item.tool_id as string) || NO_TOOL_ID,
+  });
   return {
     ...base,
     id: newClientId('ex'),
     name: typeof item.name === 'string' ? item.name : '',
-    tool_id: (item.tool_id as string) || NO_TOOL_ID,
+    tool_ids,
+    tool_id: primaryToolId(tool_ids),
     target_shape_id: (item.target_shape_id as string) || TARGET_SHAPE_IDS.reps,
     track_analytics: Boolean(item.track_analytics),
     primary_group_id:
@@ -602,6 +657,7 @@ function renestClusterFromRows(
   item: Record<string, unknown>,
   subItems: Record<string, unknown>[],
   setsBySub: Map<string, Record<string, unknown>[]>,
+  toolIdsBySub: Map<string, string[]>,
 ): BlockClusterItem {
   const storedRounds = Math.max(
     1,
@@ -634,11 +690,16 @@ function renestClusterFromRows(
     }
 
     const base = defaultClusterExerciseItem();
+    const tool_ids = coerceToolIds({
+      tool_ids: toolIdsBySub.get(sub.id as string),
+      tool_id: (sub.tool_id as string) || NO_TOOL_ID,
+    });
     return {
       ...base,
       id: newClientId('ex'),
       name: typeof sub.name === 'string' ? sub.name : '',
-      tool_id: (sub.tool_id as string) || NO_TOOL_ID,
+      tool_ids,
+      tool_id: primaryToolId(tool_ids),
       target_shape_id:
         (sub.target_shape_id as string) || TARGET_SHAPE_IDS.reps,
       track_analytics: Boolean(sub.track_analytics),
@@ -736,6 +797,38 @@ export async function getSessionLog(
   });
   if (setsError) return { data: null, error: setsError };
 
+  const toolIdsByItem = new Map<string, string[]>();
+  if (exerciseItemIds.length) {
+    const { data: itemTools, error: itemToolsError } = await supabase
+      .from('log_item_tools')
+      .select('log_item_id, tool_id, sort_order')
+      .in('log_item_id', exerciseItemIds)
+      .order('sort_order', { ascending: true });
+    if (itemToolsError) return { data: null, error: itemToolsError.message };
+    for (const row of itemTools ?? []) {
+      const id = row.log_item_id as string;
+      const list = toolIdsByItem.get(id) ?? [];
+      list.push(row.tool_id as string);
+      toolIdsByItem.set(id, list);
+    }
+  }
+
+  const toolIdsBySub = new Map<string, string[]>();
+  if (subIds.length) {
+    const { data: subTools, error: subToolsError } = await supabase
+      .from('log_sub_item_tools')
+      .select('log_sub_item_id, tool_id, sort_order')
+      .in('log_sub_item_id', subIds)
+      .order('sort_order', { ascending: true });
+    if (subToolsError) return { data: null, error: subToolsError.message };
+    for (const row of subTools ?? []) {
+      const id = row.log_sub_item_id as string;
+      const list = toolIdsBySub.get(id) ?? [];
+      list.push(row.tool_id as string);
+      toolIdsBySub.set(id, list);
+    }
+  }
+
   const itemsByBlock = new Map<string, Record<string, unknown>[]>();
   for (const item of itemRows) {
     const bid = item.log_block_id as string;
@@ -760,11 +853,13 @@ export async function getSessionLog(
             item,
             subsByItem.get(item.id as string) ?? [],
             bySub,
+            toolIdsBySub,
           );
         }
         return renestExerciseFromRows(
           item,
           byItem.get(item.id as string) ?? [],
+          toolIdsByItem,
         );
       },
     );

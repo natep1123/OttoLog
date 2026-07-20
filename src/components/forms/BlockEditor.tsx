@@ -180,7 +180,11 @@ export function BlockEditor({
     if (error || !data) return;
     updateExercise(index, {
       name: data.name ?? '',
-      tool_id: data.tool_id,
+      tool_ids: data.tool_ids?.length ? data.tool_ids : [data.tool_id],
+      tool_name:
+        (data.tool_names ?? [])
+          .filter((n) => n && n !== 'None')
+          .join(', ') || null,
       target_shape_id: data.target_shape_id,
       track_analytics: data.track_analytics,
       primary_group_id: data.primary_group_id,

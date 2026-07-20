@@ -6,7 +6,10 @@ import {
 import { supabase } from './supabase';
 import {
   buildTargets,
+  coerceToolIds,
   defaultExerciseDraft,
+  normalizeToolIds,
+  primaryToolId,
   sanitizeTargetsForShape,
 } from './exerciseTemplates';
 import type {
@@ -36,11 +39,14 @@ export function exerciseDraftToClusterItem(
   draft: ExerciseTemplateInput,
   id?: string,
 ): ClusterExerciseItem {
+  const tool_ids = normalizeToolIds(draft.tool_ids);
   return {
     kind: 'exercise',
     id: id ?? newItemId(),
     name: draft.name,
-    tool_id: draft.tool_id,
+    tool_ids,
+    tool_id: primaryToolId(tool_ids),
+    tool_name: draft.tool_name?.trim() || null,
     target_shape_id: draft.target_shape_id,
     track_analytics: draft.track_analytics,
     primary_group_id: draft.primary_group_id,
@@ -58,7 +64,8 @@ export function clusterItemToExerciseDraft(
   const targets = Array.isArray(item.targets) ? item.targets : [];
   return {
     name: item.name ?? '',
-    tool_id: item.tool_id,
+    tool_ids: coerceToolIds(item),
+    tool_name: item.tool_name ?? null,
     target_shape_id: item.target_shape_id,
     track_analytics: Boolean(item.track_analytics),
     primary_group_id: item.primary_group_id ?? null,
@@ -205,6 +212,12 @@ function normalizeContent(raw: unknown): ClusterContent {
   const items: ClusterExerciseItem[] = itemsRaw.map((row, index) => {
     const r = (row ?? {}) as Record<string, unknown>;
     const targets = Array.isArray(r.targets) ? r.targets : [];
+    const tool_ids = coerceToolIds({
+      tool_ids: Array.isArray(r.tool_ids)
+        ? (r.tool_ids as string[])
+        : undefined,
+      tool_id: typeof r.tool_id === 'string' ? r.tool_id : undefined,
+    });
     return {
       kind: 'exercise',
       id:
@@ -212,7 +225,9 @@ function normalizeContent(raw: unknown): ClusterContent {
           ? r.id
           : `ex_migrated_${index}_${newItemId()}`,
       name: typeof r.name === 'string' ? r.name : '',
-      tool_id: typeof r.tool_id === 'string' ? r.tool_id : '',
+      tool_ids,
+      tool_id: primaryToolId(tool_ids),
+      tool_name: typeof r.tool_name === 'string' ? r.tool_name : null,
       target_shape_id:
         typeof r.target_shape_id === 'string' ? r.target_shape_id : '',
       track_analytics: Boolean(r.track_analytics),
@@ -536,21 +551,26 @@ export async function saveClusterTemplate(
     track_duration,
     duration: track_duration ? normalized.duration ?? '00:00:00' : null,
     rounds,
-    items: normalized.items.map((item) => ({
-      ...item,
-      kind: 'exercise' as const,
-      name: item.name.trim(),
-      notes: item.notes?.trim() || null,
-      primary_group_id: item.track_analytics ? item.primary_group_id : null,
-      analytics_tag_ids: item.track_analytics
-        ? item.analytics_tag_ids ?? []
-        : [],
-      duration: item.track_duration ? item.duration : null,
-      targets: sanitizeTargetsForShape(
-        item.target_shape_id,
-        buildTargets(1, item.targets),
-      ),
-    })),
+    items: normalized.items.map((item) => {
+      const tool_ids = coerceToolIds(item);
+      return {
+        ...item,
+        kind: 'exercise' as const,
+        name: item.name.trim(),
+        tool_ids,
+        tool_id: primaryToolId(tool_ids),
+        notes: item.notes?.trim() || null,
+        primary_group_id: item.track_analytics ? item.primary_group_id : null,
+        analytics_tag_ids: item.track_analytics
+          ? item.analytics_tag_ids ?? []
+          : [],
+        duration: item.track_duration ? item.duration : null,
+        targets: sanitizeTargetsForShape(
+          item.target_shape_id,
+          buildTargets(1, item.targets),
+        ),
+      };
+    }),
     overrides: overrides.map((o) => ({
       ...o,
       notes: o.notes?.trim() || null,

@@ -84,10 +84,46 @@ export function sanitizeTargetsForShape(
   });
 }
 
+/**
+ * Exclusive No Tool: any real tool clears it; empty / only No Tool → `[NO_TOOL_ID]`.
+ * Dedupes while preserving order. Always returns ≥1 id.
+ */
+export function normalizeToolIds(ids: string[] | null | undefined): string[] {
+  const raw = Array.isArray(ids)
+    ? ids.filter((id): id is string => typeof id === 'string' && id.length > 0)
+    : [];
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  for (const id of raw) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    deduped.push(id);
+  }
+  const withoutNoTool = deduped.filter((id) => id !== NO_TOOL_ID);
+  if (withoutNoTool.length === 0) return [NO_TOOL_ID];
+  return withoutNoTool;
+}
+
+export function primaryToolId(ids: string[] | null | undefined): string {
+  return normalizeToolIds(ids)[0];
+}
+
+/** Prefer tool_ids[]; else wrap singular tool_id; else No Tool. */
+export function coerceToolIds(args: {
+  tool_ids?: string[] | null;
+  tool_id?: string | null;
+}): string[] {
+  if (Array.isArray(args.tool_ids) && args.tool_ids.length > 0) {
+    return normalizeToolIds(args.tool_ids);
+  }
+  if (args.tool_id) return normalizeToolIds([args.tool_id]);
+  return [NO_TOOL_ID];
+}
+
 export function defaultExerciseDraft(): ExerciseTemplateInput {
   return {
     name: '',
-    tool_id: NO_TOOL_ID,
+    tool_ids: [NO_TOOL_ID],
     target_shape_id: TARGET_SHAPE_IDS.reps,
     track_analytics: false,
     primary_group_id: null,
@@ -115,6 +151,29 @@ async function replaceTagLinks(
     tagIds.map((tag_id) => ({
       exercise_template_id: templateId,
       tag_id,
+    })),
+  );
+
+  return { error: error?.message ?? null };
+}
+
+async function replaceToolLinks(
+  templateId: string,
+  toolIds: string[],
+): Promise<{ error: string | null }> {
+  const ids = normalizeToolIds(toolIds);
+  const { error: delError } = await supabase
+    .from('exercise_template_tool_links')
+    .delete()
+    .eq('exercise_template_id', templateId);
+
+  if (delError) return { error: delError.message };
+
+  const { error } = await supabase.from('exercise_template_tool_links').insert(
+    ids.map((tool_id, sort_order) => ({
+      exercise_template_id: templateId,
+      tool_id,
+      sort_order,
     })),
   );
 
@@ -156,6 +215,14 @@ export async function getExerciseTemplate(
 
   if (linkError) return { data: null, error: linkError.message };
 
+  const { data: toolLinks, error: toolLinkError } = await supabase
+    .from('exercise_template_tool_links')
+    .select('tool_id, sort_order, tools ( name, is_system_default )')
+    .eq('exercise_template_id', id)
+    .order('sort_order', { ascending: true });
+
+  if (toolLinkError) return { data: null, error: toolLinkError.message };
+
   let primary_group_name: string | null = null;
   if (template.primary_group_id) {
     const { data: group, error: groupError } = await supabase
@@ -177,12 +244,37 @@ export async function getExerciseTemplate(
     })
     .filter((n): n is string => Boolean(n));
 
+  const linkedToolIds = (toolLinks ?? []).map((l) => l.tool_id as string);
+  const tool_ids = coerceToolIds({
+    tool_ids: linkedToolIds,
+    tool_id: template.tool_id,
+  });
+  const tool_names = (toolLinks ?? [])
+    .map((l) => {
+      const tool = l.tools as
+        | { name: string; is_system_default?: boolean }
+        | { name: string; is_system_default?: boolean }[]
+        | null;
+      if (!tool) return null;
+      const row = Array.isArray(tool) ? tool[0] : tool;
+      if (!row?.name) return null;
+      if (l.tool_id === NO_TOOL_ID || row.is_system_default) return 'None';
+      return row.name;
+    })
+    .filter((n): n is string => Boolean(n));
+
   return {
     data: {
       ...template,
+      tool_id: primaryToolId(tool_ids),
       default_target_shape: Array.isArray(template.default_target_shape)
         ? template.default_target_shape
         : [],
+      tool_ids,
+      tool_names:
+        tool_names.length > 0
+          ? tool_names
+          : tool_ids.map((tid) => (tid === NO_TOOL_ID ? 'None' : tid)),
       analytics_tag_ids,
       primary_group_name,
       tag_names,
@@ -235,10 +327,11 @@ export async function saveExerciseTemplate(
     tagIds = draft.analytics_tag_ids ?? [];
   }
 
+  const tool_ids = normalizeToolIds(draft.tool_ids);
   const payload = {
     user_id: userId,
     name,
-    tool_id: draft.tool_id,
+    tool_id: primaryToolId(tool_ids),
     target_shape_id: draft.target_shape_id,
     track_analytics: draft.track_analytics,
     primary_group_id,
@@ -272,6 +365,9 @@ export async function saveExerciseTemplate(
   }
 
   if (!id) return { id: null, error: 'Save failed.' };
+
+  const toolLinks = await replaceToolLinks(id, tool_ids);
+  if (toolLinks.error) return { id: null, error: toolLinks.error };
 
   const links = await replaceTagLinks(id, tagIds);
   if (links.error) return { id: null, error: links.error };

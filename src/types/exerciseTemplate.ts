@@ -23,6 +23,7 @@ export type ExerciseTemplateRow = {
   user_id: string;
   /** Optional; blank resolves to tool/order title */
   name: string | null;
+  /** Primary tool (first in tool_ids) — kept for SQL NOT NULL / compatibility */
   tool_id: string;
   target_shape_id: string;
   track_analytics: boolean;
@@ -39,7 +40,14 @@ export type ExerciseTemplateRow = {
 export type ExerciseTemplateInput = {
   /** Optional Name; blank resolves to tool/order title */
   name: string;
-  tool_id: string;
+  /**
+   * Ordered tool ids. Always ≥1 after normalizeToolIds.
+   * No Tool is exclusive (real tools clear it; empty → [NO_TOOL_ID]).
+   * `tool_id` on save is derived as tool_ids[0].
+   */
+  tool_ids: string[];
+  /** Joined real-tool labels for blank-name display (chips / outline) */
+  tool_name?: string | null;
   target_shape_id: string;
   track_analytics: boolean;
   primary_group_id: string | null;
@@ -52,6 +60,8 @@ export type ExerciseTemplateInput = {
 };
 
 export type ExerciseTemplateWithTags = ExerciseTemplateRow & {
+  tool_ids: string[];
+  tool_names: string[];
   analytics_tag_ids: string[];
   primary_group_name: string | null;
   tag_names: string[];

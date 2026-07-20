@@ -8,9 +8,12 @@ import {
 } from 'react-native';
 import { useAuth } from '../../auth/AuthContext';
 import { TARGET_SHAPE_OPTIONS } from '../../constants/targetShapeFields';
+import { NO_TOOL_ID } from '../../constants/sentinelIds';
 import {
   buildTargets,
   migrateTargetsForShapeChange,
+  normalizeToolIds,
+  primaryToolId,
 } from '../../lib/exerciseTemplates';
 import { exerciseTitle, normalizeBrief } from '../../lib/displayTitles';
 import {
@@ -145,9 +148,17 @@ export function ExerciseEditor({
     label,
     kind: 'set' as const,
   }));
-  const toolWord = tools.find((tool) => tool.id === value.tool_id)?.label;
+  const toolWord =
+    (value.tool_ids ?? [])
+      .map((id) => {
+        const hit = tools.find((tool) => tool.id === id);
+        if (!hit || hit.label === 'None') return null;
+        return hit.label;
+      })
+      .filter((label): label is string => Boolean(label))
+      .join(', ') || null;
   const resolvedExerciseTitle = exerciseTitle(
-    value.tool_id,
+    primaryToolId(value.tool_ids),
     toolWord,
     value.name,
     orderIndex + 1,
@@ -164,7 +175,7 @@ export function ExerciseEditor({
       listAnalyticsTags(),
     ]);
 
-    const selectedToolIds = value.tool_id ? [value.tool_id] : [];
+    const selectedToolIds = value.tool_ids ?? [];
     const selectedGroupIds = value.primary_group_id
       ? [value.primary_group_id]
       : [];
@@ -182,7 +193,7 @@ export function ExerciseEditor({
   }, [
     value.analytics_tag_ids,
     value.primary_group_id,
-    value.tool_id,
+    value.tool_ids,
   ]);
 
   useEffect(() => {
@@ -285,15 +296,32 @@ export function ExerciseEditor({
         <>
           <View style={styles.controlsRow}>
             <View style={styles.controlCol}>
-              <Text style={styles.controlLabel}>Tool</Text>
+              <Text style={styles.controlLabel}>Tools</Text>
               <SearchableSelect
                 accent={exerciseControlAccent}
                 fill
+                mode="multi"
                 options={tools}
                 onOptionsChange={setTools}
-                value={value.tool_id}
-                onChange={(tool_id) => {
-                  if (tool_id) patch({ tool_id });
+                value={value.tool_ids}
+                onChange={(next) => {
+                  const prev = value.tool_ids ?? [];
+                  const selectedNoTool =
+                    next.includes(NO_TOOL_ID) && !prev.includes(NO_TOOL_ID);
+                  const tool_ids =
+                    selectedNoTool || next.length === 0
+                      ? [NO_TOOL_ID]
+                      : normalizeToolIds(next);
+                  const tool_name =
+                    tool_ids
+                      .map((id) => {
+                        const hit = tools.find((tool) => tool.id === id);
+                        if (!hit || hit.label === 'None') return null;
+                        return hit.label;
+                      })
+                      .filter((label): label is string => Boolean(label))
+                      .join(', ') || null;
+                  patch({ tool_ids, tool_name });
                 }}
                 onCreate={async (name) => {
                   if (!userId) return { data: null, error: 'Not signed in.' };
@@ -301,7 +329,7 @@ export function ExerciseEditor({
                 }}
                 placeholder="Search tools…"
                 emptyLabel="None"
-                accessibilityLabel="Tool"
+                accessibilityLabel="Tools"
               />
             </View>
             <View style={styles.controlCol}>
@@ -454,7 +482,8 @@ export function ExerciseEditor({
       node={outlineExercise(
         {
           name: value.name,
-          tool_id: value.tool_id,
+          tool_id: primaryToolId(value.tool_ids),
+          tool_name: toolWord,
           target_shape_id: value.target_shape_id,
           default_target_shape: value.default_target_shape,
         },

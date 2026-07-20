@@ -116,7 +116,7 @@ pills, joined by blue arrows.
 | Exercise | gold | sunrise-orange (set groups) |
 
 Set-group pills reuse the existing sunrise orange (`colors.sunrise` /
-`amberGlow`), matching the Tool selector's active state and the `+ Add sets`
+`amberGlow`), matching the Tools selector's active state and the `+ Add sets`
 control. `CoordRow` accepts either plain strings (colored by the host layer) or
 `{ label, kind }` chips where `kind` is a layer name or `'set'`.
 
@@ -235,10 +235,11 @@ builder replaces the current draft with a copy of that library template.
 
 ## Exercise editor
 
-Header controls, left to right: Tool, Shape.
+Header controls, left to right: Tools, Shape.
 
-- Tool is a searchable create-combobox over the user's `tools`. "None" resolves to
-  the global No Tool sentinel.
+- Tools is a multi searchable create-combobox over the user's `tools`. "None" resolves to
+  the global No Tool sentinel exclusively (selecting any real tool clears None; clearing
+  everything restores None only). Primary `tool_id` is the first selected tool.
 - Shape is a fixed select over the locked target shapes (Reps, Time, Time &
   Distance, Time & Reps, Distance). Changing shape migrates existing target rows
   into the new shape's fields.

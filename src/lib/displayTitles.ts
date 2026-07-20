@@ -86,11 +86,11 @@ export function clusterUiTitle(labelWord: string | null | undefined): string {
 
 export function exerciseTitle(
   _toolId: string | null | undefined,
-  _toolWord: string | null | undefined,
+  toolWord: string | null | undefined,
   name: string | null | undefined,
   _orderInParent1?: number,
 ): string {
-  return normalizeBrief(name) ?? 'Exercise';
+  return normalizeBrief(name) ?? (toolWord?.trim() || 'Exercise');
 }
 
 /** Fallback label word for system-null ids (matches sql/013 seeds). */

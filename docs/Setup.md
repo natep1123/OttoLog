@@ -49,9 +49,10 @@ sql/011_layer_labels.sql
 sql/012_standard_sequence_label.sql
 sql/013_kind_system_null_labels.sql
 sql/014_session_logs.sql
+sql/015_exercise_tools.sql
 ```
 
-After `004`, **No Tool** and the Session system-null label exist once for the whole project (fixed UUIDs). Signup does not create copies per user. Session templates require the Session sentinel (`010` depends on `004`; rename in `013`). Session logging requires `014` (tables + RLS; denest/renest run in the app).
+After `004`, **No Tool** and the Session system-null label exist once for the whole project (fixed UUIDs). Signup does not create copies per user. Session templates require the Session sentinel (`010` depends on `004`; rename in `013`). Session logging requires `014` (tables + RLS; denest/renest run in the app). Multi-tool exercises require `015` (template + log tool link tables).
 
 **Auth vs profile:** credentials in `auth.users`; profile `username` in `public.users` where `id = auth.uid()`.
 
@@ -86,5 +87,6 @@ Scan the QR code in Expo Go.
 | Sequence list empty / RLS | Apply `sql/008_cluster_templates.sql`; user signed in |
 | Block / Session list empty | Apply `sql/009` and `sql/010`; user signed in |
 | Session logs fail to save / empty Logs | Apply `sql/014_session_logs.sql`; user signed in |
+| Multi-tool exercises fail to save / load | Apply `sql/015_exercise_tools.sql` after `014` |
 
 Schema: [`Database_Outline.md`](./Database_Outline.md). Folders: [`Project_Structure.md`](./Project_Structure.md).
