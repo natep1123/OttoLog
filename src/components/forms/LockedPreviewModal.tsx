@@ -31,7 +31,6 @@ type Props = {
 const HEADER_CHROME = 64;
 const PAGINATION_CHROME = 52;
 const BODY_INSET = spacing.sm;
-const BODY_HEIGHT_EXTRA = spacing.lg;
 
 /**
  * Full-screen locked outline for screenshots. Fixed body height; pagination
@@ -52,19 +51,18 @@ export function LockedPreviewModal({
   const maxCardHeight =
     window.height - insets.top - insets.bottom - spacing.md * 2;
 
-  const bodyBudget = useMemo(
+  const singlePageBodyBudget = useMemo(
     () =>
       Math.max(
         180,
-        maxCardHeight -
-          HEADER_CHROME -
-          PAGINATION_CHROME -
-          BODY_INSET * 2,
+        maxCardHeight - HEADER_CHROME - BODY_INSET * 2,
       ),
     [maxCardHeight],
   );
-
-  const fixedBodyHeight = bodyBudget + BODY_HEIGHT_EXTRA;
+  const paginatedBodyBudget = useMemo(
+    () => Math.max(180, singlePageBodyBudget - PAGINATION_CHROME),
+    [singlePageBodyBudget],
+  );
 
   const [fullContentHeight, setFullContentHeight] = useState<number | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
@@ -86,17 +84,20 @@ export function LockedPreviewModal({
     if (fullContentHeight === null) {
       return [node];
     }
-    if (fullContentHeight <= bodyBudget) {
+    if (fullContentHeight <= singlePageBodyBudget) {
       return [node];
     }
-    return paginateOutline(node, bodyBudget, {
+    return paginateOutline(node, paginatedBodyBudget, {
       omitRootHeader: true,
       heightScale,
     });
-  }, [node, fullContentHeight, bodyBudget, heightScale]);
+  }, [node, fullContentHeight, singlePageBodyBudget, paginatedBodyBudget, heightScale]);
 
   const pageCount = pages.length;
   const pageNode = pages[pageIndex] ?? node;
+  // Outer pageBody height includes padding; packing uses the inner content budget.
+  const contentBudget = pageCount > 1 ? paginatedBodyBudget : singlePageBodyBudget;
+  const fixedBodyHeight = contentBudget + BODY_INSET * 2;
   const canPrev = pageIndex > 0;
   const canNext = pageIndex < pageCount - 1;
   const measuring = visible && fullContentHeight === null;
@@ -247,7 +248,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     borderWidth: 1,
     borderRadius: radii.md,
-    backgroundColor: colors.bgPanel,
+    backgroundColor: colors.bgInset,
     overflow: 'hidden',
   },
   cardHeader: {
@@ -258,7 +259,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    backgroundColor: colors.bgPanel,
+    backgroundColor: colors.bgInset,
   },
   headerCopy: {
     flex: 1,
@@ -293,6 +294,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: BODY_INSET,
     paddingVertical: BODY_INSET,
     alignSelf: 'stretch',
+    overflow: 'hidden',
   },
   pagination: {
     flexDirection: 'row',
@@ -303,7 +305,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.bgInset,
   },
   pageBtn: {
     width: 40,
@@ -313,7 +315,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.sm,
-    backgroundColor: colors.bgInset,
+    backgroundColor: colors.bgElevated,
   },
   pageBtnDisabled: {
     opacity: 0.35,

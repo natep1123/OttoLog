@@ -32,13 +32,15 @@ export type PreviewRow = {
   exerciseKey?: string;
 };
 
-/** Conservative heights — nested LockedOutline padding/gaps add up quickly. */
-const ROOT_CHROME = 22;
-const NESTED_HEADER = 36;
-const NESTED_META = 18;
-const EXERCISE_TITLE = 34;
-const SET_LINE = 21;
-const SIBLING_GAP = 8;
+/** Heights aligned to LockedOutline styles (padding/gaps/lineHeights). */
+const ROOT_CHROME = 18;
+const NESTED_HEADER = 24;
+const NESTED_META = 16;
+const EXERCISE_TITLE = 22;
+const SET_LINE = 20;
+const SIBLING_GAP = 6;
+/** Tiny slack so packed pages stay inside the fixed body. */
+const PACK_SAFETY = 4;
 
 function isExerciseNode(node: OutlineNode): boolean {
   return (
@@ -71,7 +73,7 @@ export function rowHeight(row: PreviewRow, previous?: PreviewRow): number {
     h = SET_LINE;
   }
 
-  h += Math.max(0, row.depth) * 5;
+  h += Math.max(0, row.depth) * 2;
 
   if (
     previous &&
@@ -189,27 +191,87 @@ function flattenToRows(
   }
 }
 
+function continuationChrome(
+  row: PreviewRow,
+  shownOnPage: Set<string>,
+  omitRootHeader: boolean,
+): number {
+  let extra = 0;
+
+  for (const anc of row.ancestors) {
+    if (omitRootHeader && anc.depth === 0) continue;
+    if (shownOnPage.has(anc.pathKey)) continue;
+
+    extra += rowHeight({
+      kind: 'header',
+      depth: anc.depth,
+      title: anc.title,
+      meta: anc.meta,
+      outlineKind: anc.kind,
+      pathKey: anc.pathKey,
+      ancestorKeys: [],
+      ancestors: [],
+    });
+    shownOnPage.add(anc.pathKey);
+  }
+
+  if (
+    row.kind === 'set-line' &&
+    row.exerciseKey &&
+    !shownOnPage.has(row.exerciseKey)
+  ) {
+    extra += rowHeight({
+      kind: 'exercise-title',
+      depth: row.depth,
+      title: row.title,
+      outlineKind: row.outlineKind,
+      pathKey: row.exerciseKey,
+      ancestorKeys: row.ancestorKeys,
+      ancestors: row.ancestors,
+      exerciseKey: row.exerciseKey,
+    });
+    shownOnPage.add(row.exerciseKey);
+  }
+
+  return extra;
+}
+
 function packRows(
   rows: PreviewRow[],
   maxHeight: number,
   leadingChrome = 0,
+  omitRootHeader = false,
 ): PreviewRow[][] {
   const pages: PreviewRow[][] = [];
   let current: PreviewRow[] = [];
   let height = leadingChrome;
+  let shownOnPage = new Set<string>();
+
+  const startNewPage = () => {
+    if (current.length) pages.push(current);
+    current = [];
+    height = leadingChrome;
+    shownOnPage = new Set<string>();
+  };
 
   for (const row of rows) {
     const previous = current[current.length - 1];
     const rh = rowHeight(row, previous);
+    const previewShown = new Set(shownOnPage);
+    const contChrome = continuationChrome(row, previewShown, omitRootHeader);
 
-    if (current.length > 0 && height + rh > maxHeight) {
-      pages.push(current);
-      current = [];
-      height = leadingChrome;
+    if (current.length > 0 && height + contChrome + rh > maxHeight) {
+      startNewPage();
     }
 
+    const contForRow = continuationChrome(row, shownOnPage, omitRootHeader);
     current.push(row);
-    height += rowHeight(row, current[current.length - 2]);
+    // Mark structural rows so later children don't re-bill ancestor chrome.
+    if (row.kind === 'header' || row.kind === 'exercise-title') {
+      shownOnPage.add(row.pathKey);
+    }
+    if (row.exerciseKey) shownOnPage.add(row.exerciseKey);
+    height += contForRow + rowHeight(row, current[current.length - 2]);
   }
 
   if (current.length) pages.push(current);
@@ -357,8 +419,9 @@ function paginateOnce(
 
   const pageGroups = packRows(
     rows,
-    budget,
+    Math.max(120, budget - PACK_SAFETY),
     omitRootHeader ? ROOT_CHROME : 0,
+    omitRootHeader,
   );
   const pages: OutlineNode[] = [];
   let prevPathKeys = new Set<string>();
