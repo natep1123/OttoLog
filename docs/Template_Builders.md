@@ -1,18 +1,24 @@
 # OttoLog Template Builders
 
-How the four nested template builders behave as shipped. Source of truth is the
-code in `src/components/forms/` and `src/screens/create/`. Data contracts live in
-`Database_Outline.md`; visual tokens and chrome live in `Styling.md`.
+How the four nested template builders and the session log builder behave as shipped.
+Source of truth is the code in `src/components/forms/` and `src/screens/create/`.
+Data contracts live in `Database_Outline.md`; visual tokens and chrome live in
+`Styling.md`.
 
-There are four builders: Session, Block, Sequence, Exercise. They compose the same
-leaf editors, so a Session builder contains Block editors, which contain Sequence
-and Exercise editors, and a Sequence contains Exercise editors.
+There are four template builders: Session, Block, Sequence, Exercise. They compose
+the same leaf editors, so a Session builder contains Block editors, which contain
+Sequence and Exercise editors, and a Sequence contains Exercise editors. The
+**session log** builder reuses `SessionEditor` plus a session-date control and
+denests into relational log tables on save.
 
 ## Where they live
 
-- Create tab: Templates hub opens each builder for a new draft.
-- Library tab: opening a saved template reopens the matching builder by id.
-- Bottom navigation hides on all four builders.
+- Create tab: Log a session (from scratch or from a session template); Templates
+  hub opens each template builder for a new draft.
+- Library tab: opening a saved template or log reopens the matching builder by
+  id in **review mode** (root starts locked + expanded so the coach outline is
+  visible until unlock).
+- Bottom navigation hides on all template builders and the session log builder.
 - Each builder screen is header, editor, then a footer with Save. The footer,
   not the editor, owns Save, Done, and remove actions.
 
@@ -148,7 +154,14 @@ lives only in `LockController` (per-node map + parent tree) — no schema fields
   entries use a **thin left spine** tinted with each child’s layer color (blue /
   violet / gold), not the full NestedLayer L-rail. A little extra space sits under
   the chip row only in this expanded lock view. Map, overrides, More, and add
-  controls are hidden.
+  controls are hidden. Session lock outlines omit the redundant root session
+  title inside the outline box (the card header Label already shows it); the
+  screenshot popup also omits that root title.
+- **Screenshot preview:** While locked, trailing chrome is a maximize control
+  that opens `LockedPreviewModal` — full-screen paginated outline for easy
+  screenshots. Modal chrome uses `bgInset`; the outline root keeps the host
+  layer highlight wash. Pagination packs rows against a measured body budget
+  (`lockedPreviewPages.ts`), continuing layers with `(cont.)` across pages.
 - **Exercise locked:** Locking stops at the exercise leaf (no set-row locks). A
   locked exercise always shows the compact header + prescription pills view — no
   outline body, Tool/Shape, or targets grid — whether expand would otherwise be
@@ -157,6 +170,26 @@ lives only in `LockController` (per-node map + parent tree) — no schema fields
   `outlineSession` in `targetSummaries.ts`. Session/Block/Sequence outline titles
   use Label words (`sessionUiTitle` / `blockUiTitle` / `clusterUiTitle`);
   exercises use names.
+- **Library review mode:** Template and log builders opened from Library pass
+  `reviewLockId` into `EditorChrome` so the root node starts locked. Builder
+  roots also start expanded so the outline is immediately visible.
+
+## Session logs
+
+Create → **From scratch** / **From template**, or Library → **Logs**.
+
+- Same nested Session → Block → Sequence → Exercise editor tree as session
+  templates (`SessionLogBuilderScreen` + `SessionEditor`).
+- Extra header control: `SessionDateControl` on the tools row (`session_date`,
+  local calendar date for attribution).
+- Optional `template_id` when seeded from a session template; draft still saves
+  as an independent log (JSON copy, then denest).
+- Save / load via `src/lib/sessionLogs.ts` against `sql/014` tables. Sequences
+  expand performed sets on denest (`expandClusterPerformedSets`).
+- List titles: `sessionLogTitle` → Label + local date, with `(session N)` when
+  more than one log shares that date.
+- Soft status `draft` \| `complete` is on the header row; v1 UI defaults new
+  logs to `complete`.
 
 ## Labels, Name/Brief, and resolved titles
 
@@ -288,8 +321,8 @@ outline recipe at intrinsic width beside Cancel, so it does not read as a solid
 pink slab against the override panel wash.
 
 Sequences stay compact in the template (rounds plus per-round targets plus sparse
-overrides). Individual sets expand only when a session is logged, which is not
-built yet.
+overrides). Individual sets expand when a session is logged (denest in
+`sessionLogs.ts`).
 
 ## Save, name uniqueness, and removal
 
@@ -313,6 +346,8 @@ propagate to templates that already copied it.
 
 ## Not built yet
 
-- Session logging and denest/renest into relational log tables (log titles use
-  owned name or `Session - [Weekday, Month D, YYYY]` with same-day `(session N)`).
+- Insights / analytics surfaces over relational log tables.
+- Optional Postgres `fn_denest_session_log` / `fn_renest_session_log` wrappers
+  (app denest/renest already ships).
 - Dropping legacy `cluster_templates.cluster_type` after full label cutover.
+- AI-assisted log drafting; Home week calendar wired to logs.

@@ -162,7 +162,11 @@ export function SessionEditor({ value, onChange }: Props) {
         kind: 'block',
       }))}
       label={
-        locked ? null : (
+        locked ? (
+          <Text style={styles.lockedLabel} numberOfLines={1}>
+            {value.label_name?.trim() || 'Session'}
+          </Text>
+        ) : (
           <LayerLabelSelect
             kind="session_label"
             value={value.category_id}
@@ -325,6 +329,11 @@ export function SessionEditor({ value, onChange }: Props) {
 
 const styles = StyleSheet.create({
   nameField: { width: '100%', minWidth: 0 },
+  lockedLabel: {
+    fontFamily: typography.fontMedium,
+    fontSize: 15,
+    color: colors.text,
+  },
   durationRow: {
     width: '100%',
     flexDirection: 'row',

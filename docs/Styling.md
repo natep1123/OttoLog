@@ -292,12 +292,13 @@ Secure fields use native `secureTextEntry`. Configure keyboard type, content typ
 
 ## Bottom Navigation
 
-The signed-in shell uses a custom four-item bottom navigation in this order:
+The signed-in shell uses a custom five-item bottom navigation in this order:
 
 1. Home
-2. Create
-3. Library
-4. Account
+2. Insights
+3. Create
+4. Library
+5. Account
 
 Current measurements:
 
@@ -345,30 +346,33 @@ Users navigate to Welcome by pressing the wordmark. They move directly between L
 
 ### Shell
 
-Home now uses a dashboard layout. Create, Library, and Account use hub / list / builder screens with:
+Home now uses a dashboard layout. Insights is a placeholder. Create, Library, and Account use hub / list / builder screens with:
 
 - Header-sized wordmark
 - Screen title + muted subtitle via `ScreenHeader`
-- Bottom navigation (hidden on Session / Block / Sequence / Exercise builders)
+- Bottom navigation (hidden on Session / Block / Sequence / Exercise / Session-log builders)
 
 ### Home
 
 Top-aligned dashboard using live data where it exists:
 
 - Greeting from local device time (`dayjs`)
-- Quick actions: Build exercise, Browse exercise library, Manage taxonomy
-- Up to four recent exercise templates from Supabase
-- **This week** strip with today highlighted; **Soon** badge until session logging ships
+- Quick actions: Build session template, Browse exercise library, Manage taxonomy
+- **This week** strip with today highlighted; **Soon** badge until the week calendar wires to session logs
 
 Greeting by local hour: morning 5–11, afternoon 12–17, evening 18–21, late night **Hey** (22–4).
 
 The week strip is a placeholder layout, not a session calendar yet.
 
+### Insights
+
+Placeholder screen (`InsightsComingSoonScreen`). No analytics UI yet; relational log tables are ready for later surfaces.
+
 ### Account
 
 Account hub: profile (username, email), then:
 
-- **Taxonomy**: Tools, Primary groups, Analytics tags. Create, rename, archive, hard-delete when unused. **Show archived** toggle. Pickers elsewhere stay active-only. Global **None** (No Tool) is system-locked. Session categories come later.
+- **Taxonomy**: Tools, Primary groups, Analytics tags. Create, rename, archive, hard-delete when unused. **Show archived** toggle. Pickers elsewhere stay active-only. Global **None** (No Tool) is system-locked. Session / Block / Sequence labels ship via taxonomy migrations; Account UI still centers tools + analytics for now.
 - **Settings**: Profile and Preferences (**Soon**), **Danger zone** (live)
 
 Danger zone has **Delete account** with confirmation. **Log out** is on the Account hub footer.
@@ -377,10 +381,10 @@ Danger zone has **Delete account** with confirmation. **Log out** is on the Acco
 
 Same hub pattern: `ScreenHeader` plus stacked `HubAction` rows.
 
-- **Create**: Build templates (live), Log a session (Soon) → Templates hub → Session / Block / Sequence / Exercise builders (live)
-- **Library**: Templates (live), Logs (Soon) → Templates hub → Session / Block / Sequence / Exercise lists with name search (live)
+- **Create**: Log a session — From scratch / From template (live), AI-assisted (**Soon**); Build templates → Templates hub → Session / Block / Sequence / Exercise builders (live)
+- **Library**: Templates (live), Logs (live) → Templates hub → Session / Block / Sequence / Exercise lists; Logs list → session log editor. Library opens use **review mode** (root locked + expanded outline)
 
-All four template builders hide bottom nav. Library lists are top-aligned with `ListSearchBar`.
+Template and session-log builders hide bottom nav. Library lists are top-aligned with `ListSearchBar`.
 
 ### Nestable form layers
 
@@ -411,13 +415,17 @@ chevron (`chevron · lock · label/title · trailing`). Locked + expanded
 Session/Block/Sequence cards replace the form body with `LockedOutline`: host
 layer wash on the root, and nested entries use a **thin** left spine in each
 child’s layer color (not the 4px L-rail). Locked exercises stay pills-only.
-Lock is ephemeral UI state only (see Template_Builders.md).
+Lock is ephemeral UI state only (see Template_Builders.md). While locked, a
+maximize trailing control opens `LockedPreviewModal`: modal card chrome uses
+`colors.bgInset`; the outline root keeps the host layer highlight wash. Pages
+paginate densely against the measured body budget.
 
 Session/Block/Sequence headers keep Name/Brief out of the header entirely: an
 expanded card shows only the Label selector, a `⌕` search shortcut, and the `⋯`
 overflow. Name/Brief moves into the More panel, and the `⌕` shortcut opens that
 panel focused on the field. Trailing search/overflow hide while the card is
-effectively locked; the label/title become static text.
+effectively locked; the label/title become static text (session lock outlines
+also omit the duplicate root title inside the outline box).
 
 Summary pills are colored by the layer of the item each pill names, while the
 arrows between pills stay the host card's color: red arrows in Session, blue in
@@ -436,9 +444,10 @@ sides, with centered option content.
 Each builder screen wraps its editor in `EditorChrome`, which shows an
 `EditorTools` dropdown (the **Tools** tray) above the form and outside the card
 chrome, plus expansion and lock controllers. Tray actions: **Collapse exercises**
-and **Unlock & Expand All**. The tray renders in a `Modal` anchored to its button
-so it floats above card `elevation`; it is the intended home for future workspace
-actions.
+and **Unlock & Expand All**. Optional `reviewLockId` starts the root locked
+(Library review). The tray renders in a `Modal` anchored to its button so it
+floats above card `elevation`; it is the intended home for future workspace
+actions. Session log builders also place `SessionDateControl` on that tools row.
 
 Nesting is constrained by role: Session adds Blocks; Block adds an ordered mix
 of Sequences and standalone Exercises; Sequence adds Exercises only. Each

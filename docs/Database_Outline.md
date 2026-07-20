@@ -2,7 +2,7 @@
 
 Official high-level map of OttoLog’s Supabase / Postgres structure.
 
-This document is the project outline for what exists and what we intend to build. Shipped builder behavior lives in `docs/Template_Builders.md`. The archived design set in `docs/deprecated/original-concept/` still holds the JSON tree and denest/renest sketch for the not-yet-built log layer, but it is historical and contradicts shipped behavior in places (see that folder's README).
+This document is the project outline for what exists and what we intend to build. Shipped builder and session-log behavior lives in `docs/Template_Builders.md`. The archived design set in `docs/deprecated/original-concept/` still holds useful JSON-tree background, but it is historical and contradicts shipped behavior in places (see that folder's README).
 
 When outline, archived docs, and live SQL disagree, use this order:
 
@@ -28,25 +28,30 @@ When outline, archived docs, and live SQL disagree, use this order:
 | Sequence templates | `cluster_templates` (legacy internal name) |
 | Block templates | `block_templates` |
 | Session templates | `session_templates` |
+| Session logs | `session_logs`, `log_blocks`, `log_items`, `log_sub_items`, `log_sets` |
 
 **App slice live**
 
-- **Home**: dashboard with quick actions, recent exercise templates, local week preview
-- **Create** → Template hub → Session / Block / Sequence / Exercise builders; save to Supabase
-- **Library** → Templates → Sessions / Blocks / Sequences / Exercises: browse, search, edit, archive/delete
+- **Home**: dashboard with quick actions (build session template, browse exercises, manage taxonomy) and local week preview placeholder
+- **Insights**: placeholder tab (coming soon)
+- **Create** → Log a session (from scratch or from a session template) → denest save; Templates hub → Session / Block / Sequence / Exercise builders
+- **Library** → Templates and Logs: browse, search, open in review mode (locked + expanded outline), edit / archive / delete
 - Searchable create-comboboxes for tools, primary groups, and tags in the exercise builder
 - **Account** → Taxonomy: tools, primary groups, tags (create, rename, archive, hard-delete when unused)
 - **Account** → Settings → Danger zone: delete account
 - Name search on Session / Block / Sequence / Exercise builders can copy another template's fields into the current draft without switching which template you are editing
 - Active template names are unique per user per layer, case-insensitive (`sql/007`–`010`)
 - Sequence delete prefers soft archive; hard delete only when unreferenced (v1: always allowed — no FK references yet)
-- Sequences use **rounds (each)** programming: ordered nested exercises × `rounds`, with sparse round-range overrides; individual sets expand only when logging
+- Sequences use **rounds (each)** programming: ordered nested exercises × `rounds`, with sparse round-range overrides; performed sets expand on log denest
 - Blocks nest an ordered mix of exercise and sequence blobs; sessions nest ordered block blobs (copied JSON, no cross-template FKs). Session/Block/Sequence use mandatory labels (`category_id` / `label_id`); names are optional Name/Brief
+- Session logs reuse the Session editor tree plus `session_date` / `status` / optional `template_id`; denest/renest run in `src/lib/sessionLogs.ts` (not Postgres RPCs yet)
 
 **Not live yet**
 
-- Log / relational session tables
-- Denest / renest functions
+- Insights / analytics query surfaces over log tables
+- Postgres `fn_denest_session_log` / `fn_renest_session_log` wrappers (optional; app denest/renest already ships)
+- AI-assisted log drafting; Home week calendar wired to logs
+
 Applied migrations:
 
 - `sql/001_users.sql`
@@ -62,6 +67,7 @@ Applied migrations:
 - `sql/011_layer_labels.sql` — block/sequence labels, nullable names, seed RPC
 - `sql/012_standard_sequence_label.sql` — sequence system-null rename (superseded display word by 013)
 - `sql/013_kind_system_null_labels.sql` — system nulls → Session / Block / Sequence
+- `sql/014_session_logs.sql` — relational session log tables + RLS
 
 ---
 
@@ -227,7 +233,7 @@ templates (library / blueprints)
   block_templates               (jsonb content)  ← LIVE
   session_templates             (jsonb content)  ← LIVE
 
-logs (relational facts)                    ← planned
+logs (relational facts)                    ← LIVE (`sql/014`)
   session_logs
     └── log_blocks              (X)
           └── log_items         (Y: exercise | cluster)
@@ -364,12 +370,12 @@ Personal library objects for Create → Build templates.
 
 ## 5. Logs (relational fact layer)
 
-Logged sessions are fully relational so analytics can query sets.
+Logged sessions are fully relational so analytics can query sets. Tables and RLS ship in `sql/014`. Denest (editor tree → rows) and renest (rows → editor tree) live in `src/lib/sessionLogs.ts` for v1; optional Postgres RPCs can wrap the same shape later.
 
 | Table | Role |
 |-------|------|
-| `session_logs` | Session header (`status`: `draft` \| `complete`, optional `template_id`, required `category_id`) |
-| `log_blocks` | Block level (X) via `block_order` |
+| `session_logs` | Session header (`status`: `draft` \| `complete`, optional `template_id`, required `category_id`, required `session_date`) |
+| `log_blocks` | Block level (X) via `block_order`; mandatory `label_id` → `block_labels` |
 | `log_items` | Item level (Y): `kind = 'exercise'` or `'cluster'` |
 | `log_sub_items` | Nested exercise inside a cluster (Z) |
 | `log_sets` | One row per set; exactly one of `log_item_id` / `log_sub_item_id` is set |
@@ -377,7 +383,7 @@ Logged sessions are fully relational so analytics can query sets.
 ### `log_items` rules
 
 - `kind = 'exercise'` → `tool_id` + `target_shape_id` required; `cluster_type` null; `primary_group_id` required iff `track_analytics`
-- `kind = 'cluster'` → `cluster_type` required (`superset` \| `circuit`); exercise-only FKs null
+- `kind = 'cluster'` → `cluster_type` required (`superset` \| `circuit`); `label_id` + `rounds`; exercise-only FKs null
 
 ### Tree → rows (denest)
 
@@ -385,16 +391,22 @@ Logged sessions are fully relational so analytics can query sets.
 session header          → session_logs
 blocks[]                → log_blocks
   items[] exercise      → log_items + log_sets
-  items[] exercise/cluster → log_items
-    nested exercises    → log_sub_items + log_sets
+  items[] cluster       → log_items
+    nested exercises    → log_sub_items + log_sets (rounds × overrides expanded)
 ```
 
-Intended Postgres boundary functions (not built yet):
+App API (`src/lib/sessionLogs.ts`):
+
+- `saveSessionLog` — replace-write denest for create/update
+- `getSessionLog` / `listSessionLogs` — renest / list with same-day ordinal for display titles
+- `deleteSessionLog` — hard delete (cascade children)
+
+Optional future Postgres boundary functions (not required for the app today):
 
 - `fn_denest_session_log(user_id, tree jsonb) → uuid`
 - `fn_renest_session_log(log_id) → jsonb`
 
-Templates stay JSONB end-to-end and do not denest for analytics in v1.
+Templates stay JSONB end-to-end and do not denest for analytics in v1. Log list titles use `sessionLogTitle`: Label + local date, with `(session N)` when multiple logs share a day.
 
 ---
 
@@ -455,11 +467,11 @@ Do not create the full graph in one migration. Ship in dependency order:
 | 4 | `exercise_templates` | First Create → save → Library path *(done)* |
 | 5 | `cluster_templates` | Sequence Create → save → Library *(done)* |
 | 5b | `block_templates` / `session_templates` | Full template library *(done — run `sql/009`, `sql/010`)* |
-| 6 | Log tables + denest/renest | Session logging + analytics facts |
+| 6 | Log tables (`sql/014`) + app denest/renest | Session logging *(done)*; Insights/analytics still open |
 
 ---
 
-## Indexes (v1 minimum, when logs exist)
+## Indexes (v1 minimum)
 
 - `session_logs (user_id, session_date DESC)`
 - `session_logs (user_id, status)`
@@ -489,7 +501,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 | `docs/Template_Builders.md` | Shipped builder behavior (Session / Block / Sequence / Exercise) |
 | `docs/Styling.md` | Official visual system |
 | `docs/Project_Structure.md` | Folders, navigation, key files |
-| `docs/deprecated/original-concept/Backend/Database_Design.md` | Historical schema + JSON tree. Retired names (`composition_categories`), retired seeding model. Keep only for the log-layer sketch |
+| `docs/deprecated/original-concept/Backend/Database_Design.md` | Historical schema + JSON tree. Retired names (`composition_categories`), retired seeding model. Log tables now live; prefer `sql/014` + this outline |
 | `docs/deprecated/` | Archived design set (README explains what is stale) |
 | `sql/` | Applied and pending migrations |
 

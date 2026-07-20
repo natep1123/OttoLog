@@ -48,9 +48,10 @@ sql/010_session_templates.sql
 sql/011_layer_labels.sql
 sql/012_standard_sequence_label.sql
 sql/013_kind_system_null_labels.sql
+sql/014_session_logs.sql
 ```
 
-After `004`, **No Tool** and the Session system-null label exist once for the whole project (fixed UUIDs). Signup does not create copies per user. Session templates require the Session sentinel (`010` depends on `004`; rename in `013`).
+After `004`, **No Tool** and the Session system-null label exist once for the whole project (fixed UUIDs). Signup does not create copies per user. Session templates require the Session sentinel (`010` depends on `004`; rename in `013`). Session logging requires `014` (tables + RLS; denest/renest run in the app).
 
 **Auth vs profile:** credentials in `auth.users`; profile `username` in `public.users` where `id = auth.uid()`.
 
@@ -68,9 +69,11 @@ Scan the QR code in Expo Go.
 2. **Create** → Build templates → Exercise → save
 3. **Create** → Build templates → Sequence → add exercises → save
 4. **Create** → Build templates → Block / Session → nest lower layers → save
-5. **Library** → Templates → Exercises / Sequences / Blocks / Sessions → reopen and edit
-6. **Account** → Taxonomy → add a tool
-7. **Home** → recent exercise templates and quick actions show up
+5. **Create** → Log a session → From scratch (or From template) → set date → save
+6. **Library** → Templates → Exercises / Sequences / Blocks / Sessions → reopen (review mode) and unlock to edit
+7. **Library** → Logs → reopen a saved log → edit / delete
+8. **Account** → Taxonomy → add a tool
+9. **Home** → quick actions navigate; **Insights** shows the placeholder
 
 ## Troubleshooting
 
@@ -82,5 +85,6 @@ Scan the QR code in Expo Go.
 | Duplicate template name | By design. Active names are unique per user per layer (`007`–`010`). |
 | Sequence list empty / RLS | Apply `sql/008_cluster_templates.sql`; user signed in |
 | Block / Session list empty | Apply `sql/009` and `sql/010`; user signed in |
+| Session logs fail to save / empty Logs | Apply `sql/014_session_logs.sql`; user signed in |
 
 Schema: [`Database_Outline.md`](./Database_Outline.md). Folders: [`Project_Structure.md`](./Project_Structure.md).

@@ -7,17 +7,17 @@ Do not build from these files. Use the live docs in `docs/`:
 
 | Live doc | Covers |
 |----------|--------|
-| `docs/Database_Outline.md` | Schema, sentinels, templates, planned log layer |
+| `docs/Database_Outline.md` | Schema, sentinels, templates, session logs |
 | `docs/Project_Structure.md` | Folders, navigation, key files |
-| `docs/Template_Builders.md` | Shipped builder behavior (Session / Block / Sequence / Exercise) |
+| `docs/Template_Builders.md` | Shipped builder + session log behavior |
 | `docs/Styling.md` | Visual system and screen patterns |
 | `docs/Setup.md` | Env, migrations, run, verify |
 
 ## What is in here
 
-`original-concept/` is the original aspirational design set that seeded v1. It
-still holds useful background for the not-yet-built phase (session logging plus
-denest/renest into relational log tables), but read it against the live docs.
+`original-concept/` is the original aspirational design set that seeded v1. Session
+logging and relational denest/renest now ship (`sql/014`, `src/lib/sessionLogs.ts`);
+treat the archived log sketches as history only and prefer the live outline.
 
 ### Known ways it disagrees with the shipped app
 
@@ -33,5 +33,7 @@ denest/renest into relational log tables), but read it against the live docs.
   snapshot confirm sheet. Neither was built. Reordering plus name-search
   copy-from-template replaced them.
 - Assumes Expo Router. The app uses a custom `useState` stack in `HomeScreen`.
+- Assumes denest/renest live only as Postgres RPCs. Shipped v1 runs denest/renest
+  in the app against `sql/014` tables.
 - `Overview.md` links to `Frontend/Styling.md`, which never existed here. The
   styling doc is `docs/Styling.md`.
