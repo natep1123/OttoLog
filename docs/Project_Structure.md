@@ -60,14 +60,14 @@ Bottom nav hides on Session / Block / Sequence / Exercise builders (Create or Li
 | `sessionTemplates.ts` | List, get, save, archive / hard-delete; nested blocks; `sessionTemplateToDraft`; default Session label |
 | `taxonomy.ts` | Picker lists and Account taxonomy CRUD (tools, analytics, session/block/sequence labels) |
 | `localTime.ts` | Local greeting and week strip (`dayjs`) |
-| `displayTitles.ts` | Resolved titles: custom Name/Brief as typed, else bare kind (Session/Block/Sequence/Exercise) |
+| `displayTitles.ts` | Library titles: custom Name/Brief as typed, else bare kind. Compact UI titles (`sessionUiTitle` / `blockUiTitle` / `clusterUiTitle`): Label word for Session/Block/Sequence chrome |
 | `targetSummaries.ts` | Compress/expand set groups; coach-shorthand summaries for all layers |
 
 ### `src/components/`
 
 Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `ConfirmDialog`, `ListSearchBar`, `BottomNav`, `BrandWordmark`.
 
-**`components/forms/`**: Nestable editors — Session → Block → Sequence → Exercise (`ClusterEditor` remains the internal component name), plus `NestedLayer`, `CoordRow`, `LayerLabelSelect`, `TemplateNameSearch` / `ExerciseNameSearch`, `MorePanel`, `IconButton`, `AddChildButton`, `Disclosure`, `ClusterSequenceDiagram`, and the workspace `EditorChrome` / `EditorTools` + `ExpansionController` (Tools tray, collapse exercises). Behavior is documented in `docs/Template_Builders.md`.
+**`components/forms/`**: Nestable editors — Session → Block → Sequence → Exercise (`ClusterEditor` remains the internal component name), plus `NestedLayer`, `CoordRow`, `LockedOutline`, `LayerLabelSelect`, `TemplateNameSearch` / `ExerciseNameSearch`, `MorePanel`, `IconButton`, `AddChildButton`, `Disclosure`, `ClusterSequenceDiagram`, and the workspace `EditorChrome` / `EditorTools` + `ExpansionController` + `LockController` (Tools tray: Collapse exercises, Unlock & Expand All; ephemeral lock/view mode). Behavior is documented in `docs/Template_Builders.md`.
 
 ### `src/screens/`
 
@@ -118,4 +118,4 @@ Account TaxonomyListScreen
 
 ## Forms layer accents
 
-See `formTokens.ts` / `docs/Styling.md`. Session → Block → Sequence → Exercise each own a background + accent rail used by `NestedLayer`, `IconButton`, and `MorePanel`. Session/Block/Sequence headers are label-first; Name/Brief and a `⌕` search shortcut live in the More panel; Exercise keeps its inline name search. Cards show scrollable summary chips from `targetSummaries.ts`, colored by the layer each pill describes with host-colored arrows between them. Resolved titles are custom Name/Brief as typed, else the bare kind word.
+See `formTokens.ts` / `docs/Styling.md`. Session → Block → Sequence → Exercise each own a background + accent rail used by `NestedLayer`, `IconButton`, and `MorePanel`. Session/Block/Sequence headers are label-first; Name/Brief and a `⌕` search shortcut live in the More panel; Exercise keeps its inline name search. Cards show scrollable summary chips from `targetSummaries.ts`, colored by the layer each pill describes with host-colored arrows between them. Library/search titles use custom Name/Brief as typed, else the bare kind word; compact chrome (pills, locked outline, add-button parent refs) uses Label words for Session/Block/Sequence.

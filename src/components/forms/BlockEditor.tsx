@@ -518,7 +518,10 @@ const styles = StyleSheet.create({
   },
   items: { gap: spacing.sm, ...blockItemsLayout },
   addActions: {
-    marginTop: spacing.sm,
+    // items bottom inset (8) + body gap (4) ≈ even with inter-button gap;
+    // tiny extra below the stack before card padding.
+    marginTop: 0,
+    marginBottom: spacing.xs,
     alignItems: 'center',
     gap: spacing.sm,
   },

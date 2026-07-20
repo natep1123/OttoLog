@@ -405,24 +405,29 @@ between child boxes, while the child accent visually covers it over the child's
 own height. The 4-point accent runs the full left edge, curves around the
 bottom-left corner, and continues across the full bottom edge. Collapse state is
 local to each card; the layer chevron rotates `-90deg` when collapsed, and
-collapsing a card also closes its More panel. A lock toggle sits immediately
-after the chevron (`chevron · lock · label/title · trailing`); locked cards use
-the same layer wash for a compact `LockedOutline` grammar view when expanded.
+collapsing a card also closes its More panel. Opening a collapsed card collapses
+its immediate children (expand cascade). A lock toggle sits immediately after the
+chevron (`chevron · lock · label/title · trailing`). Locked + expanded
+Session/Block/Sequence cards replace the form body with `LockedOutline`: host
+layer wash on the root, and nested entries use a **thin** left spine in each
+child’s layer color (not the 4px L-rail). Locked exercises stay pills-only.
 Lock is ephemeral UI state only (see Template_Builders.md).
 
 Session/Block/Sequence headers keep Name/Brief out of the header entirely: an
 expanded card shows only the Label selector, a `⌕` search shortcut, and the `⋯`
-overflow; a collapsed card shows the resolved title line. Name/Brief moves into
-the More panel, and the `⌕` shortcut opens that panel focused on the field.
-Trailing search/overflow hide while the card is effectively locked.
+overflow. Name/Brief moves into the More panel, and the `⌕` shortcut opens that
+panel focused on the field. Trailing search/overflow hide while the card is
+effectively locked; the label/title become static text.
 
 Summary pills are colored by the layer of the item each pill names, while the
 arrows between pills stay the host card's color: red arrows in Session, blue in
-Block, violet in Sequence, gold in Exercise. Set-group pills use the sunrise
-orange (`colors.sunrise` / `amberGlow`) already used by the active Tool selector
-and `+ Add sets`. Focused controls take their card's layer color — Tool/Shape and
-analytics selectors focus gold, label selectors and coaching notes focus their
-own layer color — so orange is reserved for set-level actions.
+Block, violet in Sequence, gold in Exercise. Pill **copy** for Session/Block/
+Sequence children is the taxonomy **Label** word; exercise pills use the exercise
+name; set-group pills use sunrise orange (`colors.sunrise` / `amberGlow`) already
+used by the active Tool selector and `+ Add sets`. Focused controls take their
+card's layer color — Tool/Shape and analytics selectors focus gold, label
+selectors and coaching notes focus their own layer color — so orange is reserved
+for set-level actions.
 
 Overflow and search triggers use a dashed layer-colored square. Their expanded
 More panel uses the same 1-point dashed outline as the card hairline, on all
@@ -430,18 +435,20 @@ sides, with centered option content.
 
 Each builder screen wraps its editor in `EditorChrome`, which shows an
 `EditorTools` dropdown (the **Tools** tray) above the form and outside the card
-chrome, plus expansion and lock controllers. Its first action collapses every
-exercise card while leaving blocks and sequences open. The tray renders in a
-`Modal` anchored to its button so it floats above card `elevation`; it is the
-intended home for future workspace actions.
+chrome, plus expansion and lock controllers. Tray actions: **Collapse exercises**
+and **Unlock & Expand All**. The tray renders in a `Modal` anchored to its button
+so it floats above card `elevation`; it is the intended home for future workspace
+actions.
 
 Nesting is constrained by role: Session adds Blocks; Block adds an ordered mix
 of Sequences and standalone Exercises; Sequence adds Exercises only. Each
-solid-outline add control uses the shared color token of the layer it creates.
-New blocks start with one Exercise, and new Sessions start with one Block
-containing one Exercise.
-Sequence round overrides retain a dusk-pink semantic accent across their add
-button, disclosure, editable panels, selectors, steppers, and save controls.
+solid-outline add control uses the shared color token of the layer it creates and
+points at the parent **Label** (or exercise name). New blocks start with one
+Exercise, and new Sessions start with one Block containing one Exercise.
+Sequence round overrides retain a dusk-pink semantic accent on disclosure,
+panels, selectors, and steppers. Override **add/save** controls use outline-on-
+`bgInset` (dusk border/text), not a filled pink wash; the list trigger stays 92%
+width like other add buttons.
 
 Sequences show a circuit-style diagram (chips left→right, wrap onto the
 next line, dashed return loop), per-round subitem editors, and an overrides list
@@ -449,7 +456,8 @@ for round-range exceptions. Its blueprint grid uses the Sequence structural
 color; gold arrows and chips remain warm. Sequence labels replace the old
 non-searchable Type selector; **Sequence** is the system-null default. A compact violet Map on/off
 toggle shares the Exercises heading row with the ROUNDS box and mounts the diagram
-directly below it. Overrides continues to use a tight `Disclosure`.
+directly below it. Overrides continues to use a tight `Disclosure`, with even
+space from `+ Add exercise` down to the divider.
 
 More-panel duration controls stay left-aligned. All four layers reserve the
 HH/MM/SS label row even while duration is off, preventing the toggle and time

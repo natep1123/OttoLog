@@ -1506,7 +1506,10 @@ const styles = StyleSheet.create({
     ...clusterItemsLayout,
   },
   addBtn: {
-    marginTop: spacing.sm,
+    // Match session/block: items inset + body gap above; even space to the
+    // overrides rule below (overrides.marginTop pairs with this).
+    marginTop: 0,
+    marginBottom: 0,
   },
   addPressed: {
     borderColor: colors.borderStrong,
@@ -1516,8 +1519,8 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   overrides: {
-    // Space after + Add exercise before the divider
-    marginTop: spacing.md,
+    // Even with space above + Add exercise (body gap 4 + this 8 ≈ 12).
+    marginTop: spacing.sm,
     gap: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
@@ -1696,17 +1699,19 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginTop: 4,
   },
+  // Outline style like + Add override (not the full pink wash).
   overrideSave: {
-    paddingVertical: 10,
+    height: 32,
     paddingHorizontal: 14,
+    justifyContent: 'center',
     borderRadius: radii.sm,
-    backgroundColor: overrideTheme.washStrong,
+    backgroundColor: colors.bgInset,
     borderWidth: 1,
     borderColor: overrideTheme.color,
   },
   overrideSaveText: {
     fontFamily: typography.fontMedium,
-    fontSize: 14,
+    fontSize: 13,
     color: overrideTheme.color,
   },
   overrideCancel: {

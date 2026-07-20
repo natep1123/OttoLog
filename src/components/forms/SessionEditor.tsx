@@ -378,6 +378,8 @@ const styles = StyleSheet.create({
   },
   items: { gap: spacing.sm, ...sessionItemsLayout },
   addBtn: {
-    marginTop: spacing.sm,
+    // items bottom inset (8) + body gap (4); tiny extra below before card padding.
+    marginTop: 0,
+    marginBottom: spacing.xs,
   },
 });
