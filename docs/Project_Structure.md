@@ -58,12 +58,11 @@ Library opens of templates and logs use **`reviewMode`**: `EditorChrome` starts 
 | File | Role |
 |------|------|
 | `supabase.ts` | Supabase client |
-| `exerciseTemplates.ts` | List, get, save, delete exercise templates; default draft |
+| `exerciseTemplates.ts` | List, get, save, delete; tag + tool link replace; `normalizeToolIds` / multi-tool primary; default draft |
 | `clusterTemplates.ts` | Sequence persistence (legacy internal name): list, get, save, archive / hard-delete; rounds + overrides; `clusterTemplateToDraft`; `expandClusterPerformedSets` for log denest |
 | `blockTemplates.ts` | List, get, save, archive / hard-delete; mixed exercise/sequence items; `blockTemplateToDraft` |
 | `sessionTemplates.ts` | List, get, save, archive / hard-delete; nested blocks; `sessionTemplateToDraft`; default Session label |
 | `sessionLogs.ts` | List, get, save, delete session logs; denest draft tree → `sql/014` tables (+ `sql/015` tool links); renest rows → editor draft |
-| `exerciseTemplates.ts` | Exercise library CRUD; tag + tool link replace; `normalizeToolIds` / multi-tool primary |
 | `lockedPreviewPages.ts` | Paginate a locked outline into screenshot pages for `LockedPreviewModal` |
 | `taxonomy.ts` | Picker lists and Account taxonomy CRUD (tools, analytics, session/block/sequence labels) |
 | `localTime.ts` | Local greeting, week strip, session date keys / labels (`dayjs`) |
