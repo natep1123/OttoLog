@@ -10,8 +10,8 @@ type Props = {
   onChangeDuration: (next: string | null) => void;
 };
 
-/** HH/MM/SS label line + gap above the time boxes. */
-const LABEL_BLOCK = 15;
+/** Must equal labelRow height + pickerCol gap so the toggle lines up with the boxes. */
+const LABEL_ALIGN_SPACER = 11 + 4;
 
 /**
  * More-panel duration toggle + hh:mm:ss picker.
@@ -19,9 +19,9 @@ const LABEL_BLOCK = 15;
  * Hard rules (do not regress):
  * - Never use absolute positioning for unit labels.
  * - Root is flexShrink: 0 so Name/Brief above cannot be crushed.
- * - Labels are in-flow via TimePartsInput when tracked; an equivalent spacer
- *   is reserved when off so enabling duration does not jump the toggle up.
- * - Toggle aligns to the input boxes (flex-end), not the labels.
+ * - When on, a spacer above the toggle matches the label block so the chip
+ *   aligns with the input boxes (not the HH/MM/SS headers).
+ * - When off, no spacer — toggle sits flush under Name/Brief.
  */
 export function DurationTrackControl({
   tracked,
@@ -33,7 +33,7 @@ export function DurationTrackControl({
     <View style={styles.root}>
       <View style={styles.row}>
         <View style={styles.toggleCol}>
-          <View style={styles.labelSpacer} />
+          {tracked ? <View style={styles.labelAlignSpacer} /> : null}
           <ToggleChip
             label={tracked ? 'Duration on' : 'Track duration'}
             active={tracked}
@@ -56,9 +56,7 @@ export function DurationTrackControl({
               emptyAsNull={false}
             />
           </View>
-        ) : (
-          <View style={styles.labelSpacer} />
-        )}
+        ) : null}
       </View>
     </View>
   );
@@ -83,16 +81,16 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     flexShrink: 0,
   },
+  labelAlignSpacer: {
+    height: LABEL_ALIGN_SPACER,
+  },
   pickerCol: {
     flexGrow: 0,
     flexShrink: 0,
-    gap: 6,
-  },
-  labelSpacer: {
-    height: LABEL_BLOCK,
+    gap: 4,
   },
   labelRow: {
-    height: 9,
+    height: 11,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
@@ -100,6 +98,7 @@ const styles = StyleSheet.create({
   unitLabel: {
     fontFamily: typography.fontSemiBold,
     fontSize: 9,
+    lineHeight: 11,
     letterSpacing: 0.7,
     color: colors.textDim,
     textAlign: 'center',
@@ -112,6 +111,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: typography.fontSemiBold,
     fontSize: 9,
+    lineHeight: 11,
     color: colors.textDim,
     opacity: 0.35,
   },

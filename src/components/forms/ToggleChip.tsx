@@ -93,6 +93,8 @@ export function ToggleChip({
 const styles = StyleSheet.create({
   base: {
     alignSelf: 'flex-start',
+    minHeight: 34,
+    justifyContent: 'center',
     borderRadius: radii.sm,
     overflow: 'hidden',
   },
@@ -113,6 +115,7 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
   gradient: {
+    minHeight: 34,
     paddingVertical: 7,
     paddingHorizontal: 11,
     alignItems: 'center',
@@ -124,6 +127,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   offInner: {
+    minHeight: 34,
     paddingVertical: 7,
     paddingHorizontal: 11,
     alignItems: 'center',

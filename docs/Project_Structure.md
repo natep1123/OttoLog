@@ -73,7 +73,7 @@ Library opens of templates and logs use **`reviewMode`**: `EditorChrome` starts 
 
 Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `ConfirmDialog`, `ListSearchBar`, `BottomNav`, `BrandWordmark`.
 
-**`components/forms/`**: Nestable editors — Session → Block → Sequence → Exercise (`ClusterEditor` remains the internal component name), plus `NestedLayer`, `CoordRow`, `LockedOutline`, `LockedPreviewModal`, `SessionDateControl`, `LayerLabelSelect`, `TemplateNameSearch` / `ExerciseNameSearch`, `MorePanel`, `IconButton`, `AddChildButton`, `Disclosure`, `ClusterSequenceDiagram`, and the workspace `EditorChrome` / `EditorTools` + `ExpansionController` + `LockController` (Tools tray: Collapse exercises, Unlock & Expand All; ephemeral lock/view mode; optional `reviewLockId`). Behavior is documented in `docs/Template_Builders.md`.
+**`components/forms/`**: Nestable editors — Session → Block → Sequence → Exercise (`ClusterEditor` remains the internal component name), plus `NestedLayer`, `CoordRow`, `LockedOutline`, `LockedPreviewModal`, `SessionDateControl`, `DurationTrackControl`, `LayerLabelSelect`, `TemplateNameSearch` / `ExerciseNameSearch`, `MorePanel`, `IconButton`, `AddChildButton`, `Disclosure`, `ClusterSequenceDiagram`, and the workspace `EditorChrome` / `EditorTools` + `ExpansionController` + `LockController` (Tools tray: Collapse exercises, Unlock & Expand All; ephemeral lock/view mode; optional `reviewLockId`). Behavior is documented in `docs/Template_Builders.md`.
 
 ### `src/screens/`
 

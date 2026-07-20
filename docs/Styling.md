@@ -468,10 +468,14 @@ toggle shares the Exercises heading row with the ROUNDS box and mounts the diagr
 directly below it. Overrides continues to use a tight `Disclosure`, with even
 space from `+ Add exercise` down to the divider.
 
-More-panel duration controls stay left-aligned. All four layers reserve the
-HH/MM/SS label row even while duration is off, preventing the toggle and time
-inputs from shifting when duration is enabled. Session/Block/Sequence Name/Brief
-fields live in the More panel as layer-tinted `TemplateNameSearch` typeaheads
+More-panel duration uses shared `DurationTrackControl` (left-aligned). When
+duration is on, HH/MM/SS labels sit above the time boxes and the toggle aligns
+with those boxes; when off, the toggle sits flush with no reserved label lane.
+`ToggleChip` (duration / analytics) and time-part inputs share a 34pt control
+height. Exercise Time-column unit headers use the same label→box gap as the More
+panel, with matching space above under the Time header. Session/Block/Sequence
+Name/Brief fields live in the More panel as layer-tinted `TemplateNameSearch`
+typeaheads (no vertical flex-shrink — they must not crush when duration opens).
 (Exercise keeps its inline name search). Selecting a hit copies contents into the
 current draft without changing save identity.
 

@@ -88,15 +88,18 @@ The overflow button opens `MorePanel`, a dashed layer-colored panel labeled
 - **Name / Brief** (Session/Block/Sequence only) — the layer-tinted
   `TemplateNameSearch` typeahead, moved here so the collapse UI stays clean and
   labels stay the primary identity. Library search still runs from this field.
-- Track duration toggle plus an HH/MM/SS stepper. The unit-label row is always
-  reserved so enabling duration shifts nothing.
+- Track duration via shared `DurationTrackControl`: toggle plus HH/MM/SS when
+  on. Unit labels sit above the time boxes; the toggle aligns with the boxes
+  (not the labels). Off state is flush — no reserved empty label lane.
 - Coaching notes. The note field's focused border uses the **card's own layer
   color** (red/blue/violet/gold), not a global orange.
 - A remove action when the card is nested and removable (for example "Remove from
   block", "Remove from session", "Delete sequence").
 
 Duration here is a structural clock for the whole node. It is separate from a
-Time-shape target's `time_duration`.
+Time-shape target's `time_duration`. Exercise Time / Time & Distance / Time &
+Reps grids show the same HH/MM/SS unit headers under the Time column, with equal
+spacing from the Time header above and the input boxes below.
 
 ## Chip colors
 
