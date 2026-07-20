@@ -38,6 +38,7 @@ Run `sql/001` through `sql/014` in order in the Supabase SQL Editor. See [`docs/
 | [`docs/Project_Structure.md`](docs/Project_Structure.md) | Folders, navigation, key files |
 | [`docs/Database_Outline.md`](docs/Database_Outline.md) | Schema, RLS, live vs planned |
 | [`docs/Template_Builders.md`](docs/Template_Builders.md) | Shipped builder + session log behavior |
+| [`docs/Analytics_Labeling.md`](docs/Analytics_Labeling.md) | Primary Group vs tags vs nest labels (best practices) |
 | [`docs/Styling.md`](docs/Styling.md) | Visual system and screen patterns |
 
 Older prototypes live in [`docs/deprecated/original-concept/`](docs/deprecated/original-concept/). They are background only; official docs above are the contract.

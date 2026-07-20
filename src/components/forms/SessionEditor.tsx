@@ -30,6 +30,7 @@ import {
 } from '../../lib/targetSummaries';
 import { AddChildButton } from './AddChildButton';
 import { BlockEditor } from './BlockEditor';
+import { DurationTrackControl } from './DurationTrackControl';
 import { useExpansionController } from './ExpansionController';
 import { IconButton } from './IconButton';
 import { LayerLabelSelect } from './LayerLabelSelect';
@@ -42,8 +43,6 @@ import {
   TemplateNameSearch,
   type TemplateNameSearchHandle,
 } from './TemplateNameSearch';
-import { TimePartsInput } from './TimePartsInput';
-import { ToggleChip } from './ToggleChip';
 import { sessionItemsLayout } from './formTokens';
 
 type Props = {
@@ -238,31 +237,12 @@ export function SessionEditor({ value, onChange }: Props) {
               />
             </View>
 
-            <View style={styles.durationRow}>
-              <ToggleChip
-                label={
-                  value.track_duration ? 'Duration on' : 'Track duration'
-                }
-                active={value.track_duration}
-                onPress={onToggleDuration}
-              />
-              {value.track_duration ? (
-                <View style={styles.durationPicker}>
-                  <View style={styles.durationUnitLabels} pointerEvents="none">
-                    <Text style={styles.durationUnitLabel}>HH</Text>
-                    <Text style={styles.durationUnitColon}>:</Text>
-                    <Text style={styles.durationUnitLabel}>MM</Text>
-                    <Text style={styles.durationUnitColon}>:</Text>
-                    <Text style={styles.durationUnitLabel}>SS</Text>
-                  </View>
-                  <TimePartsInput
-                    value={value.duration}
-                    onChange={(duration) => patch({ duration })}
-                    emptyAsNull={false}
-                  />
-                </View>
-              ) : null}
-            </View>
+            <DurationTrackControl
+              tracked={value.track_duration}
+              duration={value.duration}
+              onToggle={onToggleDuration}
+              onChangeDuration={(duration) => patch({ duration })}
+            />
 
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Coaching notes</Text>
@@ -334,40 +314,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
   },
-  durationRow: {
+  field: {
     width: '100%',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: 10,
-    paddingTop: 14,
+    alignSelf: 'stretch',
+    flexGrow: 0,
+    flexShrink: 0,
+    gap: 6,
   },
-  durationPicker: { position: 'relative' },
-  durationUnitLabels: {
-    position: 'absolute',
-    top: -14,
-    left: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  durationUnitLabel: {
-    width: 38,
-    fontFamily: typography.fontSemiBold,
-    fontSize: 9,
-    letterSpacing: 0.5,
-    textAlign: 'center',
-    color: colors.textDim,
-  },
-  durationUnitColon: {
-    width: 4,
-    fontFamily: typography.font,
-    fontSize: 9,
-    textAlign: 'center',
-    color: colors.textDim,
-  },
-  field: { width: '100%', gap: 6 },
   fieldLabel: {
     fontFamily: typography.fontSemiBold,
     fontSize: 11,

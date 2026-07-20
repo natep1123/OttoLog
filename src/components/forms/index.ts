@@ -9,6 +9,7 @@ export type { FormSelectOption } from './FormSelect';
 export { SearchableSelect } from './SearchableSelect';
 export { ToggleChip } from './ToggleChip';
 export { TimePartsInput } from './TimePartsInput';
+export { DurationTrackControl } from './DurationTrackControl';
 export { MorePanel } from './MorePanel';
 export { TargetsGrid } from './TargetsGrid';
 export { AnalyticsCheckbox } from './AnalyticsCheckbox';

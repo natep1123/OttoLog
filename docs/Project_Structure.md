@@ -15,6 +15,7 @@ ottolog-app/
 │   ├── Setup.md
 │   ├── Styling.md
 │   ├── Template_Builders.md
+│   ├── Analytics_Labeling.md
 │   └── deprecated/         Archived design set (historical, not the contract)
 │       └── original-concept/
 └── src/

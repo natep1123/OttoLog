@@ -202,6 +202,7 @@ Use these names consistently in SQL, app code, and docs. Do not invent synonyms.
 - **Tag** = `analytics_tags` / `analytics_tag_links`: plural free-form labels.
 - Editor JSON may carry `analytics_tag_ids: uuid[]`; that array is expanded into `analytics_tag_links` rows for templates, not stored as a column named `analytics_tag_ids` on the template table.
 - Legacy prototype names `master_exercise_name` / `group_tags` are **not** used.
+- How to choose values in practice: `docs/Analytics_Labeling.md`.
 
 ---
 
@@ -498,7 +499,8 @@ Do not create the full graph in one migration. Ship in dependency order:
 
 | Doc | Role |
 |-----|------|
-| `docs/Template_Builders.md` | Shipped builder behavior (Session / Block / Sequence / Exercise) |
+| `docs/Template_Builders.md` | Shipped builder behavior (Session / Block / Sequence / Exercise / logs) |
+| `docs/Analytics_Labeling.md` | Primary Group vs tags vs nest labels — how to organize analytics vocabulary |
 | `docs/Styling.md` | Official visual system |
 | `docs/Project_Structure.md` | Folders, navigation, key files |
 | `docs/deprecated/original-concept/Backend/Database_Design.md` | Historical schema + JSON tree. Retired names (`composition_categories`), retired seeding model. Log tables now live; prefer `sql/014` + this outline |

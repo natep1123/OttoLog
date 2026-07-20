@@ -10,6 +10,7 @@ Do not build from these files. Use the live docs in `docs/`:
 | `docs/Database_Outline.md` | Schema, sentinels, templates, session logs |
 | `docs/Project_Structure.md` | Folders, navigation, key files |
 | `docs/Template_Builders.md` | Shipped builder + session log behavior |
+| `docs/Analytics_Labeling.md` | Primary Group vs tags vs nest labels |
 | `docs/Styling.md` | Visual system and screen patterns |
 | `docs/Setup.md` | Env, migrations, run, verify |
 

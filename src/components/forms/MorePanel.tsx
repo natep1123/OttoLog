@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   },
   body: {
     alignSelf: 'stretch',
-    alignItems: 'center',
+    alignItems: 'stretch',
     gap: spacing.sm + 4,
   },
 });

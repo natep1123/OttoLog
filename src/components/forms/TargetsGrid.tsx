@@ -511,7 +511,8 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: -4,
+    // Match More-panel duration label→box gap (was -4, crushed labels into boxes).
+    marginBottom: 6,
   },
   unitHeadCell: {
     flexDirection: 'row',

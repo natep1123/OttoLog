@@ -121,7 +121,7 @@ export function TimePartsInput({
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 3,
+    gap: 6,
   },
   labelRow: {
     flexDirection: 'row',

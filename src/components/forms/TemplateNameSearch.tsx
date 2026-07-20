@@ -189,23 +189,26 @@ export const TemplateNameSearch = forwardRef(TemplateNameSearchInner) as <
 
 const styles = StyleSheet.create({
   wrap: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 160,
-    minWidth: 0,
+    // Stretch in More-panel columns. Never flex-shrink — flexBasis/flexShrink
+    // here used to crush this field vertically when duration toggled on.
     width: '100%',
+    alignSelf: 'stretch',
+    flexGrow: 0,
+    flexShrink: 0,
     zIndex: 20,
   },
   input: {
     width: '100%',
+    minHeight: 36,
     fontFamily: typography.fontMedium,
     fontSize: 13,
+    lineHeight: 18,
     color: colors.text,
     backgroundColor: colors.bgInset,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.sm,
-    paddingVertical: 7,
+    paddingVertical: 8,
     paddingHorizontal: 10,
   },
   menu: {

@@ -58,6 +58,7 @@ import {
 import { AddChildButton } from './AddChildButton';
 import { ClusterSequenceDiagram } from './ClusterSequenceDiagram';
 import { Disclosure } from './Disclosure';
+import { DurationTrackControl } from './DurationTrackControl';
 import { ExerciseEditor } from './ExerciseEditor';
 import { useExpansionController } from './ExpansionController';
 import { FormSelect } from './FormSelect';
@@ -792,34 +793,12 @@ export function ClusterEditor({
               />
             </View>
 
-            <View style={styles.durationRow}>
-              <ToggleChip
-                label={
-                  value.track_duration ? 'Duration on' : 'Track duration'
-                }
-                active={value.track_duration}
-                onPress={onToggleDuration}
-              />
-              {value.track_duration ? (
-                <View style={styles.durationPicker}>
-                  <View
-                    style={styles.durationUnitLabels}
-                    pointerEvents="none"
-                  >
-                    <Text style={styles.durationUnitLabel}>HH</Text>
-                    <Text style={styles.durationUnitColon}>:</Text>
-                    <Text style={styles.durationUnitLabel}>MM</Text>
-                    <Text style={styles.durationUnitColon}>:</Text>
-                    <Text style={styles.durationUnitLabel}>SS</Text>
-                  </View>
-                  <TimePartsInput
-                    value={value.duration}
-                    onChange={(duration) => patch({ duration })}
-                    emptyAsNull={false}
-                  />
-                </View>
-              ) : null}
-            </View>
+            <DurationTrackControl
+              tracked={value.track_duration}
+              duration={value.duration}
+              onToggle={onToggleDuration}
+              onChangeDuration={(duration) => patch({ duration })}
+            />
 
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>Coaching notes</Text>
@@ -1364,45 +1343,11 @@ const styles = StyleSheet.create({
     width: '100%',
     minWidth: 0,
   },
-  durationRow: {
-    width: '100%',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
-    gap: 10,
-    // Always reserve the unit-label row so enabling duration moves nothing.
-    paddingTop: 14,
-  },
-  durationPicker: {
-    position: 'relative',
-  },
-  durationUnitLabels: {
-    position: 'absolute',
-    top: -14,
-    left: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  durationUnitLabel: {
-    width: 38,
-    textAlign: 'center',
-    fontFamily: typography.fontSemiBold,
-    fontSize: 9,
-    letterSpacing: 0.7,
-    color: colors.textDim,
-  },
-  durationUnitColon: {
-    width: 7,
-    textAlign: 'center',
-    fontFamily: typography.fontSemiBold,
-    fontSize: 9,
-    color: colors.textDim,
-    opacity: 0.35,
-  },
   field: {
     width: '100%',
+    alignSelf: 'stretch',
+    flexGrow: 0,
+    flexShrink: 0,
     gap: 6,
   },
   fieldLabel: {

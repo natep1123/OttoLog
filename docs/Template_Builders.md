@@ -246,7 +246,7 @@ analytics is on, each group also carries an include-in-rollups flag.
 Analytics is opt-in in the More panel. When on, it reveals a required Primary
 analytics group (single, searchable create-combobox) and optional Analytics tags
 (multi, searchable create-combobox). When off, the group is null and tag links are
-empty.
+empty. How to choose group vs tag values: `docs/Analytics_Labeling.md`.
 
 ### Exercise as a sequence subitem
 
