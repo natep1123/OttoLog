@@ -25,15 +25,13 @@ export function LibraryHubScreen({
       <View style={styles.actions}>
         <HubAction
           title="Templates"
-          body="Exercise, sequence, block, and session blueprints."
+          body="Exercises, sequences, blocks, and sessions."
           onPress={onTemplates}
         />
         <HubAction
           title="Logs"
-          body="Browse recorded sessions."
+          body="Browse and edit logged sessions."
           onPress={onLogs}
-          disabled
-          badge="Soon"
         />
       </View>
     </View>

@@ -12,6 +12,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { Button } from '../../components/Button';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { BlockEditor, EditorChrome } from '../../components/forms';
+import { LOCK_ROOT } from '../../components/forms/LockController';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import {
   archiveBlockTemplate,
@@ -26,6 +27,8 @@ import { colors, spacing, typography } from '../../theme/tokens';
 
 type Props = {
   templateId?: string | null;
+  /** Library open: start locked + expanded (view outline until unlock). */
+  reviewMode?: boolean;
   onBrandPress?: () => void;
   onBack: () => void;
   onSaved: (id: string) => void;
@@ -36,6 +39,7 @@ type RemoveMode = 'archive' | 'hard' | null;
 
 export function BlockBuilderScreen({
   templateId,
+  reviewMode = false,
   onBrandPress,
   onBack,
   onSaved,
@@ -150,7 +154,7 @@ export function BlockBuilderScreen({
           onBrandPress={onBrandPress}
         />
 
-        <EditorChrome>
+        <EditorChrome reviewLockId={reviewMode ? LOCK_ROOT.block : undefined}>
           <BlockEditor value={draft} onChange={setDraft} />
         </EditorChrome>
 

@@ -33,7 +33,7 @@ import {
   clusterItemToExerciseDraft,
   exerciseDraftToClusterItem,
 } from '../../lib/clusterTemplates';
-import { blockTitle, blockUiTitle } from '../../lib/displayTitles';
+import { blockTitle, blockUiTitle, normalizeBrief } from '../../lib/displayTitles';
 import { getExerciseTemplate } from '../../lib/exerciseTemplates';
 import {
   outlineBlock,
@@ -47,6 +47,7 @@ import { IconButton } from './IconButton';
 import { LayerLabelSelect } from './LayerLabelSelect';
 import { LOCK_ROOT, useNodeLock } from './LockController';
 import { LockedOutline } from './LockedOutline';
+import { LockedPreviewModal } from './LockedPreviewModal';
 import { MorePanel } from './MorePanel';
 import { NestedLayer } from './NestedLayer';
 import {
@@ -96,11 +97,15 @@ export function BlockEditor({
     value.items.map((item) => item.id),
   );
   const [moreOpen, setMoreOpen] = useState(false);
-  // Mount locked (parent just unlocked → own-locked) → start collapsed.
-  const [expanded, setExpanded] = useState(() => !locked);
+  // Builder root starts open (library review: locked + expanded outline).
+  // Nested cards that remount own-locked after a parent unlock start collapsed.
+  const [expanded, setExpanded] = useState(() =>
+    parentLockId == null ? true : !locked,
+  );
   const [notesFocused, setNotesFocused] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
   const [focusNamePending, setFocusNamePending] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const nameSearchRef = useRef<TemplateNameSearchHandle>(null);
 
   useEffect(() => {
@@ -203,6 +208,7 @@ export function BlockEditor({
   };
 
   return (
+    <>
     <NestedLayer
       layer="block"
       nested={nested}
@@ -250,9 +256,14 @@ export function BlockEditor({
         orderIndex + 1,
       )}
       trailing={
-        locked
-          ? undefined
-          : ({ expand }) => (
+        locked ? (
+          <IconButton
+            kind="block"
+            icon="maximize-2"
+            accessibilityLabel="Open screenshot view"
+            onPress={() => setPreviewOpen(true)}
+          />
+        ) : ({ expand }) => (
               <>
                 <IconButton
                   kind="block"
@@ -423,6 +434,16 @@ export function BlockEditor({
         </>
       )}
     </NestedLayer>
+
+    <LockedPreviewModal
+      visible={previewOpen}
+      onClose={() => setPreviewOpen(false)}
+      title={blockUiTitle(value.label_name)}
+      subtitle={normalizeBrief(value.name)}
+      layer="block"
+      node={outlineBlock(value, { orderIndex })}
+    />
+    </>
   );
 }
 

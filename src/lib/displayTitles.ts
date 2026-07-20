@@ -42,17 +42,18 @@ export function sessionUiTitle(labelWord: string | null | undefined): string {
   return labelWord?.trim() || 'Session';
 }
 
-/** Future logs — not used by templates. */
+/**
+ * Session log card title: taxonomy Label + local date.
+ * Optional Name/Brief belongs in meta, not here.
+ */
 export function sessionLogTitle(
-  _labelWord: string | null | undefined,
-  brief: string | null | undefined,
+  labelWord: string | null | undefined,
+  _brief: string | null | undefined,
   localDateLabel: string,
   sameDayOrdinal = 1,
 ): string {
-  const owned = normalizeBrief(brief);
-  const base = owned
-    ? `${owned} - ${localDateLabel}`
-    : `Session - ${localDateLabel}`;
+  const label = labelWord?.trim() || 'Session';
+  const base = `${label} - ${localDateLabel}`;
   return sameDayOrdinal >= 2 ? `${base} (session ${sameDayOrdinal})` : base;
 }
 

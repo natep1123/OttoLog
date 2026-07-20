@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
 import { BottomNav } from '../components/BottomNav';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
-import { listExerciseTemplates } from '../lib/exerciseTemplates';
 import type { TaxonomyKind } from '../lib/taxonomy';
 import { MainTab } from '../navigation/tabs';
 import { AccountDangerScreen } from './account/AccountDangerScreen';
@@ -18,14 +17,17 @@ import { ExerciseBuilderScreen } from './create/ExerciseBuilderScreen';
 import { ClusterBuilderScreen } from './create/ClusterBuilderScreen';
 import { BlockBuilderScreen } from './create/BlockBuilderScreen';
 import { SessionBuilderScreen } from './create/SessionBuilderScreen';
+import { SessionLogBuilderScreen } from './create/SessionLogBuilderScreen';
+import { LogFromTemplateScreen } from './create/LogFromTemplateScreen';
 import { HomeDashboardScreen } from './home/HomeDashboardScreen';
+import { InsightsComingSoonScreen } from './insights/InsightsComingSoonScreen';
 import { LibraryHubScreen } from './library/LibraryHubScreen';
 import { LibraryTemplatesHubScreen } from './library/LibraryTemplatesHubScreen';
 import { LibraryScreen } from './library/LibraryScreen';
 import { LibraryClustersScreen } from './library/LibraryClustersScreen';
 import { LibraryBlocksScreen } from './library/LibraryBlocksScreen';
 import { LibrarySessionsScreen } from './library/LibrarySessionsScreen';
-import type { ExerciseTemplateRow } from '../types/exerciseTemplate';
+import { LibraryLogsScreen } from './library/LibraryLogsScreen';
 import { spacing } from '../theme/tokens';
 
 type Props = {
@@ -41,7 +43,13 @@ type CreateStack =
   | { screen: 'exercise'; templateId?: string | null }
   | { screen: 'cluster'; templateId?: string | null }
   | { screen: 'block'; templateId?: string | null }
-  | { screen: 'session'; templateId?: string | null };
+  | { screen: 'session'; templateId?: string | null }
+  | { screen: 'logFromTemplate' }
+  | {
+      screen: 'log';
+      logId?: string | null;
+      fromTemplateId?: string | null;
+    };
 
 type LibraryStack =
   | { screen: 'hub' }
@@ -53,7 +61,9 @@ type LibraryStack =
   | { screen: 'blocks' }
   | { screen: 'block'; templateId: string }
   | { screen: 'sessions' }
-  | { screen: 'session'; templateId: string };
+  | { screen: 'session'; templateId: string }
+  | { screen: 'logs' }
+  | { screen: 'log'; logId: string };
 
 type AccountStack =
   | { screen: 'hub' }
@@ -75,8 +85,6 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
     screen: 'hub',
   });
   const [libraryRefreshKey, setLibraryRefreshKey] = useState(0);
-  const [recentTemplates, setRecentTemplates] = useState<ExerciseTemplateRow[]>([]);
-  const [recentError, setRecentError] = useState<string | null>(null);
 
   // Reset nested stacks when leaving those tabs
   useEffect(() => {
@@ -98,23 +106,8 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
     onBrandPress?.();
   };
 
-  const loadRecentTemplates = useCallback(async () => {
-    setRecentError(null);
-    const { data, error } = await listExerciseTemplates();
-    if (error) {
-      setRecentError(error);
-      setRecentTemplates([]);
-      return;
-    }
-    setRecentTemplates(data.slice(0, 4));
-  }, []);
-
-  useEffect(() => {
-    void loadRecentTemplates();
-  }, [loadRecentTemplates, libraryRefreshKey]);
-
-  const goBuildExercise = () => {
-    setCreateStack({ screen: 'exercise', templateId: null });
+  const goBuildSessionTemplate = () => {
+    setCreateStack({ screen: 'session', templateId: null });
     onChangeTab('create');
   };
 
@@ -126,11 +119,6 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
   const goManageTaxonomy = () => {
     setAccountStack({ screen: 'taxonomy' });
     onChangeTab('account');
-  };
-
-  const goOpenRecentExercise = (id: string) => {
-    setLibraryStack({ screen: 'exercise', templateId: id });
-    onChangeTab('library');
   };
 
   const renderCreate = () => {
@@ -202,6 +190,45 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
         />
       );
     }
+    if (createStack.screen === 'log') {
+      return (
+        <SessionLogBuilderScreen
+          logId={createStack.logId}
+          fromTemplateId={createStack.fromTemplateId}
+          onBrandPress={goHomeBrand}
+          onBack={() =>
+            setCreateStack(
+              createStack.fromTemplateId
+                ? { screen: 'logFromTemplate' }
+                : { screen: 'hub' },
+            )
+          }
+          onSaved={(id) => {
+            setCreateStack({ screen: 'log', logId: id });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+          onDeleted={() => {
+            setCreateStack({ screen: 'hub' });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+        />
+      );
+    }
+    if (createStack.screen === 'logFromTemplate') {
+      return (
+        <LogFromTemplateScreen
+          onBrandPress={goHomeBrand}
+          onBack={() => setCreateStack({ screen: 'hub' })}
+          onPickTemplate={(templateId) =>
+            setCreateStack({
+              screen: 'log',
+              logId: null,
+              fromTemplateId: templateId,
+            })
+          }
+        />
+      );
+    }
     if (createStack.screen === 'templates') {
       return (
         <TemplateHubScreen
@@ -223,8 +250,11 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
     return (
       <CreateHubScreen
         onBrandPress={goHomeBrand}
+        onLogFromScratch={() =>
+          setCreateStack({ screen: 'log', logId: null, fromTemplateId: null })
+        }
+        onLogFromTemplate={() => setCreateStack({ screen: 'logFromTemplate' })}
         onBuildTemplates={() => setCreateStack({ screen: 'templates' })}
-        onLogSession={() => {}}
       />
     );
   };
@@ -234,6 +264,7 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
       return (
         <ExerciseBuilderScreen
           templateId={libraryStack.templateId}
+          reviewMode
           onBrandPress={goHomeBrand}
           onBack={() => {
             setLibraryStack({ screen: 'exercises' });
@@ -251,6 +282,7 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
       return (
         <ClusterBuilderScreen
           templateId={libraryStack.templateId}
+          reviewMode
           onBrandPress={goHomeBrand}
           onBack={() => {
             setLibraryStack({ screen: 'clusters' });
@@ -268,6 +300,7 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
       return (
         <BlockBuilderScreen
           templateId={libraryStack.templateId}
+          reviewMode
           onBrandPress={goHomeBrand}
           onBack={() => {
             setLibraryStack({ screen: 'blocks' });
@@ -285,6 +318,7 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
       return (
         <SessionBuilderScreen
           templateId={libraryStack.templateId}
+          reviewMode
           onBrandPress={goHomeBrand}
           onBack={() => {
             setLibraryStack({ screen: 'sessions' });
@@ -293,6 +327,24 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
           onSaved={() => setLibraryRefreshKey((k) => k + 1)}
           onDeleted={() => {
             setLibraryStack({ screen: 'sessions' });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+        />
+      );
+    }
+    if (libraryStack.screen === 'log') {
+      return (
+        <SessionLogBuilderScreen
+          logId={libraryStack.logId}
+          reviewMode
+          onBrandPress={goHomeBrand}
+          onBack={() => {
+            setLibraryStack({ screen: 'logs' });
+            setLibraryRefreshKey((k) => k + 1);
+          }}
+          onSaved={() => setLibraryRefreshKey((k) => k + 1)}
+          onDeleted={() => {
+            setLibraryStack({ screen: 'logs' });
             setLibraryRefreshKey((k) => k + 1);
           }}
         />
@@ -346,6 +398,16 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
         />
       );
     }
+    if (libraryStack.screen === 'logs') {
+      return (
+        <LibraryLogsScreen
+          onBrandPress={goHomeBrand}
+          onBack={() => setLibraryStack({ screen: 'hub' })}
+          refreshKey={libraryRefreshKey}
+          onOpenLog={(id) => setLibraryStack({ screen: 'log', logId: id })}
+        />
+      );
+    }
     if (libraryStack.screen === 'templates') {
       return (
         <LibraryTemplatesHubScreen
@@ -362,7 +424,7 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
       <LibraryHubScreen
         onBrandPress={goHomeBrand}
         onTemplates={() => setLibraryStack({ screen: 'templates' })}
-        onLogs={() => {}}
+        onLogs={() => setLibraryStack({ screen: 'logs' })}
       />
     );
   };
@@ -419,12 +481,9 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
   const renderHome = () => (
     <HomeDashboardScreen
       name={name}
-      recentTemplates={recentTemplates}
-      recentError={recentError}
-      onBuildExercise={goBuildExercise}
+      onBuildSessionTemplate={goBuildSessionTemplate}
       onBrowseExercises={goBrowseExercises}
       onManageTaxonomy={goManageTaxonomy}
-      onOpenExercise={goOpenRecentExercise}
       onBrandPress={goHomeBrand}
     />
   );
@@ -434,26 +493,34 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
       (createStack.screen === 'exercise' ||
         createStack.screen === 'cluster' ||
         createStack.screen === 'block' ||
-        createStack.screen === 'session')) ||
+        createStack.screen === 'session' ||
+        createStack.screen === 'log')) ||
     (activeTab === 'library' &&
       (libraryStack.screen === 'exercise' ||
         libraryStack.screen === 'cluster' ||
         libraryStack.screen === 'block' ||
-        libraryStack.screen === 'session'));
+        libraryStack.screen === 'session' ||
+        libraryStack.screen === 'log'));
 
   const showAccountActions =
     activeTab === 'account' && accountStack.screen === 'hub';
+
+  const renderInsights = () => (
+    <InsightsComingSoonScreen onBrandPress={goHomeBrand} />
+  );
 
   return (
     <Screen contentStyle={styles.content}>
       <View style={styles.main}>
         {activeTab === 'home'
           ? renderHome()
-          : activeTab === 'create'
-            ? renderCreate()
-            : activeTab === 'library'
-              ? renderLibrary()
-              : renderAccount()}
+          : activeTab === 'insights'
+            ? renderInsights()
+            : activeTab === 'create'
+              ? renderCreate()
+              : activeTab === 'library'
+                ? renderLibrary()
+                : renderAccount()}
       </View>
 
       <View style={styles.bottom}>

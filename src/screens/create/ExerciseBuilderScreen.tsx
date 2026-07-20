@@ -12,6 +12,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { Button } from '../../components/Button';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { EditorChrome, ExerciseEditor } from '../../components/forms';
+import { LOCK_ROOT } from '../../components/forms/LockController';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import {
   buildTargets,
@@ -25,6 +26,8 @@ import { colors, spacing, typography } from '../../theme/tokens';
 
 type Props = {
   templateId?: string | null;
+  /** Library open: start locked (compact view-mode until unlock). */
+  reviewMode?: boolean;
   onBrandPress?: () => void;
   onBack: () => void;
   onSaved: (id: string) => void;
@@ -39,6 +42,7 @@ type Props = {
  */
 export function ExerciseBuilderScreen({
   templateId,
+  reviewMode = false,
   onBrandPress,
   onBack,
   onSaved,
@@ -196,7 +200,9 @@ export function ExerciseBuilderScreen({
           onBrandPress={onBrandPress}
         />
 
-        <EditorChrome>
+        <EditorChrome
+          reviewLockId={reviewMode ? LOCK_ROOT.exercise : undefined}
+        >
           <ExerciseEditor
             value={draft}
             onChange={setDraft}

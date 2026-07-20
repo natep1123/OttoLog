@@ -50,7 +50,7 @@ import {
   buildTargets,
   getExerciseTemplate,
 } from '../../lib/exerciseTemplates';
-import { clusterTitle, clusterUiTitle } from '../../lib/displayTitles';
+import { clusterTitle, clusterUiTitle, normalizeBrief } from '../../lib/displayTitles';
 import {
   outlineCluster,
   summarizeClusterChips,
@@ -65,6 +65,7 @@ import { IconButton } from './IconButton';
 import { LayerLabelSelect } from './LayerLabelSelect';
 import { LOCK_ROOT, useNodeLock } from './LockController';
 import { LockedOutline } from './LockedOutline';
+import { LockedPreviewModal } from './LockedPreviewModal';
 import { MorePanel } from './MorePanel';
 import { NestedLayer } from './NestedLayer';
 import { RoundStepper } from './RoundStepper';
@@ -298,13 +299,17 @@ export function ClusterEditor({
     value.items.map((item) => item.id),
   );
   const [moreOpen, setMoreOpen] = useState(false);
-  // Mount locked (parent just unlocked → own-locked) → start collapsed.
-  const [expanded, setExpanded] = useState(() => !locked);
+  // Builder root starts open (library review: locked + expanded outline).
+  // Nested cards that remount own-locked after a parent unlock start collapsed.
+  const [expanded, setExpanded] = useState(() =>
+    parentLockId == null ? true : !locked,
+  );
   const [visualizeOpen, setVisualizeOpen] = useState(false);
   const [overridesOpen, setOverridesOpen] = useState(false);
   const [notesFocused, setNotesFocused] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
   const [focusNamePending, setFocusNamePending] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const nameSearchRef = useRef<TemplateNameSearchHandle>(null);
   const [addingOverride, setAddingOverride] = useState(false);
 
@@ -669,6 +674,7 @@ export function ClusterEditor({
   };
 
   return (
+    <>
     <NestedLayer
       layer="cluster"
       nested={nested}
@@ -725,9 +731,14 @@ export function ClusterEditor({
         orderIndex,
       )}
       trailing={
-        locked
-          ? undefined
-          : ({ expand }) => (
+        locked ? (
+          <IconButton
+            kind="cluster"
+            icon="maximize-2"
+            accessibilityLabel="Open screenshot view"
+            onPress={() => setPreviewOpen(true)}
+          />
+        ) : ({ expand }) => (
               <>
                 <IconButton
                   kind="cluster"
@@ -1326,6 +1337,16 @@ export function ClusterEditor({
         </>
       )}
     </NestedLayer>
+
+    <LockedPreviewModal
+      visible={previewOpen}
+      onClose={() => setPreviewOpen(false)}
+      title={clusterUiTitle(value.label_name)}
+      subtitle={normalizeBrief(value.name)}
+      layer="cluster"
+      node={outlineCluster(value, { orderIndex })}
+    />
+    </>
   );
 }
 

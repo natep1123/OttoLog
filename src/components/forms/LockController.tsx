@@ -63,8 +63,17 @@ function isForcedByAncestorIn(
  * Ephemeral lock / view mode for template builders.
  * Orthogonal to expand/collapse; not persisted to draft JSON or the DB.
  */
-export function LockControllerProvider({ children }: { children: ReactNode }) {
-  const [lockedIds, setLockedIds] = useState(() => new Set<string>());
+export function LockControllerProvider({
+  children,
+  initialLockedIds,
+}: {
+  children: ReactNode;
+  /** Pre-lock these ids on mount (e.g. library review opens locked). */
+  initialLockedIds?: string[];
+}) {
+  const [lockedIds, setLockedIds] = useState(
+    () => new Set(initialLockedIds ?? []),
+  );
   const parentsRef = useRef(new Map<string, string | null>());
   const childrenRef = useRef(new Map<string, Set<string>>());
   // Re-render consumers when the parent tree changes (register after mount).

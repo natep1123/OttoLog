@@ -30,7 +30,9 @@ export {
   useNodeLock,
 } from './LockController';
 export { LockedOutline } from './LockedOutline';
+export { LockedPreviewModal } from './LockedPreviewModal';
 export { EditorChrome, EditorTools } from './EditorTools';
+export { SessionDateControl } from './SessionDateControl';
 export { FormArrow } from './FormArrow';
 export { formRadii } from './formTokens';
 export type { FormNodeKind } from './formTokens';

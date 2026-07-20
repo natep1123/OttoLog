@@ -12,7 +12,7 @@ import {
   buildTargets,
   migrateTargetsForShapeChange,
 } from '../../lib/exerciseTemplates';
-import { exerciseTitle } from '../../lib/displayTitles';
+import { exerciseTitle, normalizeBrief } from '../../lib/displayTitles';
 import {
   createAnalyticsTag,
   createPrimaryGroup,
@@ -24,7 +24,7 @@ import {
   resolveTaxonomyOptions,
   type TaxonomyOption,
 } from '../../lib/taxonomy';
-import { summarizeExerciseChips } from '../../lib/targetSummaries';
+import { outlineExercise, summarizeExerciseChips } from '../../lib/targetSummaries';
 import type { ExerciseTemplateRow } from '../../types/exerciseTemplate';
 import type { ExerciseTemplateInput } from '../../types/exerciseTemplate';
 import { colors, layer, radii, typography } from '../../theme/tokens';
@@ -33,6 +33,8 @@ import { useExpansionController } from './ExpansionController';
 import { FormSelect } from './FormSelect';
 import { IconButton } from './IconButton';
 import { LOCK_ROOT, useNodeLock } from './LockController';
+import { LockedOutline } from './LockedOutline';
+import { LockedPreviewModal } from './LockedPreviewModal';
 import { MorePanel } from './MorePanel';
 import { NestedLayer } from './NestedLayer';
 import { SearchableSelect } from './SearchableSelect';
@@ -106,6 +108,7 @@ export function ExerciseEditor({
   } = useNodeLock(lockId, parentLockId);
 
   const [moreOpen, setMoreOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   // Mount locked (e.g. parent just unlocked → own-locked children) → start collapsed.
   const [expanded, setExpanded] = useState(() => !locked);
   const [notesFocused, setNotesFocused] = useState(false);
@@ -216,6 +219,7 @@ export function ExerciseEditor({
   };
 
   return (
+    <>
     <NestedLayer
       layer="exercise"
       nested={nested}
@@ -258,9 +262,14 @@ export function ExerciseEditor({
         )
       }
       trailing={
-        locked
-          ? undefined
-          : ({ expand }) => (
+        locked ? (
+          <IconButton
+            kind="exercise"
+            icon="maximize-2"
+            accessibilityLabel="Open screenshot view"
+            onPress={() => setPreviewOpen(true)}
+          />
+        ) : ({ expand }) => (
               <IconButton
                 kind="exercise"
                 active={moreOpen}
@@ -452,6 +461,24 @@ export function ExerciseEditor({
         </>
       )}
     </NestedLayer>
+
+    <LockedPreviewModal
+      visible={previewOpen}
+      onClose={() => setPreviewOpen(false)}
+      title={resolvedExerciseTitle}
+      subtitle={normalizeBrief(value.name)}
+      layer="exercise"
+      node={outlineExercise(
+        {
+          name: value.name,
+          tool_id: value.tool_id,
+          target_shape_id: value.target_shape_id,
+          default_target_shape: value.default_target_shape,
+        },
+        { orderIndex },
+      )}
+    />
+    </>
   );
 }
 

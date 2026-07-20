@@ -1,38 +1,28 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { HubAction } from '../../components/HubAction';
-import { ListCard } from '../../components/ListCard';
 import { ScreenHeader } from '../../components/ScreenHeader';
-import { StatusText } from '../../components/StatusText';
-import { TARGET_SHAPE_LABELS } from '../../constants/targetShapeFields';
 import {
   greetingForLocalTime,
   localNow,
   localWeekDays,
 } from '../../lib/localTime';
-import type { ExerciseTemplateRow } from '../../types/exerciseTemplate';
 import { colors, radii, spacing, typography } from '../../theme/tokens';
 
 type Props = {
   name: string;
-  recentTemplates: ExerciseTemplateRow[];
-  recentError?: string | null;
-  onBuildExercise: () => void;
+  onBuildSessionTemplate: () => void;
   onBrowseExercises: () => void;
   onManageTaxonomy: () => void;
-  onOpenExercise: (id: string) => void;
   onBrandPress?: () => void;
 };
 
 /** Home dashboard: useful now, ready to evolve into session calendar later. */
 export function HomeDashboardScreen({
   name,
-  recentTemplates,
-  recentError,
-  onBuildExercise,
+  onBuildSessionTemplate,
   onBrowseExercises,
   onManageTaxonomy,
-  onOpenExercise,
   onBrandPress,
 }: Props) {
   const [now, setNow] = useState(() => localNow());
@@ -67,9 +57,9 @@ export function HomeDashboardScreen({
         <Text style={styles.sectionTitle}>Quick actions</Text>
         <View style={styles.actions}>
           <HubAction
-            title="Build exercise"
-            body="Start a fresh exercise template."
-            onPress={onBuildExercise}
+            title="Build session template"
+            body="Start a full-day session blueprint."
+            onPress={onBuildSessionTemplate}
           />
           <HubAction
             title="Browse exercise library"
@@ -81,33 +71,6 @@ export function HomeDashboardScreen({
             body="Tools, primary groups, and analytics tags."
             onPress={onManageTaxonomy}
           />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent templates</Text>
-          <Pressable onPress={onBrowseExercises} hitSlop={8}>
-            <Text style={styles.sectionLink}>View all</Text>
-          </Pressable>
-        </View>
-        <View style={styles.recentList}>
-          {recentError ? (
-            <StatusText tone="error">{recentError}</StatusText>
-          ) : null}
-          {!recentError && recentTemplates.length === 0 ? (
-            <StatusText>No exercise templates yet.</StatusText>
-          ) : null}
-          {recentTemplates.slice(0, 4).map((template, index) => (
-            <ListCard
-              key={template.id}
-              title={template.name?.trim() || 'Exercise'}
-              meta={`${TARGET_SHAPE_LABELS[template.target_shape_id] ?? 'Exercise'}${
-                template.track_analytics ? ' · Analytics on' : ''
-              }`}
-              onPress={() => onOpenExercise(template.id)}
-            />
-          ))}
         </View>
       </View>
 
@@ -188,15 +151,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: colors.textDim,
   },
-  sectionLink: {
-    fontFamily: typography.fontMedium,
-    fontSize: 13,
-    color: colors.sunrise,
-  },
   actions: {
-    gap: spacing.sm,
-  },
-  recentList: {
     gap: spacing.sm,
   },
   badge: {

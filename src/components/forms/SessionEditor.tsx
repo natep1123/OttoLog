@@ -17,7 +17,7 @@ import {
   spacing,
   typography,
 } from '../../theme/tokens';
-import { sessionTemplateTitle, sessionUiTitle } from '../../lib/displayTitles';
+import { sessionTemplateTitle, sessionUiTitle, normalizeBrief } from '../../lib/displayTitles';
 import {
   defaultSessionBlockItem,
   getSessionTemplate,
@@ -35,6 +35,7 @@ import { IconButton } from './IconButton';
 import { LayerLabelSelect } from './LayerLabelSelect';
 import { LOCK_ROOT, useNodeLock } from './LockController';
 import { LockedOutline } from './LockedOutline';
+import { LockedPreviewModal } from './LockedPreviewModal';
 import { MorePanel } from './MorePanel';
 import { NestedLayer } from './NestedLayer';
 import {
@@ -64,10 +65,13 @@ export function SessionEditor({ value, onChange }: Props) {
     value.blocks.map((block) => block.id),
   );
   const [moreOpen, setMoreOpen] = useState(false);
-  const [expanded, setExpanded] = useState(() => !locked);
+  // Session is always the builder root — open on mount (library review needs
+  // locked + expanded so LockedOutline is visible immediately).
+  const [expanded, setExpanded] = useState(true);
   const [notesFocused, setNotesFocused] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
   const [focusNamePending, setFocusNamePending] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const nameSearchRef = useRef<TemplateNameSearchHandle>(null);
 
   useEffect(() => {
@@ -130,6 +134,7 @@ export function SessionEditor({ value, onChange }: Props) {
   };
 
   return (
+    <>
     <NestedLayer
       layer="session"
       expanded={expanded}
@@ -175,9 +180,14 @@ export function SessionEditor({ value, onChange }: Props) {
       }
       collapsedBrief={sessionTemplateTitle(value.label_name, value.name)}
       trailing={
-        locked
-          ? undefined
-          : ({ expand }) => (
+        locked ? (
+          <IconButton
+            kind="session"
+            icon="maximize-2"
+            accessibilityLabel="Open screenshot view"
+            onPress={() => setPreviewOpen(true)}
+          />
+        ) : ({ expand }) => (
               <>
                 <IconButton
                   kind="session"
@@ -300,6 +310,16 @@ export function SessionEditor({ value, onChange }: Props) {
         </>
       )}
     </NestedLayer>
+
+    <LockedPreviewModal
+      visible={previewOpen}
+      onClose={() => setPreviewOpen(false)}
+      title={sessionUiTitle(value.label_name)}
+      subtitle={normalizeBrief(value.name)}
+      layer="session"
+      node={outlineSession(value)}
+    />
+    </>
   );
 }
 

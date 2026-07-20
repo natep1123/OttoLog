@@ -9,6 +9,10 @@ type Props = {
   layer?: FormNodeKind;
   /** Nesting depth for indent (0 = root of this outline). */
   depth?: number;
+  /** Screenshot preview — keep root chrome, omit title (modal header covers it). */
+  hideRootTitle?: boolean;
+  /** Screenshot preview — root chrome fills the fixed page body. */
+  fillContainer?: boolean;
 };
 
 function kindTint(kind: OutlineNode['kind'], host: FormNodeKind): string {
@@ -27,11 +31,14 @@ export function LockedOutline({
   node,
   layer = 'exercise',
   depth = 0,
+  hideRootTitle = false,
+  fillContainer = false,
 }: Props) {
   const hostToken = layerTokens[layer];
   const tint = kindTint(node.kind, layer);
+  const showTitle = !(depth === 0 && hideRootTitle);
   const hasBody =
-    Boolean(node.meta) ||
+    Boolean(showTitle && node.meta) ||
     Boolean(node.lines?.length) ||
     Boolean(node.children?.length);
 
@@ -43,20 +50,23 @@ export function LockedOutline({
           borderColor: hostToken.border,
           backgroundColor: hostToken.chip.background,
         },
+        depth === 0 && fillContainer && styles.fillRoot,
         depth > 0 && [styles.nested, { borderLeftColor: tint }],
       ]}
     >
-      <Text
-        style={[
-          styles.title,
-          { color: tint },
-          depth === 0 && styles.titleRoot,
-        ]}
-        numberOfLines={2}
-      >
-        {node.title}
-      </Text>
-      {node.meta ? (
+      {showTitle ? (
+        <Text
+          style={[
+            styles.title,
+            { color: tint },
+            depth === 0 && styles.titleRoot,
+          ]}
+          numberOfLines={2}
+        >
+          {node.title}
+        </Text>
+      ) : null}
+      {showTitle && node.meta ? (
         <Text style={styles.meta} numberOfLines={1}>
           {node.meta}
         </Text>
@@ -82,6 +92,8 @@ export function LockedOutline({
               node={child}
               layer={layer}
               depth={depth + 1}
+              hideRootTitle={hideRootTitle}
+              fillContainer={fillContainer}
             />
           ))}
         </View>
@@ -100,6 +112,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderWidth: 1,
     borderRadius: 6,
+  },
+  fillRoot: {
+    flex: 1,
+    alignSelf: 'stretch',
   },
   nested: {
     borderWidth: 0,

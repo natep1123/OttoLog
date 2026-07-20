@@ -1,7 +1,7 @@
 import dayjs, { type Dayjs } from 'dayjs';
 
 /**
- * Local-device datetime helpers for Home and future calendar/log surfaces.
+ * Local-device datetime helpers for Home and calendar/log surfaces.
  * dayjs uses the device timezone by default — no UTC conversion needed here.
  */
 
@@ -15,6 +15,32 @@ export type WeekDay = {
 /** Live local now from the device clock. */
 export function localNow(): Dayjs {
   return dayjs();
+}
+
+/** Today's local calendar date as YYYY-MM-DD. */
+export function todayDateKey(now: Dayjs = localNow()): string {
+  return now.format('YYYY-MM-DD');
+}
+
+/**
+ * Session log date label — e.g. "Monday, May 5, 2026".
+ * Accepts YYYY-MM-DD or a Dayjs instance.
+ */
+export function formatSessionDateLabel(
+  date: string | Dayjs,
+): string {
+  const d = typeof date === 'string' ? dayjs(date) : date;
+  return d.format('dddd, MMMM D, YYYY');
+}
+
+/** Shift a YYYY-MM-DD key by ±days in local calendar time. */
+export function shiftDateKey(dateKey: string, days: number): string {
+  return dayjs(dateKey).add(days, 'day').format('YYYY-MM-DD');
+}
+
+/** Parse YYYY-MM-DD to a local Dayjs (start of that day). */
+export function dateKeyToDayjs(dateKey: string): Dayjs {
+  return dayjs(dateKey).startOf('day');
 }
 
 /**

@@ -22,15 +22,35 @@ type ToolAction = {
 
 const MENU_WIDTH = 300;
 
+type EditorChromeProps = {
+  children: ReactNode;
+  /** Optional leading control on the tools row (e.g. session log date). */
+  toolbarLeading?: ReactNode;
+  /**
+   * Library review: start with this lock id locked so the tree opens in
+   * view mode (expanded + LockedOutline) until the user unlocks.
+   */
+  reviewLockId?: string;
+};
+
 /**
  * Wraps a builder's form tree: Tools tray + expansion/lock controllers.
  */
-export function EditorChrome({ children }: { children: ReactNode }) {
+export function EditorChrome({
+  children,
+  toolbarLeading,
+  reviewLockId,
+}: EditorChromeProps) {
   return (
     <ExpansionControllerProvider>
-      <LockControllerProvider>
+      <LockControllerProvider
+        initialLockedIds={reviewLockId ? [reviewLockId] : undefined}
+      >
         <View style={styles.chrome}>
-          <EditorTools />
+          <View style={styles.toolbar}>
+            <View style={styles.toolbarLeading}>{toolbarLeading}</View>
+            <EditorTools />
+          </View>
           {children}
         </View>
       </LockControllerProvider>
@@ -87,7 +107,7 @@ export function EditorTools() {
   ];
 
   return (
-    <View style={styles.wrap}>
+    <View style={styles.toolsWrap}>
       <View ref={triggerRef} collapsable={false} style={styles.anchor}>
         <Pressable
           onPress={() => (open ? close() : openMenu())}
@@ -177,7 +197,19 @@ const styles = StyleSheet.create({
   chrome: {
     gap: spacing.md,
   },
-  wrap: {
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  toolbarLeading: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  toolsWrap: {
     alignItems: 'flex-end',
   },
   anchor: {
