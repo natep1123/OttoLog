@@ -23,12 +23,12 @@ When outline, archived docs, and live SQL disagree, use this order:
 | RPCs | `delete_own_account()` |
 | Locked atoms | `target_shapes`, `load_units`, `distance_units` |
 | Taxonomy | `tools`, `session_categories`, `block_labels`, `cluster_labels` + global nulls |
-| Analytics taxonomy | `analytics_primary_groups`, `analytics_tags` |
-| Exercise templates | `exercise_templates`, `analytics_tag_links`, `exercise_template_tool_links` |
+| Analytics taxonomy | `analytics_primary_groups`, `analytics_tags`, `analytics_muscle_groups` |
+| Exercise templates | `exercise_templates`, `analytics_tag_links`, `exercise_template_tool_links`, `exercise_template_primary_group_links`, `exercise_template_muscle_group_links` |
 | Sequence templates | `cluster_templates` (legacy internal name) |
 | Block templates | `block_templates` |
 | Session templates | `session_templates` |
-| Session logs | `session_logs`, `log_blocks`, `log_items`, `log_sub_items`, `log_sets`, `log_item_tools`, `log_sub_item_tools` |
+| Session logs | `session_logs`, `log_blocks`, `log_items`, `log_sub_items`, `log_sets`, `log_item_tools`, `log_sub_item_tools`, `log_item_primary_group_links`, `log_sub_item_primary_group_links`, `log_item_muscle_group_links`, `log_sub_item_muscle_group_links` |
 
 **App slice live**
 
@@ -37,7 +37,7 @@ When outline, archived docs, and live SQL disagree, use this order:
 - **Create** → Log a session (from scratch or from a session template) → denest save; Templates hub → Session / Block / Sequence / Exercise builders
 - **Library** → Templates and Logs: browse, search, open in review mode (locked + expanded outline), edit / archive / delete
 - Searchable create-comboboxes for tools, primary groups, and tags in the exercise builder
-- **Account** → Taxonomy: tools, primary groups, tags (create, rename, archive, hard-delete when unused)
+- **Account** → Taxonomy: tools, primary groups, muscle groups, tags (create, rename, archive, hard-delete when unused)
 - **Account** → Settings → Danger zone: delete account
 - Name search on Session / Block / Sequence / Exercise builders can copy another template's fields into the current draft without switching which template you are editing
 - Active template names are unique per user per layer, case-insensitive (`sql/007`–`010`)
@@ -69,6 +69,10 @@ Applied migrations:
 - `sql/013_kind_system_null_labels.sql` — system nulls → Session / Block / Sequence
 - `sql/014_session_logs.sql` — relational session log tables + RLS
 - `sql/015_exercise_tools.sql` — multi-tool links for exercise templates + log items
+- `sql/016_session_empty_labels.sql` — `is_empty` on session labels + Rest seed
+- `sql/017_multi_primary_groups.sql` — multi PG links for exercise templates + log items
+- `sql/018_muscle_groups.sql` — muscle group taxonomy + template/log links + seed RPC
+- `sql/019_primary_group_tag_suggestions.sql` — soft suggested tags per primary group
 
 ---
 
@@ -89,7 +93,7 @@ OttoLog is an infinite workout canvas:
 
 They are null-buckets (so FKs never need to be null), immutable, and shared by every account. They are **not** seeded on signup.
 
-User-created tools, session categories, `analytics_primary_groups`, `analytics_tags`, templates, and logs remain per-user and RLS-scoped to `auth.uid()` (except `public.users`, keyed by `id = auth.uid()`).
+User-created tools, session categories, `analytics_primary_groups`, `analytics_tags`, `analytics_muscle_groups`, templates, and logs remain per-user and RLS-scoped to `auth.uid()` (except `public.users`, keyed by `id = auth.uid()`).
 
 Array order in the editor is the source of truth. Persisted `*_order` / `set_number` columns on log rows are denormalized for query and renest. Coordinates like `1.2.3` are derived, not stored as source of truth.
 
@@ -144,6 +148,7 @@ session_categories
   user_id         uuid NULL
   name            text      -- 'Session' (system null label word)
   is_system_default boolean
+  is_empty        boolean   -- true = no blocks allowed (e.g. Rest); default false
   archived_at     timestamptz NULL
 ```
 
@@ -184,8 +189,9 @@ Use these names consistently in SQL, app code, and docs. Do not invent synonyms.
 | Tool | `tools` | `tool_id` / `tool_ids[]` | Equipment. Global sentinel: **No Tool**. Primary = first selected; extras via tool link tables. |
 | Session category | `session_categories` | `category_id` | Session/template label. Global sentinel: **Uncategorized**. Not a target shape. |
 | Target shape | `target_shapes` | `target_shape_id` | Which **set/target input fields** an exercise uses (Reps, Time, Time & Distance, Time & Reps, Distance). Locked atom. Not tree `kind`. Not session category. |
-| Primary analytics group | `analytics_primary_groups` | `primary_group_id` | **One** optional reporting bucket per exercise when `track_analytics = true`. Not the exercise display name. |
+| Primary analytics group | `analytics_primary_groups` | `primary_group_id` / `primary_group_ids[]` | Chart noun(s) when `track_analytics = true`. Primary = first selected; extras via PG link tables. Complexes credit multiple buckets. |
 | Analytics tag | `analytics_tags` | via `analytics_tag_links.tag_id` | Many optional filters per exercise template. |
+| Muscle group | `analytics_muscle_groups` | via muscle link tables / `muscle_group_ids[]` | Anatomy rollups (0–N). Seeded defaults. |
 | Tag link | `analytics_tag_links` | `exercise_template_id`, `tag_id` | M2M join only. No “groups” join table. |
 | Tool link | `exercise_template_tool_links` | `exercise_template_id`, `tool_id`, `sort_order` | Ordered M2M for multi-tool exercises. Log mirrors: `log_item_tools` / `log_sub_item_tools`. |
 
@@ -198,12 +204,15 @@ Use these names consistently in SQL, app code, and docs. Do not invent synonyms.
 - `default_target_shape` (jsonb on exercise templates) is the **prescribed targets array payload**, not the shape enum. The enum is `target_shape_id`; the jsonb holds the actual target rows for that shape.
 - Legacy / concept-doc name `composition_categories` / `comp_category_id` is **retired** in official project docs and SQL. Archived docs under `docs/deprecated/` may still say composition; this outline wins.
 
-**Groups vs tags**
+**Groups vs tags vs muscles**
 
-- **Group** = `analytics_primary_groups` / `primary_group_id`: singular aggregation identity.
+- **Group** = `analytics_primary_groups` / `primary_group_id` (+ PG link tables): aggregation identity (1–N).
+- **Muscle** = `analytics_muscle_groups` / muscle link tables: anatomy rollups (0–N).
 - **Tag** = `analytics_tags` / `analytics_tag_links`: plural free-form labels.
 - Editor JSON may carry `analytics_tag_ids: uuid[]`; that array is expanded into `analytics_tag_links` rows for templates, not stored as a column named `analytics_tag_ids` on the template table.
 - Editor JSON may carry `tool_ids: uuid[]` on exercise leaves; expanded into `exercise_template_tool_links` (library) or `log_*_tools` (logs). Singular `tool_id` remains the primary (= first) for compatibility. **No Tool** is exclusive: real tools clear it; empty selection restores it.
+- Editor JSON may carry `primary_group_ids: uuid[]`; expanded into PG link tables; singular `primary_group_id` = first when tracking.
+- Editor JSON may carry `muscle_group_ids: uuid[]`; expanded into muscle link tables on templates **and** logs.
 - Legacy prototype names `master_exercise_name` / `group_tags` are **not** used.
 - How to choose values in practice: `docs/Analytics_Labeling.md`.
 
@@ -229,8 +238,12 @@ taxonomy
     └── user rows (user_id = owner)
   analytics_primary_groups                 ← LIVE (user only)
   analytics_tags                           ← LIVE (user only)
+  analytics_muscle_groups                  ← LIVE (user only)
   analytics_tag_links                      ← LIVE (via exercise_templates)
+  analytics_primary_group_tag_suggestions  ← LIVE (soft PG→tag picker hints)
   exercise_template_tool_links             ← LIVE (via exercise_templates)
+  exercise_template_primary_group_links    ← LIVE (via exercise_templates)
+  exercise_template_muscle_group_links     ← LIVE (via exercise_templates)
 
 templates (library / blueprints)
   exercise_templates                       ← LIVE
@@ -238,13 +251,15 @@ templates (library / blueprints)
   block_templates               (jsonb content)  ← LIVE
   session_templates             (jsonb content)  ← LIVE
 
-logs (relational facts)                    ← LIVE (`sql/014` + `sql/015` tool links)
+logs (relational facts)                    ← LIVE (`sql/014`–`018` link tables)
   session_logs
     └── log_blocks              (X)
           └── log_items         (Y: exercise | cluster)
                 ├── log_item_tools (exercise only)
+                ├── log_item_primary_group_links / log_item_muscle_group_links
                 ├── log_sub_items (Z, cluster children only)
-                │     └── log_sub_item_tools
+                │     ├── log_sub_item_tools
+                │     └── log_sub_item_*_group_links
                 └── log_sets
 ```
 
@@ -317,18 +332,22 @@ Mixed ownership on tools / session categories; analytics tables are user-only.
 | Table | Ownership | Purpose |
 |-------|-----------|---------|
 | `tools` | Global sentinel + user rows | Equipment vocabulary. Global **No Tool**; users add their own tools. |
-| `session_categories` | Global sentinel + user rows | Session / template labels. Global **Uncategorized**; users add their own. |
-| `analytics_primary_groups` | User only | Reporting buckets. Referenced by `primary_group_id`. |
+| `session_categories` | Global sentinel + user rows | Session / template labels. Global **Session** null; users add their own. `is_empty` (default false): when true, sessions/templates with that label cannot have blocks (notes only). Seeded **Rest** has `is_empty = true`. |
+| `analytics_primary_groups` | User only | Reporting buckets. Referenced by `primary_group_id` + PG link tables. |
 | `analytics_tags` | User only | Free-form filters. Referenced by `analytics_tag_links.tag_id`. |
+| `analytics_muscle_groups` | User only | Anatomy rollups. Referenced by muscle group link tables. Seeded via `ensure_default_muscle_groups`. |
 | `analytics_tag_links` | User only (via owning exercise template) | M2M: `exercise_template_id` ↔ `tag_id`. |
 | `exercise_template_tool_links` | User only (via owning exercise template) | Ordered M2M: `exercise_template_id` ↔ `tool_id` (`sort_order`). |
+| `exercise_template_primary_group_links` | User only (via owning exercise template) | Ordered M2M: `exercise_template_id` ↔ `primary_group_id` (`sort_order`). |
+| `exercise_template_muscle_group_links` | User only (via owning exercise template) | Ordered M2M: `exercise_template_id` ↔ `muscle_group_id` (`sort_order`). |
+| `analytics_primary_group_tag_suggestions` | User only (via owning primary group) | Soft picker hints: which tags to surface for a PG. Does not constrain stored tag links. Muscles unaffected. |
 
 ### Structural sentinels (global)
 
 | Sentinel | Table | Rules |
 |----------|--------|-------|
 | **No Tool** | `tools` | Fixed UUID PK, `user_id IS NULL`, `is_system_default = true`. Exercises always have ≥1 tool id; unequipped work points here as the exclusive selection. Singular `tool_id` columns stay NOT NULL as primary. UI may show “None”. |
-| **Session** (system null) | `session_categories` | Fixed UUID PK, `user_id IS NULL`, `is_system_default = true`. Sessions/templates always have a non-null `category_id`. Display name: **Session**. |
+| **Session** (system null) | `session_categories` | Fixed UUID PK, `user_id IS NULL`, `is_system_default = true`, `is_empty = false`. Sessions/templates always have a non-null `category_id`. Display name: **Session**. Unclassified ≠ Rest. |
 
 Sentinels cannot be renamed, archived, or deleted. User taxonomy rows may be soft-archived (`archived_at`). Hard delete is restricted while referenced.
 
@@ -342,10 +361,11 @@ Sentinels cannot be renamed, archived, or deleted. User taxonomy rows may be sof
 ### Analytics identity vs exercise name
 
 - Exercise **display `name`** is free text and is not the analytics identity.
-- If `track_analytics = true`, the exercise has exactly one `primary_group_id` → `analytics_primary_groups`.
-- If `track_analytics = false`, `primary_group_id` is null and there are no `analytics_tag_links` (editor `analytics_tag_ids` is `[]`).
-- Multiple differently named exercises can share one `analytics_primary_groups` row so volume rolls up together.
-- Tags (`analytics_tags`) are optional many-to-many filters and never replace `primary_group_id`.
+- If `track_analytics = true`, the exercise has ≥1 primary group: singular `primary_group_id` (first) plus ordered `exercise_template_primary_group_links` / log PG links (editor `primary_group_ids[]`).
+- If `track_analytics = false`, `primary_group_id` is null, link rows are empty, and there are no `analytics_tag_links` (editor `analytics_tag_ids` is `[]`).
+- Multiple differently named exercises can share one `analytics_primary_groups` row so volume rolls up together. Complexes may select **multiple** PGs so the same volume accrues to each chart (do not sum PG totals into one grand total).
+- Tags (`analytics_tags`) are optional many-to-many filters and never replace primary groups.
+- **Suggested tags** (soft): Account → Taxonomy → Primary group → Suggested tags. Empty suggestions → exercise tag picker shows the full A→Z pool. Any suggestions → Suggested section first; **Show all** reveals the full A→Z list underneath (suggested tags appear in both; toggling one flips both). Multi-PG unions suggestions. Does not affect muscle groups.
 
 ---
 

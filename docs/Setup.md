@@ -50,9 +50,13 @@ sql/012_standard_sequence_label.sql
 sql/013_kind_system_null_labels.sql
 sql/014_session_logs.sql
 sql/015_exercise_tools.sql
+sql/016_session_empty_labels.sql
+sql/017_multi_primary_groups.sql
+sql/018_muscle_groups.sql
+sql/019_primary_group_tag_suggestions.sql
 ```
 
-After `004`, **No Tool** and the Session system-null label exist once for the whole project (fixed UUIDs). Signup does not create copies per user. Session templates require the Session sentinel (`010` depends on `004`; rename in `013`). Session logging requires `014` (tables + RLS; denest/renest run in the app). Multi-tool exercises require `015` (template + log tool link tables).
+After `004`, **No Tool** and the Session system-null label exist once for the whole project (fixed UUIDs). Signup does not create copies per user. Session templates require the Session sentinel (`010` depends on `004`; rename in `013`). Session logging requires `014` (tables + RLS; denest/renest run in the app). Multi-tool exercises require `015` (template + log tool link tables). Empty session labels (Rest) require `016` (`is_empty` on `session_categories` + expanded seed defaults). Multi primary groups (complexes) require `017` (template + log PG link tables). Muscle groups require `018` (taxonomy + template/log links + `ensure_default_muscle_groups`). Soft suggested tags per primary group require `019`.
 
 **Auth vs profile:** credentials in `auth.users`; profile `username` in `public.users` where `id = auth.uid()`.
 
@@ -88,5 +92,9 @@ Scan the QR code in Expo Go.
 | Block / Session list empty | Apply `sql/009` and `sql/010`; user signed in |
 | Session logs fail to save / empty Logs | Apply `sql/014_session_logs.sql`; user signed in |
 | Multi-tool exercises fail to save / load | Apply `sql/015_exercise_tools.sql` after `014` |
+| Rest / empty session label missing or blocks allowed | Apply `sql/016_session_empty_labels.sql` after `015` |
+| Multi primary groups fail to save / load | Apply `sql/017_multi_primary_groups.sql` after `016` |
+| Muscle groups missing / fail to save | Apply `sql/018_muscle_groups.sql` after `017` |
+| Primary-group suggested tags missing | Apply `sql/019_primary_group_tag_suggestions.sql` after `018` |
 
 Schema: [`Database_Outline.md`](./Database_Outline.md). Folders: [`Project_Structure.md`](./Project_Structure.md).

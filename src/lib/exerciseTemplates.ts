@@ -120,14 +120,74 @@ export function coerceToolIds(args: {
   return [NO_TOOL_ID];
 }
 
+/** Dedupe primary group ids while preserving order. */
+export function normalizePrimaryGroupIds(
+  ids: string[] | null | undefined,
+): string[] {
+  const raw = Array.isArray(ids)
+    ? ids.filter((id): id is string => typeof id === 'string' && id.length > 0)
+    : [];
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  for (const id of raw) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    deduped.push(id);
+  }
+  return deduped;
+}
+
+/** Dedupe muscle group ids while preserving order. */
+export function normalizeMuscleGroupIds(
+  ids: string[] | null | undefined,
+): string[] {
+  const raw = Array.isArray(ids)
+    ? ids.filter((id): id is string => typeof id === 'string' && id.length > 0)
+    : [];
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  for (const id of raw) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    deduped.push(id);
+  }
+  return deduped;
+}
+
+/** First primary group, or null when empty. */
+export function primaryPrimaryGroupId(
+  ids: string[] | null | undefined,
+): string | null {
+  return normalizePrimaryGroupIds(ids)[0] ?? null;
+}
+
+/** Prefer primary_group_ids[]; else wrap singular primary_group_id. */
+export function coercePrimaryGroupIds(args: {
+  primary_group_ids?: string[] | null;
+  primary_group_id?: string | null;
+}): string[] {
+  if (
+    Array.isArray(args.primary_group_ids) &&
+    args.primary_group_ids.length > 0
+  ) {
+    return normalizePrimaryGroupIds(args.primary_group_ids);
+  }
+  if (args.primary_group_id) {
+    return normalizePrimaryGroupIds([args.primary_group_id]);
+  }
+  return [];
+}
+
 export function defaultExerciseDraft(): ExerciseTemplateInput {
   return {
     name: '',
     tool_ids: [NO_TOOL_ID],
     target_shape_id: TARGET_SHAPE_IDS.reps,
     track_analytics: false,
+    primary_group_ids: [],
     primary_group_id: null,
     analytics_tag_ids: [],
+    muscle_group_ids: [],
     default_target_shape: buildTargets(1),
     track_duration: false,
     duration: null,
@@ -180,6 +240,58 @@ async function replaceToolLinks(
   return { error: error?.message ?? null };
 }
 
+async function replacePrimaryGroupLinks(
+  templateId: string,
+  groupIds: string[],
+): Promise<{ error: string | null }> {
+  const ids = normalizePrimaryGroupIds(groupIds);
+  const { error: delError } = await supabase
+    .from('exercise_template_primary_group_links')
+    .delete()
+    .eq('exercise_template_id', templateId);
+
+  if (delError) return { error: delError.message };
+  if (ids.length === 0) return { error: null };
+
+  const { error } = await supabase
+    .from('exercise_template_primary_group_links')
+    .insert(
+      ids.map((primary_group_id, sort_order) => ({
+        exercise_template_id: templateId,
+        primary_group_id,
+        sort_order,
+      })),
+    );
+
+  return { error: error?.message ?? null };
+}
+
+async function replaceMuscleGroupLinks(
+  templateId: string,
+  muscleGroupIds: string[],
+): Promise<{ error: string | null }> {
+  const ids = normalizeMuscleGroupIds(muscleGroupIds);
+  const { error: delError } = await supabase
+    .from('exercise_template_muscle_group_links')
+    .delete()
+    .eq('exercise_template_id', templateId);
+
+  if (delError) return { error: delError.message };
+  if (ids.length === 0) return { error: null };
+
+  const { error } = await supabase
+    .from('exercise_template_muscle_group_links')
+    .insert(
+      ids.map((muscle_group_id, sort_order) => ({
+        exercise_template_id: templateId,
+        muscle_group_id,
+        sort_order,
+      })),
+    );
+
+  return { error: error?.message ?? null };
+}
+
 export async function listExerciseTemplates(): Promise<{
   data: ExerciseTemplateRow[];
   error: string | null;
@@ -223,12 +335,38 @@ export async function getExerciseTemplate(
 
   if (toolLinkError) return { data: null, error: toolLinkError.message };
 
+  const { data: pgLinks, error: pgLinkError } = await supabase
+    .from('exercise_template_primary_group_links')
+    .select('primary_group_id, sort_order')
+    .eq('exercise_template_id', id)
+    .order('sort_order', { ascending: true });
+
+  if (pgLinkError) return { data: null, error: pgLinkError.message };
+
+  const { data: mgLinks, error: mgLinkError } = await supabase
+    .from('exercise_template_muscle_group_links')
+    .select('muscle_group_id, sort_order')
+    .eq('exercise_template_id', id)
+    .order('sort_order', { ascending: true });
+
+  if (mgLinkError) return { data: null, error: mgLinkError.message };
+
+  const muscle_group_ids = normalizeMuscleGroupIds(
+    (mgLinks ?? []).map((l) => l.muscle_group_id as string),
+  );
+
+  const primary_group_ids = coercePrimaryGroupIds({
+    primary_group_ids: (pgLinks ?? []).map((l) => l.primary_group_id as string),
+    primary_group_id: template.primary_group_id,
+  });
+
   let primary_group_name: string | null = null;
-  if (template.primary_group_id) {
+  const primaryId = primaryPrimaryGroupId(primary_group_ids);
+  if (primaryId) {
     const { data: group, error: groupError } = await supabase
       .from('analytics_primary_groups')
       .select('name')
-      .eq('id', template.primary_group_id)
+      .eq('id', primaryId)
       .maybeSingle();
     if (groupError) return { data: null, error: groupError.message };
     primary_group_name = group?.name ?? null;
@@ -275,7 +413,10 @@ export async function getExerciseTemplate(
         tool_names.length > 0
           ? tool_names
           : tool_ids.map((tid) => (tid === NO_TOOL_ID ? 'None' : tid)),
+      primary_group_ids,
+      primary_group_id: primaryId,
       analytics_tag_ids,
+      muscle_group_ids,
       primary_group_name,
       tag_names,
     },
@@ -316,15 +457,22 @@ export async function saveExerciseTemplate(
     }
   }
 
+  let primary_group_ids: string[] = [];
   let primary_group_id: string | null = null;
   let tagIds: string[] = [];
+  let muscleGroupIds: string[] = [];
 
   if (draft.track_analytics) {
-    if (!draft.primary_group_id) {
+    primary_group_ids = coercePrimaryGroupIds({
+      primary_group_ids: draft.primary_group_ids,
+      primary_group_id: draft.primary_group_id,
+    });
+    if (primary_group_ids.length === 0) {
       return { id: null, error: 'Primary analytics group is required.' };
     }
-    primary_group_id = draft.primary_group_id;
+    primary_group_id = primaryPrimaryGroupId(primary_group_ids);
     tagIds = draft.analytics_tag_ids ?? [];
+    muscleGroupIds = normalizeMuscleGroupIds(draft.muscle_group_ids);
   }
 
   const tool_ids = normalizeToolIds(draft.tool_ids);
@@ -369,8 +517,14 @@ export async function saveExerciseTemplate(
   const toolLinks = await replaceToolLinks(id, tool_ids);
   if (toolLinks.error) return { id: null, error: toolLinks.error };
 
+  const pgLinks = await replacePrimaryGroupLinks(id, primary_group_ids);
+  if (pgLinks.error) return { id: null, error: pgLinks.error };
+
   const links = await replaceTagLinks(id, tagIds);
   if (links.error) return { id: null, error: links.error };
+
+  const mgLinks = await replaceMuscleGroupLinks(id, muscleGroupIds);
+  if (mgLinks.error) return { id: null, error: mgLinks.error };
 
   return { id, error: null };
 }

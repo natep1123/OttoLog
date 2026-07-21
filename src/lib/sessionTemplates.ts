@@ -10,6 +10,8 @@ import {
   normalizeBlockItem as normalizeBlockChildItem,
   prepareBlockItemForSave,
 } from './blockTemplates';
+import { coercePrimaryGroupIds } from './exerciseTemplates';
+import { isEmptySessionLabel } from './taxonomy';
 import type { BlockTemplateInput } from '../types/blockTemplate';
 import type {
   SessionBlockItem,
@@ -60,6 +62,7 @@ export function sessionTemplateToDraft(
           return {
             ...item,
             analytics_tag_ids: [...(item.analytics_tag_ids ?? [])],
+            muscle_group_ids: [...(item.muscle_group_ids ?? [])],
             targets: item.targets.map((t) => ({ ...t })),
           };
         }
@@ -68,6 +71,7 @@ export function sessionTemplateToDraft(
           items: item.items.map((ex) => ({
             ...ex,
             analytics_tag_ids: [...(ex.analytics_tag_ids ?? [])],
+            muscle_group_ids: [...(ex.muscle_group_ids ?? [])],
             targets: ex.targets.map((t) => ({ ...t })),
           })),
           overrides: (item.overrides ?? []).map((o) => ({
@@ -133,7 +137,8 @@ function normalizeContent(raw: unknown): SessionContent {
         ? c.duration
         : '00:00:00'
       : null,
-    blocks: blocks.length ? blocks : [defaultSessionBlockItem()],
+    // Empty array is valid for Rest / is_empty session labels
+    blocks,
   };
 }
 
@@ -196,8 +201,17 @@ export type SaveSessionArgs = {
   draft: SessionTemplateInput;
 };
 
-function validateDraft(draft: SessionTemplateInput): string | null {
+async function validateDraft(
+  draft: SessionTemplateInput,
+): Promise<string | null> {
   if (!draft.category_id) return 'Session label is required.';
+  const emptyLabel = await isEmptySessionLabel(draft.category_id);
+  if (emptyLabel) {
+    if (draft.blocks.length > 0) {
+      return 'Empty session labels cannot have blocks. Notes only.';
+    }
+    return null;
+  }
   if (draft.blocks.length === 0) return 'Add at least one block.';
   for (let i = 0; i < draft.blocks.length; i += 1) {
     const block = draft.blocks[i];
@@ -215,7 +229,7 @@ function validateDraft(draft: SessionTemplateInput): string | null {
       if (
         item.kind === 'exercise' &&
         item.track_analytics &&
-        !item.primary_group_id
+        coercePrimaryGroupIds(item).length === 0
       ) {
         return `Exercise ${j + 1} in Block ${i + 1} needs a primary analytics group.`;
       }
@@ -228,7 +242,7 @@ export async function saveSessionTemplate(
   args: SaveSessionArgs,
 ): Promise<{ id: string | null; error: string | null }> {
   const { userId, templateId, draft } = args;
-  const validationError = validateDraft(draft);
+  const validationError = await validateDraft(draft);
   if (validationError) return { id: null, error: validationError };
 
   const name = normalizeBrief(draft.name);

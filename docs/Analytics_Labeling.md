@@ -15,17 +15,21 @@ volume rolls up**, not **permission to log**.
 | Slot | Job | Open-ended? |
 |------|-----|-------------|
 | **Exercise name** | Display / library identity | Free text |
-| **Primary group** | **One** analytics rollup key when tracking is on | User vocabulary |
-| **Tags** | Many optional facets for filtering / slicing | User vocabulary |
-| **Tool** | Equipment | User + global **No Tool** |
-| **Session label** | Day-level kind / intent | User + system null **Session** |
+| **Primary group(s)** | Chart noun(s) when tracking is on (**1–N** for complexes) | User vocabulary |
+| **Muscle groups** | Anatomy rollups (multiselect) | Seeded defaults + user edits |
+| **Tags** | Facets for filtering (not anatomy once muscles ship) | User vocabulary |
+| **Tool(s)** | Equipment | User + global **No Tool** |
+| **Session label** | Day-level kind / intent | User + system null **Session**; **Rest** is a normal seeded empty label (`is_empty`) |
 | **Block / Sequence labels** | Nest structure (Warmup, Circuit, …) | User + system nulls |
 | **Target shape** | Which set input fields appear | Locked atoms |
 | **`track_analytics`** | Opt in/out of analytics identity | Boolean |
 
 Primary Group exists so several differently named exercises can share one chart
-bucket. Tags exist so you can ask secondary questions without splitting that
-bucket. Display name is never the analytics identity.
+bucket (complexes may credit **multiple** buckets). Muscle groups answer
+tissue questions. Tags answer secondary facets. Display name is never the
+analytics identity.
+
+Seed vocabulary map: [`Label_Library.md`](./Label_Library.md).
 
 ## Decision rule
 
@@ -34,72 +38,69 @@ Ask:
 > If Insights showed me **one number** for this exercise this month, what noun
 > should that number sit under?
 
-That noun is the **Primary Group**.
+That noun is a **Primary Group**. For complexes (e.g. 360-to-Squat), select
+every noun that should receive the reps.
 
-Everything that answers *how / with what / which style / which context* is a
-tag, a tool, a session label, or the display name — not the Primary Group.
+Everything that answers *how / with what / which style / which tissue / which
+context* is a tag, muscle group, tool, session label, or the display name —
+not crammed into a single PG string.
 
 ### What belongs where
 
 | Put here | Examples |
 |----------|----------|
-| **Primary Group** | `Pullups`, `Run`, `Walk`, `Hike`, `Sprint`, `Drilling`, `Live Sparring`, `Competition Fight`, `Meditation`, `Sauna` |
-| **Tags** | `wide-grip`, `standard`, `BJJ`, `Muay Thai`, `MMA` |
+| **Primary Group** | `Pullups`, `Squats`, `360s`, `Gait`, `Drilling`, `Live Sparring`, `Meditation`, `Competition Fights` |
+| **Muscle groups** | Chest, Lats, Quads, Core, … |
+| **Tags** | `wide-grip`, `standard`, `BJJ`, `Run` (under Gait), `Complex` |
 | **Tool** | `Kettlebell`, `Mace`, `None` |
-| **Session label** | `Hybrid`, `Cardio`, `Recovery`, `Martial Arts`, `Recreation` |
-| **Block / Sequence labels** | `Warmup`, `Workout`, `Circuit` — structural, not analytics |
-| **Exercise name** | `Weighted Pullups`, `BJJ Live Rounds`, `KB Halo Rev. Lunges` |
+| **Session label** | `Hybrid`, `Cardio`, `Recovery`, `Martial Arts`, `Recreation`, `Rest` (empty; `is_empty`) |
+| **Block / Sequence labels** | `Warmup`, `Workout`, `Circuit` — structural, not analytics (for now) |
+| **Exercise name** | `Weighted Wide-Grip Pullups`, `BJJ Live Rounds`, `Mace 360-to-Squat` |
 
 ### What not to put in Primary Group
 
-- Modality buckets: Strength, Cardio, Wellness, Gait
-- Equipment (use Tool)
-- Grip / stance / variation details (tags or name)
 - Session intent: Hybrid, Recovery, Martial Arts, Recreation (session label)
 - Nest structure: Warmup / Workout / Circuit (block/sequence labels)
-- Compound two-axis names: `BJJ Live`, `Strength Pullups` (use PG + tag instead)
-- Combat **disciplines** when using the mode-as-PG convention below (put `BJJ` /
-  `Muay Thai` / `MMA` on tags)
+- Equipment (use Tool)
+- Anatomy (use muscle groups)
+- Grip / stance / plane details (tags)
+- Compound two-axis names: `BJJ Live`, `Strength Pullups` (use PG + tag)
+- Combat **disciplines** (tags: `BJJ` / `Muay Thai` / `MMA`)
+- Gait **flavors** when using family-as-PG: Walk / Run / Sprint / Hike are tags under `Gait`
 
 ## Strength / hybrid / calisthenics
 
 | Field | Practice |
 |-------|----------|
 | Primary Group | The movement you progress (`Pullups`, not `Strength`) |
-| Tags | Pattern / style / focus (`calisthenics`, `vertical`, `pull`, `standard`, `wide-grip`) |
-| Name | Specific prescription identity (`Weighted Pullups`) |
-| Tool | Implement when it matters for equipment rollups |
+| Muscle groups | Tissue emphasis |
+| Tags | Pattern / style / grip (`calisthenics`, `vertical`, `pull`, `standard`) |
+| Name | Specific prescription (`Weighted Pullups`) |
+| Tool | Implement when it matters |
 
-Variations of the same movement should **reuse** the Primary Group. Encode the
-variation in the name and/or tags.
+Variations of the same movement **reuse** the Primary Group. Encode variation
+in the name and/or tags. Complexes that truly are two movements use **multiple
+PGs** so reps accrue to each chart.
 
-## Gait (run / walk / hike / sprint)
+## Gait / swim / cycle / row
 
-Prefer **concrete activities as Primary Groups**, not an abstract parent like
-`Gait`:
+Prefer **family as Primary Group**, flavor as tags — same pattern for every
+cardio family:
 
-| Flavor | Primary Group | Tags (examples) |
-|--------|---------------|-----------------|
-| Easy run | `Run` | `easy`, `road` / `trail` |
-| Sprint work | `Sprint` *or* `Run` + tag `sprint` | `intervals`, `track` |
-| Run/walk | `Run` *or* dedicated `Run+Walk` if you want separate totals | `intervals`, `walk-break` |
-| Long walk | `Walk` | `long`, `recovery` |
-| Hike | `Hike` | `loaded`, `trail` |
+| Family (PG) | Flavor tags (examples) |
+|-------------|------------------------|
+| `Gait` | `Walk`, `Run`, `Sprint`, `Hike`, `Ruck` |
+| `Swim` | stroke / drill tags as needed |
+| `Cycle` | `road`, `trainer`, … |
+| `Row` | `steady`, `intervals`, … |
 
-**Separate Primary Groups only when you want separate default charts.** If
-sprint volume should always live inside Run, keep PG = `Run` and tag `sprint`.
-
-Interval structure can live in the nest (sequence of Run / Walk items) or in
-one Time & Distance exercise — labels do not have to encode the intervals.
-
-**Session label:** dedicated training runs/hikes can stay under `Cardio` /
-`Hybrid`. Casual camping, hiking, and similar outdoor days usually use
-`Recreation` unless that day is explicitly training-focused.
+**Session label:** dedicated training under `Cardio` / `Hybrid`. Casual outdoor
+days usually `Recreation` unless explicitly training-focused.
 
 ## Martial arts (two axes)
 
-You have two meaningful axes and **only one Primary Group**. This account’s
-convention:
+You have two meaningful axes. This account’s convention (usually **one** mode
+PG per exercise; multi-PG is for true complexes):
 
 - **Primary Group = training mode** — effort / intensity bucket you chart first
 - **Tags = discipline** — which art(s) that work belonged to
@@ -109,7 +110,7 @@ convention:
 |---------------|--------|
 | `Drilling` | Technique, positional work, pads, reps of moves |
 | `Live Sparring` | Sparring / rolling / timed live rounds |
-| `Competition Fight` | Match / tournament work |
+| `Competition Fights` | Match / tournament work |
 
 | Tag | Means |
 |-----|--------|
@@ -122,7 +123,7 @@ convention:
 | BJJ rolling | `BJJ Live Rounds` | `Live Sparring` | `BJJ` | `Martial Arts` |
 | BJJ technique | `Guard Retention` | `Drilling` | `BJJ` | `Martial Arts` |
 | Muay Thai pads | `Pad Work` | `Drilling` | `Muay Thai` | `Martial Arts` |
-| Tournament | `Match` | `Competition Fight` | `BJJ` | `Martial Arts` |
+| Tournament | `BJJ Tournament Matches` | `Competition Fights` | `BJJ` | `Martial Arts` |
 
 Default Insights questions become “how much **live sparring** / **drilling** /
 **competition fight** time?” Discipline is a filter: “of that live time, how
@@ -154,15 +155,15 @@ Group when you want totals:
 |----------|---------------|-----------------|
 | Meditation | `Meditation` | `morning`, `guided`, `breathwork` |
 | Sauna | `Sauna` | `hot`, `contrast` |
-| Cold | `Cold Exposure` | `plunge`, `shower` |
+| Cold | `Cold Exposure` | `cold`, `plunge`, `shower` |
 
 **Session labels**
 
 - **`Martial Arts`** — combat-focused sessions (see above).
 - **`Recreation`** — camping, casual hiking, and other life/outdoor days that
   are not dedicated training. Exercises inside can still use PGs like `Hike`
-  or `Walk` if you want those minutes on charts.
-- Dedicated training hikes/runs stay under training session labels (`Cardio`,
+  or `Walk` if you want those minutes/miles on charts.
+- Dedicated training hikes/runs should stay under training session labels (`Cardio`,
   `Hybrid`, etc.), not `Recreation`.
 
 If you only want something in the session narrative and never in Insights: turn
@@ -177,43 +178,50 @@ If you only want something in the session narrative and never in Insights: turn
 5. **Spell once and reuse** — one row for `BJJ`, not parallel `Bjj` /
    `Brazilian Jiu-Jitsu` tags (or PGs in other conventions).
 6. **Archive + create** if a PG’s meaning changes; don’t silently rename history.
-7. **Insights will love Primary Group first** (log rows carry `primary_group_id`).
-   Treat tags as the flexible overlay you enrich over time.
+7. **Insights will love Primary Group first** (log rows carry `primary_group_id`
+   plus PG link tables for complexes). Treat tags as the flexible overlay you
+   enrich over time. Optional **suggested tags per PG** soft-filter the picker;
+   they never constrain stored links.
 
 ## Starter kit (personal / test account)
 
-Optional seed vocabulary while dogfooding. Users start empty; optional
-populate-from-preset is a future product surface.
+Canonical lists live in [`Label_Library.md`](./Label_Library.md). Summary:
 
 ### Primary Groups
 
-- Strength / skill: `Pullups`, `Pushups`, `Squats`, plus each hybrid/mace/KB
-  family you actually chart
-- Gait: `Run`, `Walk`, `Hike`, `Sprint`
+- Strength / skill: `Pullups`, `Pushups`, `Squats`, `Lunges`, `Halos`, `360s`, …
+- Cardio families: `Gait`, `Swim`, `Cycle`, `Row` (flavors as tags)
 - Combat modes: `Drilling`, `Live Sparring`, `Competition Fight`
 - Wellness (if tracking minutes): `Meditation`, `Sauna`, `Cold Exposure`
 
+### Muscle groups (seeded defaults)
+
+Chest, Lats, Spinal Chain, Rear Delts, Shoulders, Biceps, Triceps, Traps,
+Quads, Hamstrings/Glutes, Calves, Core, Forearms, Neck
+
 ### Shared tags
 
-- Movement: `calisthenics`, `vertical`, `pull`, `push`, `standard`, `wide-grip`, …
-- Gait: `easy`, `intervals`, `trail`, `road`, `loaded`, `walk-break`
+- Pattern / plane / grip: `pull`, `push`, `vertical`, `standard`, `wide-grip`, …
+- Region (coarse): `legs`, `upper body`, `full body`
+- Gait flavors under PG `Gait`: `Walk`, `Run`, `Sprint`, `Hike`, …
 - Combat discipline: `BJJ`, `Muay Thai`, `MMA`
-- Wellness: `morning`, `guided`, `contrast`, …
+- Style: `calisthenics`, `complex`, …
 
 ### Session labels
 
-Keep few: `Session` (default), `Hybrid`, `Cardio`, `Recovery`, `Martial Arts`,
-`Recreation`.
+`Session` (null), `Hybrid`, `Cardio`, `Strength`, `Recovery`, `Mobility`,
+`Martial Arts`, `Recreation`, `Rest` (empty; notes only).
 
 ### Block / Sequence labels
 
-Prefer seeded structural words (`Warmup` / `Workout` / `Cooldown`, `Circuit` /
-`Superset` / `Sequence`). Do not overload them with analytics meaning.
+Structural only: `Warmup` / `Workout` / `Cooldown` / `Challenge` / … ;
+`Circuit` / `Superset` / `Sequence`.
 
 ## Related docs
 
 | Doc | Role |
 |-----|------|
+| `docs/Label_Library.md` | Seed map: labels, PGs, muscles, tags by type; next-phase notes |
 | `docs/Database_Outline.md` | Tables, FKs, `track_analytics` / group / tag contracts |
 | `docs/Template_Builders.md` | Exercise More panel: analytics on → required PG + optional tags |
 | `docs/Project_Structure.md` | Where taxonomy CRUD and types live |

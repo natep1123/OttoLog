@@ -6,9 +6,12 @@ import {
 import { supabase } from './supabase';
 import {
   buildTargets,
+  coercePrimaryGroupIds,
   coerceToolIds,
   defaultExerciseDraft,
+  normalizeMuscleGroupIds,
   normalizeToolIds,
+  primaryPrimaryGroupId,
   primaryToolId,
   sanitizeTargetsForShape,
 } from './exerciseTemplates';
@@ -40,6 +43,7 @@ export function exerciseDraftToClusterItem(
   id?: string,
 ): ClusterExerciseItem {
   const tool_ids = normalizeToolIds(draft.tool_ids);
+  const primary_group_ids = coercePrimaryGroupIds(draft);
   return {
     kind: 'exercise',
     id: id ?? newItemId(),
@@ -49,8 +53,10 @@ export function exerciseDraftToClusterItem(
     tool_name: draft.tool_name?.trim() || null,
     target_shape_id: draft.target_shape_id,
     track_analytics: draft.track_analytics,
-    primary_group_id: draft.primary_group_id,
+    primary_group_ids,
+    primary_group_id: primaryPrimaryGroupId(primary_group_ids),
     analytics_tag_ids: draft.analytics_tag_ids ?? [],
+    muscle_group_ids: normalizeMuscleGroupIds(draft.muscle_group_ids),
     targets: draft.default_target_shape,
     track_duration: draft.track_duration,
     duration: draft.duration,
@@ -62,14 +68,17 @@ export function clusterItemToExerciseDraft(
   item: ClusterExerciseItem,
 ): ExerciseTemplateInput {
   const targets = Array.isArray(item.targets) ? item.targets : [];
+  const primary_group_ids = coercePrimaryGroupIds(item);
   return {
     name: item.name ?? '',
     tool_ids: coerceToolIds(item),
     tool_name: item.tool_name ?? null,
     target_shape_id: item.target_shape_id,
     track_analytics: Boolean(item.track_analytics),
-    primary_group_id: item.primary_group_id ?? null,
+    primary_group_ids,
+    primary_group_id: primaryPrimaryGroupId(primary_group_ids),
     analytics_tag_ids: item.analytics_tag_ids ?? [],
+    muscle_group_ids: normalizeMuscleGroupIds(item.muscle_group_ids),
     default_target_shape: targets.length ? targets : buildTargets(1),
     track_duration: Boolean(item.track_duration),
     duration: item.duration ?? null,
@@ -113,6 +122,7 @@ export function clusterTemplateToDraft(
     items: content.items.map((item) => ({
       ...item,
       analytics_tag_ids: [...(item.analytics_tag_ids ?? [])],
+      muscle_group_ids: [...(item.muscle_group_ids ?? [])],
       targets: item.targets.map((t) => ({ ...t })),
     })),
     overrides: (content.overrides ?? []).map((o) => ({
@@ -218,6 +228,13 @@ function normalizeContent(raw: unknown): ClusterContent {
         : undefined,
       tool_id: typeof r.tool_id === 'string' ? r.tool_id : undefined,
     });
+    const primary_group_ids = coercePrimaryGroupIds({
+      primary_group_ids: Array.isArray(r.primary_group_ids)
+        ? (r.primary_group_ids as string[])
+        : undefined,
+      primary_group_id:
+        typeof r.primary_group_id === 'string' ? r.primary_group_id : undefined,
+    });
     return {
       kind: 'exercise',
       id:
@@ -231,11 +248,16 @@ function normalizeContent(raw: unknown): ClusterContent {
       target_shape_id:
         typeof r.target_shape_id === 'string' ? r.target_shape_id : '',
       track_analytics: Boolean(r.track_analytics),
-      primary_group_id:
-        typeof r.primary_group_id === 'string' ? r.primary_group_id : null,
+      primary_group_ids,
+      primary_group_id: primaryPrimaryGroupId(primary_group_ids),
       analytics_tag_ids: Array.isArray(r.analytics_tag_ids)
         ? (r.analytics_tag_ids as string[])
         : [],
+      muscle_group_ids: normalizeMuscleGroupIds(
+        Array.isArray(r.muscle_group_ids)
+          ? (r.muscle_group_ids as string[])
+          : undefined,
+      ),
       targets: buildTargets(
         1,
         targets.length
@@ -470,7 +492,7 @@ function validateDraft(draft: ClusterTemplateInput): string | null {
   }
   for (let i = 0; i < draft.items.length; i += 1) {
     const item = draft.items[i];
-    if (item.track_analytics && !item.primary_group_id) {
+    if (item.track_analytics && coercePrimaryGroupIds(item).length === 0) {
       return `Exercise ${i + 1} needs a primary analytics group.`;
     }
   }
@@ -553,6 +575,9 @@ export async function saveClusterTemplate(
     rounds,
     items: normalized.items.map((item) => {
       const tool_ids = coerceToolIds(item);
+      const primary_group_ids = item.track_analytics
+        ? coercePrimaryGroupIds(item)
+        : [];
       return {
         ...item,
         kind: 'exercise' as const,
@@ -560,9 +585,13 @@ export async function saveClusterTemplate(
         tool_ids,
         tool_id: primaryToolId(tool_ids),
         notes: item.notes?.trim() || null,
-        primary_group_id: item.track_analytics ? item.primary_group_id : null,
+        primary_group_ids,
+        primary_group_id: primaryPrimaryGroupId(primary_group_ids),
         analytics_tag_ids: item.track_analytics
           ? item.analytics_tag_ids ?? []
+          : [],
+        muscle_group_ids: item.track_analytics
+          ? normalizeMuscleGroupIds(item.muscle_group_ids)
           : [],
         duration: item.track_duration ? item.duration : null,
         targets: sanitizeTargetsForShape(

@@ -18,16 +18,26 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { StatusText } from '../../components/StatusText';
 import { TextField } from '../../components/TextField';
 import {
+  createAnalyticsTag,
   createManagedTaxonomy,
   deleteTaxonomy,
+  listAnalyticsTags,
   listManagedTaxonomy,
+  listPrimaryGroupSuggestedTagIds,
+  mergeTaxonomyOptions,
   renameTaxonomy,
+  resolveTaxonomyOptions,
+  setPrimaryGroupSuggestedTags,
+  setSessionLabelEmpty,
   setTaxonomyArchived,
   taxonomyKindLabel,
   taxonomyKindSingular,
   type ManagedTaxonomyRow,
   type TaxonomyKind,
+  type TaxonomyOption,
 } from '../../lib/taxonomy';
+import { SearchableSelect } from '../../components/forms/SearchableSelect';
+import { ToggleChip } from '../../components/forms/ToggleChip';
 import { colors, radii, spacing, typography } from '../../theme/tokens';
 
 type Props = {
@@ -57,6 +67,10 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
   const [selected, setSelected] = useState<ManagedTaxonomyRow | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renameBusy, setRenameBusy] = useState(false);
+  const [emptyBusy, setEmptyBusy] = useState(false);
+  const [suggestedTagIds, setSuggestedTagIds] = useState<string[]>([]);
+  const [tagOptions, setTagOptions] = useState<TaxonomyOption[]>([]);
+  const [suggestionsBusy, setSuggestionsBusy] = useState(false);
   const [sheetError, setSheetError] = useState<string | null>(null);
 
   const [confirmKind, setConfirmKind] = useState<ConfirmKind>(null);
@@ -93,10 +107,12 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
   }, [rows, searchQuery]);
 
   const closeSheet = () => {
-    if (renameBusy || confirmBusy) return;
+    if (renameBusy || confirmBusy || emptyBusy || suggestionsBusy) return;
     setSelected(null);
     setSheetError(null);
     setConfirmKind(null);
+    setSuggestedTagIds([]);
+    setTagOptions([]);
   };
 
   const openRow = (row: ManagedTaxonomyRow) => {
@@ -104,6 +120,51 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
     setSelected(row);
     setRenameValue(row.name);
     setSheetError(null);
+    setSuggestedTagIds([]);
+    setTagOptions([]);
+    if (kind === 'primary_group') {
+      void (async () => {
+        const [suggested, tags] = await Promise.all([
+          listPrimaryGroupSuggestedTagIds(row.id),
+          listAnalyticsTags(),
+        ]);
+        const ids = suggested.data;
+        const resolved = await resolveTaxonomyOptions('analytics_tag', ids);
+        setSuggestedTagIds(ids);
+        setTagOptions(mergeTaxonomyOptions(tags.data, resolved.data));
+      })();
+    }
+  };
+
+  const onChangeSuggestedTags = async (nextIds: string[]) => {
+    if (!selected || kind !== 'primary_group' || suggestionsBusy) return;
+    setSuggestionsBusy(true);
+    setSheetError(null);
+    const { error: saveError } = await setPrimaryGroupSuggestedTags(
+      selected.id,
+      nextIds,
+    );
+    setSuggestionsBusy(false);
+    if (saveError) {
+      setSheetError(saveError);
+      return;
+    }
+    setSuggestedTagIds(nextIds);
+  };
+
+  const onToggleEmpty = async () => {
+    if (!selected || kind !== 'session_label' || emptyBusy) return;
+    const next = !Boolean(selected.isEmpty);
+    setEmptyBusy(true);
+    setSheetError(null);
+    const { error: emptyError } = await setSessionLabelEmpty(selected.id, next);
+    setEmptyBusy(false);
+    if (emptyError) {
+      setSheetError(emptyError);
+      return;
+    }
+    setSelected({ ...selected, isEmpty: next });
+    await load(true);
   };
 
   const onCreate = async () => {
@@ -173,8 +234,15 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
 
   const usageLabel = (row: ManagedTaxonomyRow) => {
     if (row.isSystem) return 'System default. Locked.';
-    if (row.usageCount === 0) return 'Unused';
-    return `Used by ${row.usageCount} template${row.usageCount === 1 ? '' : 's'}`;
+    const parts: string[] = [];
+    if (kind === 'session_label' && row.isEmpty) parts.push('Empty session');
+    if (row.usageCount === 0) parts.push('Unused');
+    else {
+      parts.push(
+        `Used by ${row.usageCount} template${row.usageCount === 1 ? '' : 's'}`,
+      );
+    }
+    return parts.join(' · ');
   };
 
   const confirmTitle =
@@ -330,10 +398,54 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
               onPress={() => void onRename()}
               disabled={
                 renameBusy ||
+                emptyBusy ||
                 !renameValue.trim() ||
                 renameValue.trim() === selected?.name
               }
             />
+
+            {kind === 'session_label' && selected ? (
+              <View style={styles.emptyToggleRow}>
+                <ToggleChip
+                  label={
+                    selected.isEmpty
+                      ? 'Empty session on'
+                      : 'Empty session off'
+                  }
+                  active={Boolean(selected.isEmpty)}
+                  onPress={() => void onToggleEmpty()}
+                />
+                <Text style={styles.hint}>
+                  Empty sessions cannot have blocks; notes stay editable in
+                  More.
+                </Text>
+              </View>
+            ) : null}
+
+            {kind === 'primary_group' && selected ? (
+              <View style={styles.suggestBlock}>
+                <Text style={styles.fieldLabel}>Suggested tags</Text>
+                <Text style={styles.hint}>
+                  Soft filter in the exercise form. Empty = full A–Z tag pool.
+                </Text>
+                <SearchableSelect
+                  mode="multi"
+                  options={tagOptions}
+                  onOptionsChange={setTagOptions}
+                  value={suggestedTagIds}
+                  onChange={(ids) => void onChangeSuggestedTags(ids)}
+                  onCreate={async (name) => {
+                    if (!userId)
+                      return { data: null, error: 'Not signed in.' };
+                    return createAnalyticsTag(userId, name);
+                  }}
+                  placeholder="Search or create tags…"
+                  emptyLabel="No suggested tags"
+                  fill
+                  accessibilityLabel="Suggested tags for this primary group"
+                />
+              </View>
+            ) : null}
 
             {selected?.archivedAt ? (
               <Button
@@ -457,5 +569,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     color: colors.textMuted,
+  },
+  emptyToggleRow: {
+    gap: spacing.sm,
+  },
+  suggestBlock: {
+    gap: spacing.sm,
+  },
+  fieldLabel: {
+    fontFamily: typography.fontSemiBold,
+    fontSize: 11,
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+    color: colors.textDim,
   },
 });

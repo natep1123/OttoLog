@@ -126,7 +126,7 @@ Library* screens / HomeDashboardScreen
   → list*Templates() / listSessionLogs() → open builder by id (reviewMode from Library)
 
 Account TaxonomyListScreen
-  → taxonomy.ts → tools | analytics_primary_groups | analytics_tags
+  → taxonomy.ts → tools | analytics_primary_groups | analytics_tags | analytics_muscle_groups
 ```
 
 ## Forms layer accents

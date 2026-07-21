@@ -34,7 +34,10 @@ import {
   exerciseDraftToClusterItem,
 } from '../../lib/clusterTemplates';
 import { blockTitle, blockUiTitle, normalizeBrief } from '../../lib/displayTitles';
-import { getExerciseTemplate } from '../../lib/exerciseTemplates';
+import {
+  coercePrimaryGroupIds,
+  getExerciseTemplate,
+} from '../../lib/exerciseTemplates';
 import {
   outlineBlock,
   summarizeBlockChips,
@@ -187,8 +190,13 @@ export function BlockEditor({
           .join(', ') || null,
       target_shape_id: data.target_shape_id,
       track_analytics: data.track_analytics,
+      primary_group_ids: coercePrimaryGroupIds({
+        primary_group_ids: data.primary_group_ids,
+        primary_group_id: data.primary_group_id,
+      }),
       primary_group_id: data.primary_group_id,
       analytics_tag_ids: data.analytics_tag_ids,
+      muscle_group_ids: data.muscle_group_ids,
       default_target_shape: data.default_target_shape,
       track_duration: data.track_duration,
       duration: data.duration,

@@ -50,9 +50,17 @@ export type ExerciseTemplateInput = {
   tool_name?: string | null;
   target_shape_id: string;
   track_analytics: boolean;
+  /**
+   * Ordered primary group ids when tracking. Empty when tracking off.
+   * `primary_group_id` on save is derived as primary_group_ids[0] (or null).
+   */
+  primary_group_ids: string[];
+  /** Primary (= first) group — kept for SQL CHECK / compatibility */
   primary_group_id: string | null;
   /** Editor may carry tag ids; persisted via analytics_tag_links */
   analytics_tag_ids: string[];
+  /** Optional anatomy multiselect; persisted via exercise_template_muscle_group_links */
+  muscle_group_ids: string[];
   default_target_shape: ExerciseTarget[];
   track_duration: boolean;
   duration: string | null;
@@ -62,7 +70,9 @@ export type ExerciseTemplateInput = {
 export type ExerciseTemplateWithTags = ExerciseTemplateRow & {
   tool_ids: string[];
   tool_names: string[];
+  primary_group_ids: string[];
   analytics_tag_ids: string[];
+  muscle_group_ids: string[];
   primary_group_name: string | null;
   tag_names: string[];
 };

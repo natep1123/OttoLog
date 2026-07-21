@@ -43,8 +43,13 @@ export type ClusterExerciseItem = {
   tool_name?: string | null;
   target_shape_id: string;
   track_analytics: boolean;
+  /** Ordered primary group ids; prefer this over primary_group_id when present */
+  primary_group_ids?: string[];
+  /** Primary (= first) group — kept for SQL CHECK / compatibility */
   primary_group_id: string | null;
   analytics_tag_ids: string[];
+  /** Optional anatomy multiselect; embedded in nested JSON leaves */
+  muscle_group_ids?: string[];
   /** Targets performed once per round (not consecutive solo sets) */
   targets: ExerciseTarget[];
   track_duration: boolean;

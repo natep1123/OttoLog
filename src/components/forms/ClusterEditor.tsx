@@ -48,6 +48,7 @@ import {
 } from '../../lib/clusterTemplates';
 import {
   buildTargets,
+  coercePrimaryGroupIds,
   getExerciseTemplate,
 } from '../../lib/exerciseTemplates';
 import { clusterTitle, clusterUiTitle, normalizeBrief } from '../../lib/displayTitles';
@@ -431,8 +432,13 @@ export function ClusterEditor({
           .join(', ') || null,
       target_shape_id: data.target_shape_id,
       track_analytics: data.track_analytics,
+      primary_group_ids: coercePrimaryGroupIds({
+        primary_group_ids: data.primary_group_ids,
+        primary_group_id: data.primary_group_id,
+      }),
       primary_group_id: data.primary_group_id,
       analytics_tag_ids: data.analytics_tag_ids,
+      muscle_group_ids: data.muscle_group_ids,
       default_target_shape: perRound.map((t, i) => ({ ...t, set: i + 1 })),
       track_duration: data.track_duration,
       duration: data.duration,

@@ -17,6 +17,7 @@ import {
   spacing,
   typography,
 } from '../../theme/tokens';
+import { ConfirmDialog } from '../ConfirmDialog';
 import { sessionTemplateTitle, sessionUiTitle, normalizeBrief } from '../../lib/displayTitles';
 import {
   defaultSessionBlockItem,
@@ -24,6 +25,7 @@ import {
   listSessionTemplates,
   sessionTemplateToDraft,
 } from '../../lib/sessionTemplates';
+import { isEmptySessionLabel } from '../../lib/taxonomy';
 import {
   outlineSession,
   summarizeSessionChips,
@@ -71,6 +73,11 @@ export function SessionEditor({ value, onChange }: Props) {
   const [nameFocused, setNameFocused] = useState(false);
   const [focusNamePending, setFocusNamePending] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [categoryIsEmpty, setCategoryIsEmpty] = useState(false);
+  const [pendingEmptyLabel, setPendingEmptyLabel] = useState<{
+    category_id: string;
+    label_name: string;
+  } | null>(null);
   const nameSearchRef = useRef<TemplateNameSearchHandle>(null);
 
   useEffect(() => {
@@ -91,6 +98,17 @@ export function SessionEditor({ value, onChange }: Props) {
     return () => cancelAnimationFrame(id);
   }, [moreOpen, focusNamePending]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const empty = await isEmptySessionLabel(value.category_id);
+      if (!cancelled) setCategoryIsEmpty(empty);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [value.category_id]);
+
   const patch = (partial: Partial<SessionTemplateInput>) => {
     onChange({ ...value, ...partial });
   };
@@ -105,11 +123,37 @@ export function SessionEditor({ value, onChange }: Props) {
   };
 
   const addBlock = () => {
+    if (categoryIsEmpty) return;
     patch({ blocks: [...value.blocks, defaultSessionBlockItem()] });
   };
 
   const removeBlock = (index: number) => {
     patch({ blocks: value.blocks.filter((_, i) => i !== index) });
+  };
+
+  const onChangeSessionLabel = (
+    category_id: string,
+    label_name: string,
+    meta?: { isEmpty?: boolean },
+  ) => {
+    const nextEmpty = Boolean(meta?.isEmpty);
+    if (nextEmpty && value.blocks.length > 0) {
+      setPendingEmptyLabel({ category_id, label_name });
+      return;
+    }
+    setCategoryIsEmpty(nextEmpty);
+    patch({ category_id, label_name });
+  };
+
+  const confirmEmptyLabel = () => {
+    if (!pendingEmptyLabel) return;
+    setCategoryIsEmpty(true);
+    patch({
+      category_id: pendingEmptyLabel.category_id,
+      label_name: pendingEmptyLabel.label_name,
+      blocks: [],
+    });
+    setPendingEmptyLabel(null);
   };
 
   const onToggleDuration = () => {
@@ -131,6 +175,12 @@ export function SessionEditor({ value, onChange }: Props) {
     setMoreOpen(true);
     setFocusNamePending(true);
   };
+
+  const blockCount = value.blocks.length;
+  const emptyConfirmMessage =
+    blockCount === 1
+      ? 'This label is for empty sessions. Remove the current block? Coaching notes stay editable in More.'
+      : `This label is for empty sessions. Remove all ${blockCount} blocks? Coaching notes stay editable in More.`;
 
   return (
     <>
@@ -170,9 +220,7 @@ export function SessionEditor({ value, onChange }: Props) {
             kind="session_label"
             value={value.category_id}
             labelName={value.label_name}
-            onChange={(category_id, label_name) =>
-              patch({ category_id, label_name })
-            }
+            onChange={onChangeSessionLabel}
             accessibilityLabel="Session label"
           />
         )
@@ -263,34 +311,45 @@ export function SessionEditor({ value, onChange }: Props) {
             </View>
           </MorePanel>
 
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Blocks</Text>
-          </View>
-          <View style={styles.items}>
-            {value.blocks.map((block, index) => {
-              const { kind: _k, id: _id, ...blockDraft } = block;
-              return (
-                <BlockEditor
-                  key={block.id}
-                  value={blockDraft}
-                  onChange={(draft) => updateBlock(index, draft)}
-                  nested
-                  orderIndex={index}
-                  lockId={block.id}
-                  parentLockId={LOCK_ROOT.session}
-                  showDelete={value.blocks.length > 1}
-                  onDelete={() => removeBlock(index)}
-                />
-              );
-            })}
-          </View>
+          {categoryIsEmpty ? (
+            <View style={styles.emptyHint}>
+              <Text style={styles.emptyHintText}>
+                Empty session — notes only. Blocks cannot be added with this
+                label.
+              </Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Blocks</Text>
+              </View>
+              <View style={styles.items}>
+                {value.blocks.map((block, index) => {
+                  const { kind: _k, id: _id, ...blockDraft } = block;
+                  return (
+                    <BlockEditor
+                      key={block.id}
+                      value={blockDraft}
+                      onChange={(draft) => updateBlock(index, draft)}
+                      nested
+                      orderIndex={index}
+                      lockId={block.id}
+                      parentLockId={LOCK_ROOT.session}
+                      showDelete={value.blocks.length > 1}
+                      onDelete={() => removeBlock(index)}
+                    />
+                  );
+                })}
+              </View>
 
-          <AddChildButton
-            childKind="block"
-            parentTitle={sessionUiTitle(value.label_name)}
-            onPress={addBlock}
-            style={styles.addBtn}
-          />
+              <AddChildButton
+                childKind="block"
+                parentTitle={sessionUiTitle(value.label_name)}
+                onPress={addBlock}
+                style={styles.addBtn}
+              />
+            </>
+          )}
         </>
       )}
     </NestedLayer>
@@ -302,6 +361,17 @@ export function SessionEditor({ value, onChange }: Props) {
       subtitle={normalizeBrief(value.name)}
       layer="session"
       node={outlineSession(value)}
+    />
+
+    <ConfirmDialog
+      visible={pendingEmptyLabel != null}
+      title="Switch to empty session?"
+      message={emptyConfirmMessage}
+      confirmLabel="Remove blocks"
+      cancelLabel="Cancel"
+      destructive
+      onConfirm={confirmEmptyLabel}
+      onCancel={() => setPendingEmptyLabel(null)}
     />
     </>
   );
@@ -358,5 +428,21 @@ const styles = StyleSheet.create({
     // items bottom inset (8) + body gap (4); tiny extra below before card padding.
     marginTop: 0,
     marginBottom: spacing.xs,
+  },
+  emptyHint: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bgInset,
+  },
+  emptyHintText: {
+    fontFamily: typography.font,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textMuted,
   },
 });

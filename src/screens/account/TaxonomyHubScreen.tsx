@@ -59,6 +59,11 @@ export function TaxonomyHubScreen({
           body="Optional filters for tracked exercises."
           onPress={() => onOpenList('analytics_tag')}
         />
+        <HubAction
+          title="Muscle groups"
+          body="Optional anatomy tags for tracked exercises."
+          onPress={() => onOpenList('muscle_group')}
+        />
       </View>
     </ScrollView>
   );

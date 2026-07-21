@@ -10,7 +10,10 @@ import {
 } from './clusterTemplates';
 import {
   buildTargets,
+  coercePrimaryGroupIds,
   coerceToolIds,
+  normalizeMuscleGroupIds,
+  primaryPrimaryGroupId,
   primaryToolId,
   sanitizeTargetsForShape,
 } from './exerciseTemplates';
@@ -73,6 +76,7 @@ export function blockTemplateToDraft(
         return {
           ...item,
           analytics_tag_ids: [...(item.analytics_tag_ids ?? [])],
+          muscle_group_ids: [...(item.muscle_group_ids ?? [])],
           targets: item.targets.map((t) => ({ ...t })),
         };
       }
@@ -81,6 +85,7 @@ export function blockTemplateToDraft(
         items: item.items.map((ex) => ({
           ...ex,
           analytics_tag_ids: [...(ex.analytics_tag_ids ?? [])],
+          muscle_group_ids: [...(ex.muscle_group_ids ?? [])],
           targets: ex.targets.map((t) => ({ ...t })),
         })),
         overrides: (item.overrides ?? []).map((o) => ({
@@ -166,6 +171,13 @@ export function normalizeExerciseItem(raw: unknown): BlockExerciseItem {
     tool_ids: Array.isArray(r.tool_ids) ? (r.tool_ids as string[]) : undefined,
     tool_id: typeof r.tool_id === 'string' ? r.tool_id : undefined,
   });
+  const primary_group_ids = coercePrimaryGroupIds({
+    primary_group_ids: Array.isArray(r.primary_group_ids)
+      ? (r.primary_group_ids as string[])
+      : undefined,
+    primary_group_id:
+      typeof r.primary_group_id === 'string' ? r.primary_group_id : undefined,
+  });
   const item: ClusterExerciseItem = {
     kind: 'exercise',
     id: typeof r.id === 'string' ? r.id : base.id,
@@ -176,11 +188,16 @@ export function normalizeExerciseItem(raw: unknown): BlockExerciseItem {
       typeof r.tool_name === 'string' ? r.tool_name : base.tool_name ?? null,
     target_shape_id,
     track_analytics,
-    primary_group_id:
-      typeof r.primary_group_id === 'string' ? r.primary_group_id : null,
+    primary_group_ids,
+    primary_group_id: primaryPrimaryGroupId(primary_group_ids),
     analytics_tag_ids: Array.isArray(r.analytics_tag_ids)
       ? r.analytics_tag_ids.filter((id): id is string => typeof id === 'string')
       : [],
+    muscle_group_ids: normalizeMuscleGroupIds(
+      Array.isArray(r.muscle_group_ids)
+        ? (r.muscle_group_ids as string[])
+        : undefined,
+    ),
     targets: sanitizeTargetsForShape(target_shape_id, readTargets(r)),
     track_duration: Boolean(r.track_duration),
     duration:
@@ -294,6 +311,9 @@ export type SaveBlockArgs = {
 export function prepareBlockItemForSave(item: BlockItem): BlockItem {
   if (item.kind === 'exercise') {
     const tool_ids = coerceToolIds(item);
+    const primary_group_ids = item.track_analytics
+      ? coercePrimaryGroupIds(item)
+      : [];
     return {
       ...item,
       kind: 'exercise',
@@ -301,9 +321,13 @@ export function prepareBlockItemForSave(item: BlockItem): BlockItem {
       tool_ids,
       tool_id: primaryToolId(tool_ids),
       notes: item.notes?.trim() || null,
-      primary_group_id: item.track_analytics ? item.primary_group_id : null,
+      primary_group_ids,
+      primary_group_id: primaryPrimaryGroupId(primary_group_ids),
       analytics_tag_ids: item.track_analytics
         ? item.analytics_tag_ids ?? []
+        : [],
+      muscle_group_ids: item.track_analytics
+        ? normalizeMuscleGroupIds(item.muscle_group_ids)
         : [],
       targets: sanitizeTargetsForShape(item.target_shape_id, item.targets),
     };
@@ -317,10 +341,18 @@ export function prepareBlockItemForSave(item: BlockItem): BlockItem {
     notes: item.notes?.trim() || null,
     items: item.items.map((ex) => {
       const tool_ids = coerceToolIds(ex);
+      const primary_group_ids = ex.track_analytics
+        ? coercePrimaryGroupIds(ex)
+        : [];
       return {
         ...ex,
         tool_ids,
         tool_id: primaryToolId(tool_ids),
+        primary_group_ids,
+        primary_group_id: primaryPrimaryGroupId(primary_group_ids),
+        muscle_group_ids: ex.track_analytics
+          ? normalizeMuscleGroupIds(ex.muscle_group_ids)
+          : [],
       };
     }),
   };
@@ -334,7 +366,11 @@ function validateDraft(draft: BlockTemplateInput): string | null {
     if (item.kind === 'cluster' && !item.label_id) {
       return `Sequence ${i + 1} needs a label.`;
     }
-    if (item.kind === 'exercise' && item.track_analytics && !item.primary_group_id) {
+    if (
+      item.kind === 'exercise' &&
+      item.track_analytics &&
+      coercePrimaryGroupIds(item).length === 0
+    ) {
       return `Exercise ${i + 1} needs a primary analytics group.`;
     }
   }

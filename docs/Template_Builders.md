@@ -247,10 +247,14 @@ Header controls, left to right: Tools, Shape.
 The targets grid below shows the columns for the current shape. When Track
 analytics is on, each group also carries an include-in-rollups flag.
 
-Analytics is opt-in in the More panel. When on, it reveals a required Primary
-analytics group (single, searchable create-combobox) and optional Analytics tags
-(multi, searchable create-combobox). When off, the group is null and tag links are
-empty. How to choose group vs tag values: `docs/Analytics_Labeling.md`.
+Analytics is opt-in in the More panel. When on, it reveals required Primary
+analytics group(s) (multi searchable create-combobox; typically one), optional
+Muscle groups (multi), and optional Analytics tags (multi). Tag pickers soft-filter
+by the selected primary group(s)’ **suggested tags** when any are configured
+(empty suggestions = full A→Z; otherwise Suggested + Show all). Complexes with
+multiple PGs show a warning that volume accrues to each chart and must not be
+summed into one grand total. When off, primary groups, muscles, and tags clear.
+How to choose values: `docs/Analytics_Labeling.md`.
 
 ### Exercise as a sequence subitem
 

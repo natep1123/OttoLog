@@ -11,17 +11,22 @@ import { TARGET_SHAPE_OPTIONS } from '../../constants/targetShapeFields';
 import { NO_TOOL_ID } from '../../constants/sentinelIds';
 import {
   buildTargets,
+  coercePrimaryGroupIds,
   migrateTargetsForShapeChange,
   normalizeToolIds,
+  primaryPrimaryGroupId,
   primaryToolId,
 } from '../../lib/exerciseTemplates';
 import { exerciseTitle, normalizeBrief } from '../../lib/displayTitles';
 import {
   createAnalyticsTag,
+  createMuscleGroup,
   createPrimaryGroup,
   createTool,
   listAnalyticsTags,
+  listMuscleGroups,
   listPrimaryGroups,
+  listSuggestedTagIdsForPrimaryGroups,
   listTools,
   mergeTaxonomyOptions,
   resolveTaxonomyOptions,
@@ -118,6 +123,8 @@ export function ExerciseEditor({
   const [tools, setTools] = useState<TaxonomyOption[]>([]);
   const [groups, setGroups] = useState<TaxonomyOption[]>([]);
   const [tags, setTags] = useState<TaxonomyOption[]>([]);
+  const [muscleGroups, setMuscleGroups] = useState<TaxonomyOption[]>([]);
+  const [suggestedTagIds, setSuggestedTagIds] = useState<string[]>([]);
 
   // Tools → Collapse exercises (signals start at 0; skip initial).
   useEffect(() => {
@@ -169,30 +176,42 @@ export function ExerciseEditor({
   };
 
   const refreshTaxonomy = useCallback(async () => {
-    const [t, g, a] = await Promise.all([
+    const [t, g, a, m] = await Promise.all([
       listTools(),
       listPrimaryGroups(),
       listAnalyticsTags(),
+      listMuscleGroups(),
     ]);
 
     const selectedToolIds = value.tool_ids ?? [];
-    const selectedGroupIds = value.primary_group_id
-      ? [value.primary_group_id]
-      : [];
+    const selectedGroupIds = coercePrimaryGroupIds({
+      primary_group_ids: value.primary_group_ids,
+      primary_group_id: value.primary_group_id,
+    });
     const selectedTagIds = value.analytics_tag_ids ?? [];
+    const selectedMuscleGroupIds = value.muscle_group_ids ?? [];
 
-    const [rt, rg, ra] = await Promise.all([
+    const [rt, rg, ra, rm] = await Promise.all([
       resolveTaxonomyOptions('tool', selectedToolIds),
       resolveTaxonomyOptions('primary_group', selectedGroupIds),
       resolveTaxonomyOptions('analytics_tag', selectedTagIds),
+      resolveTaxonomyOptions('muscle_group', selectedMuscleGroupIds),
     ]);
 
     if (!t.error) setTools(mergeTaxonomyOptions(t.data, rt.data));
     if (!g.error) setGroups(mergeTaxonomyOptions(g.data, rg.data));
     if (!a.error) setTags(mergeTaxonomyOptions(a.data, ra.data));
+    if (!m.error) setMuscleGroups(mergeTaxonomyOptions(m.data, rm.data));
+
+    const { data: suggested } = await listSuggestedTagIdsForPrimaryGroups(
+      selectedGroupIds,
+    );
+    setSuggestedTagIds(suggested);
   }, [
     value.analytics_tag_ids,
+    value.muscle_group_ids,
     value.primary_group_id,
+    value.primary_group_ids,
     value.tool_ids,
   ]);
 
@@ -212,8 +231,22 @@ export function ExerciseEditor({
     const track_analytics = !value.track_analytics;
     patch({
       track_analytics,
-      primary_group_id: track_analytics ? value.primary_group_id : null,
+      primary_group_ids: track_analytics
+        ? coercePrimaryGroupIds({
+            primary_group_ids: value.primary_group_ids,
+            primary_group_id: value.primary_group_id,
+          })
+        : [],
+      primary_group_id: track_analytics
+        ? primaryPrimaryGroupId(
+            coercePrimaryGroupIds({
+              primary_group_ids: value.primary_group_ids,
+              primary_group_id: value.primary_group_id,
+            }),
+          )
+        : null,
       analytics_tag_ids: track_analytics ? value.analytics_tag_ids : [],
+      muscle_group_ids: track_analytics ? value.muscle_group_ids : [],
       default_target_shape: value.default_target_shape.map((t) => ({
         ...t,
         track_analytics: track_analytics ? (t.track_analytics ?? true) : null,
@@ -377,17 +410,27 @@ export function ExerciseEditor({
                 <View style={styles.analyticsFields}>
                   <View style={styles.field}>
                     <Text style={styles.fieldLabel}>
-                      Primary analytics group
+                      Primary analytics group(s)
                     </Text>
                     <View style={styles.comboFull}>
                       <SearchableSelect
                         accent={exerciseControlAccent}
+                        mode="multi"
                         options={groups}
                         onOptionsChange={setGroups}
-                        value={value.primary_group_id}
-                        onChange={(primary_group_id) =>
-                          patch({ primary_group_id })
-                        }
+                        value={coercePrimaryGroupIds({
+                          primary_group_ids: value.primary_group_ids,
+                          primary_group_id: value.primary_group_id,
+                        })}
+                        onChange={(primary_group_ids) => {
+                          const ids = coercePrimaryGroupIds({
+                            primary_group_ids,
+                          });
+                          patch({
+                            primary_group_ids: ids,
+                            primary_group_id: primaryPrimaryGroupId(ids),
+                          });
+                        }}
                         onCreate={async (name) => {
                           if (!userId)
                             return { data: null, error: 'Not signed in.' };
@@ -395,10 +438,18 @@ export function ExerciseEditor({
                         }}
                         placeholder="Search or create group…"
                         emptyLabel="Select a group"
-                        clearable
-                        accessibilityLabel="Primary analytics group"
+                        accessibilityLabel="Primary analytics groups"
                       />
                     </View>
+                    {coercePrimaryGroupIds({
+                      primary_group_ids: value.primary_group_ids,
+                      primary_group_id: value.primary_group_id,
+                    }).length > 1 ? (
+                      <Text style={styles.complexWarning}>
+                        Complex: volume accrues to each selected group’s chart.
+                        Do not sum those charts into one grand total.
+                      </Text>
+                    ) : null}
                   </View>
                   <View style={styles.field}>
                     <Text style={styles.fieldLabel}>Analytics tags</Text>
@@ -408,6 +459,7 @@ export function ExerciseEditor({
                         mode="multi"
                         options={tags}
                         onOptionsChange={setTags}
+                        suggestedIds={suggestedTagIds}
                         value={value.analytics_tag_ids}
                         onChange={(analytics_tag_ids) =>
                           patch({ analytics_tag_ids })
@@ -420,6 +472,29 @@ export function ExerciseEditor({
                         placeholder="Search or create tags…"
                         emptyLabel="No tags"
                         accessibilityLabel="Analytics tags"
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.field}>
+                    <Text style={styles.fieldLabel}>Muscle groups</Text>
+                    <View style={styles.comboFull}>
+                      <SearchableSelect
+                        accent={exerciseControlAccent}
+                        mode="multi"
+                        options={muscleGroups}
+                        onOptionsChange={setMuscleGroups}
+                        value={value.muscle_group_ids}
+                        onChange={(muscle_group_ids) =>
+                          patch({ muscle_group_ids })
+                        }
+                        onCreate={async (name) => {
+                          if (!userId)
+                            return { data: null, error: 'Not signed in.' };
+                          return createMuscleGroup(userId, name);
+                        }}
+                        placeholder="Search or create muscle groups…"
+                        emptyLabel="No muscle groups"
+                        accessibilityLabel="Muscle groups"
                       />
                     </View>
                   </View>
@@ -551,6 +626,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.7,
     textTransform: 'uppercase',
     color: colors.textDim,
+  },
+  complexWarning: {
+    fontFamily: typography.font,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.textMuted,
+    marginTop: 4,
   },
   comboFull: {
     alignSelf: 'stretch',

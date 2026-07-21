@@ -40,6 +40,13 @@ type SharedProps = {
   disabled?: boolean;
   /** Fill parent width instead of fixed tool width (dense control rows). */
   fill?: boolean;
+  /**
+   * Soft suggestions (e.g. tags for a primary group).
+   * Empty / omitted → plain A→Z pool.
+   * Non-empty → Suggested section; full A→Z only after Show all (under suggestions;
+   * suggested ids also appear in A→Z; one toggle flips both).
+   */
+  suggestedIds?: string[];
   /** Owning layer's focus/selection colors. */
   accent?: {
     color: string;
@@ -78,6 +85,7 @@ export function SearchableSelect(props: Props) {
     clearable = false,
     disabled = false,
     fill = false,
+    suggestedIds,
     accent,
   } = props;
 
@@ -86,6 +94,7 @@ export function SearchableSelect(props: Props) {
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const [anchor, setAnchor] = useState({ x: 0, y: 0, w: 0, h: 0 });
   const triggerRef = useRef<View>(null);
 
@@ -115,11 +124,55 @@ export function SearchableSelect(props: Props) {
     [options, selectedIds],
   );
 
-  const filtered = useMemo(() => {
+  const suggestedIdSet = useMemo(() => {
+    const raw = Array.isArray(suggestedIds) ? suggestedIds : [];
+    return new Set(raw.filter(Boolean));
+  }, [suggestedIds]);
+
+  /** Soft mode only when at least one suggested id resolves in the picker pool. */
+  const hasSuggestions = useMemo(() => {
+    if (suggestedIdSet.size === 0) return false;
+    return pickerOptions.some((o) => suggestedIdSet.has(o.id));
+  }, [pickerOptions, suggestedIdSet]);
+
+  const filterByQuery = (rows: TaxonomyOption[]) => {
     const q = query.trim().toLowerCase();
-    if (!q) return pickerOptions;
-    return pickerOptions.filter((o) => o.label.toLowerCase().includes(q));
-  }, [pickerOptions, query]);
+    if (!q) return rows;
+    return rows.filter((o) => o.label.toLowerCase().includes(q));
+  };
+
+  /**
+   * Suggested section: configured suggestions (ordered) + any selected tags
+   * not in the suggestion list (so they stay reachable without Show all).
+   */
+  const suggestedRows = useMemo(() => {
+    if (!hasSuggestions) return [];
+    const byId = new Map(pickerOptions.map((o) => [o.id, o]));
+    const ordered: TaxonomyOption[] = [];
+    const seen = new Set<string>();
+    for (const id of suggestedIds ?? []) {
+      const hit = byId.get(id);
+      if (!hit || seen.has(id)) continue;
+      seen.add(id);
+      ordered.push(hit);
+    }
+    for (const id of selectedIds) {
+      if (seen.has(id)) continue;
+      const hit = byId.get(id);
+      if (!hit) continue;
+      seen.add(id);
+      ordered.push(hit);
+    }
+    return filterByQuery(ordered);
+  }, [hasSuggestions, pickerOptions, selectedIds, suggestedIds, query]);
+
+  const allRows = useMemo(
+    () => filterByQuery(pickerOptions),
+    [pickerOptions, query],
+  );
+
+  /** Plain mode (no suggestions): full filtered pool. Soft mode: only when showAll. */
+  const libraryRows = hasSuggestions ? (showAll ? allRows : []) : allRows;
 
   const exactMatch = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -133,6 +186,7 @@ export function SearchableSelect(props: Props) {
     if (disabled) return;
     setQuery('');
     setCreateError(null);
+    setShowAll(false);
     triggerRef.current?.measureInWindow((x, y, w, h) => {
       setAnchor({ x, y, w, h });
       setOpen(true);
@@ -143,6 +197,7 @@ export function SearchableSelect(props: Props) {
     setOpen(false);
     setQuery('');
     setCreateError(null);
+    setShowAll(false);
   };
 
   const selectSingle = (id: string | null) => {
@@ -191,12 +246,45 @@ export function SearchableSelect(props: Props) {
     }
   };
 
+  const renderOption = (opt: TaxonomyOption, keyPrefix = '') => {
+    const selected = selectedIds.includes(opt.id);
+    const label = opt.isArchived ? `${opt.label} (archived)` : opt.label;
+    return (
+      <Pressable
+        key={`${keyPrefix}${opt.id}`}
+        onPress={() => (multi ? toggleMulti(opt.id) : selectSingle(opt.id))}
+        style={[
+          styles.option,
+          selected && styles.optionOn,
+          selected && accent ? { backgroundColor: accent.background } : null,
+        ]}
+      >
+        <Text
+          style={[
+            styles.optionText,
+            selected && styles.optionTextOn,
+            selected && accent ? { color: accent.color } : null,
+          ]}
+          numberOfLines={1}
+        >
+          {multi ? (selected ? '✓  ' : '    ') : ''}
+          {label}
+        </Text>
+      </Pressable>
+    );
+  };
+
   const menuWidth = Math.max(anchor.w, multi ? 260 : 180);
   const menuLeft = Math.min(
     anchor.x,
     // keep on screen-ish; Modal is full window
     Math.max(8, anchor.x),
   );
+
+  const listEmpty =
+    (hasSuggestions
+      ? suggestedRows.length === 0 && libraryRows.length === 0
+      : libraryRows.length === 0) && !canCreate;
 
   return (
     <>
@@ -282,41 +370,60 @@ export function SearchableSelect(props: Props) {
                 </Pressable>
               ) : null}
 
-              {filtered.map((opt) => {
-                const selected = selectedIds.includes(opt.id);
-                const label = opt.isArchived
-                  ? `${opt.label} (archived)`
-                  : opt.label;
-                return (
-                  <Pressable
-                    key={opt.id}
-                    onPress={() =>
-                      multi ? toggleMulti(opt.id) : selectSingle(opt.id)
-                    }
-                    style={[
-                      styles.option,
-                      selected && styles.optionOn,
-                      selected && accent
-                        ? { backgroundColor: accent.background }
-                        : null,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.optionText,
-                        selected && styles.optionTextOn,
-                        selected && accent ? { color: accent.color } : null,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {multi ? (selected ? '✓  ' : '    ') : ''}
-                      {label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+              {hasSuggestions ? (
+                <>
+                  <Text style={styles.sectionLabel}>Suggested</Text>
+                  {suggestedRows.map((opt) => renderOption(opt, 'sug-'))}
+                  {suggestedRows.length === 0 ? (
+                    <Text style={styles.empty}>No matches</Text>
+                  ) : null}
 
-              {filtered.length === 0 && !canCreate ? (
+                  {!showAll ? (
+                    <Pressable
+                      onPress={() => setShowAll(true)}
+                      style={styles.showAllBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel="Show all tags"
+                    >
+                      <Text
+                        style={[
+                          styles.showAllText,
+                          accent ? { color: accent.color } : null,
+                        ]}
+                      >
+                        Show all
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <>
+                      <Text style={styles.sectionLabel}>All</Text>
+                      {libraryRows.map((opt) => renderOption(opt, 'all-'))}
+                      {libraryRows.length === 0 ? (
+                        <Text style={styles.empty}>No matches</Text>
+                      ) : null}
+                      <Pressable
+                        onPress={() => setShowAll(false)}
+                        style={styles.showAllBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel="Hide full list"
+                      >
+                        <Text
+                          style={[
+                            styles.showAllText,
+                            accent ? { color: accent.color } : null,
+                          ]}
+                        >
+                          Hide all
+                        </Text>
+                      </Pressable>
+                    </>
+                  )}
+                </>
+              ) : (
+                libraryRows.map((opt) => renderOption(opt))
+              )}
+
+              {listEmpty && !hasSuggestions ? (
                 <Text style={styles.empty}>No matches</Text>
               ) : null}
 
@@ -449,6 +556,27 @@ const styles = StyleSheet.create({
   },
   list: {
     maxHeight: 220,
+  },
+  sectionLabel: {
+    fontFamily: typography.fontSemiBold,
+    fontSize: 10,
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+    color: colors.textDim,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  showAllBtn: {
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  showAllText: {
+    fontFamily: typography.fontMedium,
+    fontSize: 13,
+    color: colors.sunrise,
   },
   option: {
     paddingVertical: 11,

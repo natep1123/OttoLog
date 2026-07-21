@@ -23,7 +23,11 @@ type Props = {
   kind: LabelKind;
   value: string;
   labelName?: string | null;
-  onChange: (id: string, labelName: string) => void;
+  onChange: (
+    id: string,
+    labelName: string,
+    meta?: { isEmpty?: boolean },
+  ) => void;
   accessibilityLabel?: string;
 };
 
@@ -104,7 +108,9 @@ export function LayerLabelSelect({
       onChange={(id) => {
         if (!id) return;
         const hit = options.find((o) => o.id === id);
-        onChange(id, hit?.label ?? labelName ?? 'Label');
+        onChange(id, hit?.label ?? labelName ?? 'Label', {
+          isEmpty: hit?.isEmpty,
+        });
       }}
       options={options}
       onOptionsChange={setOptions}

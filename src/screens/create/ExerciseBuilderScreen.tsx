@@ -16,6 +16,7 @@ import { LOCK_ROOT } from '../../components/forms/LockController';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import {
   buildTargets,
+  coercePrimaryGroupIds,
   defaultExerciseDraft,
   deleteExerciseTemplate,
   getExerciseTemplate,
@@ -92,8 +93,13 @@ export function ExerciseBuilderScreen({
           .join(', ') || null,
       target_shape_id: data.target_shape_id,
       track_analytics: data.track_analytics,
+      primary_group_ids: coercePrimaryGroupIds({
+        primary_group_ids: data.primary_group_ids,
+        primary_group_id: data.primary_group_id,
+      }),
       primary_group_id: data.primary_group_id,
       analytics_tag_ids: data.analytics_tag_ids,
+      muscle_group_ids: data.muscle_group_ids,
       default_target_shape: targets.length ? targets : buildTargets(1),
       track_duration: data.track_duration,
       duration: data.duration,
@@ -127,8 +133,13 @@ export function ExerciseBuilderScreen({
           .join(', ') || null,
       target_shape_id: data.target_shape_id,
       track_analytics: data.track_analytics,
+      primary_group_ids: coercePrimaryGroupIds({
+        primary_group_ids: data.primary_group_ids,
+        primary_group_id: data.primary_group_id,
+      }),
       primary_group_id: data.primary_group_id,
       analytics_tag_ids: data.analytics_tag_ids,
+      muscle_group_ids: data.muscle_group_ids,
       default_target_shape: targets.length ? targets : buildTargets(1),
       track_duration: data.track_duration,
       duration: data.duration,
