@@ -179,8 +179,8 @@ export function SessionEditor({ value, onChange }: Props) {
   const blockCount = value.blocks.length;
   const emptyConfirmMessage =
     blockCount === 1
-      ? 'This label is for empty sessions. Remove the current block? Coaching notes stay editable in More.'
-      : `This label is for empty sessions. Remove all ${blockCount} blocks? Coaching notes stay editable in More.`;
+      ? 'This label is for empty sessions. Remove the current block? Session Notes stay editable in More.'
+      : `This label is for empty sessions. Remove all ${blockCount} blocks? Session Notes stay editable in More.`;
 
   return (
     <>
@@ -293,7 +293,7 @@ export function SessionEditor({ value, onChange }: Props) {
             />
 
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Coaching notes</Text>
+              <Text style={styles.fieldLabel}>Session Notes</Text>
               <TextInput
                 value={value.notes ?? ''}
                 onChangeText={(notes) => patch({ notes: notes || null })}

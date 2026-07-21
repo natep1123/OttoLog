@@ -9,7 +9,7 @@ export type PaginateOptions = {
   heightScale?: number;
 };
 
-type RowKind = 'header' | 'exercise-title' | 'set-line';
+type RowKind = 'header' | 'exercise-title' | 'set-line' | 'notes';
 
 type AncestorRef = {
   depth: number;
@@ -30,6 +30,8 @@ export type PreviewRow = {
   ancestorKeys: string[];
   ancestors: AncestorRef[];
   exerciseKey?: string;
+  /** Header / exercise pathKey that owns a notes row. */
+  ownerKey?: string;
 };
 
 /** Heights aligned to LockedOutline styles (padding/gaps/lineHeights). */
@@ -38,6 +40,10 @@ const NESTED_HEADER = 24;
 const NESTED_META = 16;
 const EXERCISE_TITLE = 22;
 const SET_LINE = 20;
+const NOTES_LINE_HEIGHT = 17;
+const NOTES_MARGIN_TOP = 2;
+/** Approx chars/line for italic 12px notes in the modal body. */
+const NOTES_CHARS_PER_LINE = 44;
 const SIBLING_GAP = 6;
 /** Tiny slack so packed pages stay inside the fixed body. */
 const PACK_SAFETY = 4;
@@ -58,6 +64,59 @@ function makePathKey(
   return `${parentKey}|${depth}:${node.kind ?? 'node'}:${node.title}#${index}`;
 }
 
+/** Word-aware wrap used for notes height estimates and page splits. */
+export function wrapNotesText(
+  text: string,
+  charsPerLine = NOTES_CHARS_PER_LINE,
+): string[] {
+  const paragraphs = text.replace(/\r\n/g, '\n').split('\n');
+  const lines: string[] = [];
+
+  for (const para of paragraphs) {
+    if (!para.trim()) {
+      if (lines.length) lines.push('');
+      continue;
+    }
+    const words = para.trim().split(/\s+/);
+    let current = '';
+    for (const word of words) {
+      const next = current ? `${current} ${word}` : word;
+      if (next.length <= charsPerLine) {
+        current = next;
+        continue;
+      }
+      if (current) lines.push(current);
+      if (word.length > charsPerLine) {
+        let rest = word;
+        while (rest.length > charsPerLine) {
+          lines.push(rest.slice(0, charsPerLine));
+          rest = rest.slice(charsPerLine);
+        }
+        current = rest;
+      } else {
+        current = word;
+      }
+    }
+    if (current) lines.push(current);
+  }
+
+  return lines.length ? lines : [''];
+}
+
+function notesHeightForLineCount(lineCount: number): number {
+  return NOTES_MARGIN_TOP + Math.max(1, lineCount) * NOTES_LINE_HEIGHT;
+}
+
+/** Estimated rendered height for a notes block (matches LockedOutline notes style). */
+export function estimateNotesHeight(text: string): number {
+  return notesHeightForLineCount(wrapNotesText(text).length);
+}
+
+function maxNotesLinesForHeight(availablePx: number): number {
+  if (availablePx < NOTES_MARGIN_TOP + NOTES_LINE_HEIGHT) return 0;
+  return Math.floor((availablePx - NOTES_MARGIN_TOP) / NOTES_LINE_HEIGHT);
+}
+
 export function rowHeight(row: PreviewRow, previous?: PreviewRow): number {
   let h = 0;
   if (row.kind === 'header') {
@@ -69,6 +128,8 @@ export function rowHeight(row: PreviewRow, previous?: PreviewRow): number {
     }
   } else if (row.kind === 'exercise-title') {
     h = EXERCISE_TITLE;
+  } else if (row.kind === 'notes') {
+    h = estimateNotesHeight(row.line ?? '');
   } else {
     h = SET_LINE;
   }
@@ -78,7 +139,8 @@ export function rowHeight(row: PreviewRow, previous?: PreviewRow): number {
   if (
     previous &&
     previous.pathKey !== row.pathKey &&
-    row.kind !== 'set-line'
+    row.kind !== 'set-line' &&
+    row.kind !== 'notes'
   ) {
     h += SIBLING_GAP;
   }
@@ -139,7 +201,26 @@ function flattenToRows(
       exerciseKey: pathKey,
     });
 
-    for (let lineIndex = 0; lineIndex < (node.lines?.length ?? 0); lineIndex += 1) {
+    if (node.notes) {
+      rows.push({
+        kind: 'notes',
+        depth,
+        title: node.title,
+        line: node.notes,
+        outlineKind: node.kind ?? 'exercise',
+        pathKey: `${pathKey}|notes`,
+        ancestorKeys: [...ancestors.map((a) => a.pathKey), pathKey],
+        ancestors: [...ancestors],
+        exerciseKey: pathKey,
+        ownerKey: pathKey,
+      });
+    }
+
+    for (
+      let lineIndex = 0;
+      lineIndex < (node.lines?.length ?? 0);
+      lineIndex += 1
+    ) {
       const line = node.lines![lineIndex];
       rows.push({
         kind: 'set-line',
@@ -178,7 +259,26 @@ function flattenToRows(
     });
   }
 
-  for (let childIndex = 0; childIndex < (node.children?.length ?? 0); childIndex += 1) {
+  if (node.notes) {
+    rows.push({
+      kind: 'notes',
+      depth,
+      title: node.title,
+      meta: node.meta,
+      line: node.notes,
+      outlineKind: node.kind,
+      pathKey: `${pathKey}|notes`,
+      ancestorKeys: ancestors.map((a) => a.pathKey),
+      ancestors: [...ancestors],
+      ownerKey: pathKey,
+    });
+  }
+
+  for (
+    let childIndex = 0;
+    childIndex < (node.children?.length ?? 0);
+    childIndex += 1
+  ) {
     flattenToRows(
       node.children![childIndex],
       depth + 1,
@@ -216,7 +316,7 @@ function continuationChrome(
   }
 
   if (
-    row.kind === 'set-line' &&
+    (row.kind === 'set-line' || row.kind === 'notes') &&
     row.exerciseKey &&
     !shownOnPage.has(row.exerciseKey)
   ) {
@@ -233,7 +333,132 @@ function continuationChrome(
     shownOnPage.add(row.exerciseKey);
   }
 
+  if (
+    row.kind === 'notes' &&
+    row.ownerKey &&
+    !row.exerciseKey &&
+    !shownOnPage.has(row.ownerKey)
+  ) {
+    if (!(omitRootHeader && row.depth === 0)) {
+      extra += rowHeight({
+        kind: 'header',
+        depth: row.depth,
+        title: row.title,
+        meta: row.meta,
+        outlineKind: row.outlineKind,
+        pathKey: row.ownerKey,
+        ancestorKeys: [],
+        ancestors: [],
+      });
+    }
+    shownOnPage.add(row.ownerKey);
+  }
+
   return extra;
+}
+
+function notesChunkRow(
+  base: PreviewRow,
+  text: string,
+  chunkIndex: number,
+): PreviewRow {
+  return {
+    ...base,
+    line: text,
+    pathKey: `${base.ownerKey ?? base.pathKey}|notes:${chunkIndex}`,
+  };
+}
+
+type PackState = {
+  pages: PreviewRow[][];
+  current: PreviewRow[];
+  height: number;
+  shownOnPage: Set<string>;
+  leadingChrome: number;
+  maxHeight: number;
+  omitRootHeader: boolean;
+};
+
+/**
+ * Pack notes atomically when they fit; otherwise move the whole note to the
+ * next page. Only split by wrapped lines when a note exceeds a full page.
+ */
+function packNotesIntoPages(row: PreviewRow, state: PackState): void {
+  const startNewPage = () => {
+    if (state.current.length) state.pages.push(state.current);
+    state.current = [];
+    state.height = state.leadingChrome;
+    state.shownOnPage = new Set<string>();
+  };
+
+  const placeChunk = (chunk: PreviewRow) => {
+    const previous = state.current[state.current.length - 1];
+    const cont = continuationChrome(
+      chunk,
+      state.shownOnPage,
+      state.omitRootHeader,
+    );
+    state.current.push(chunk);
+    if (chunk.kind === 'header' || chunk.kind === 'exercise-title') {
+      state.shownOnPage.add(chunk.pathKey);
+    }
+    if (chunk.exerciseKey) state.shownOnPage.add(chunk.exerciseKey);
+    if (chunk.ownerKey) state.shownOnPage.add(chunk.ownerKey);
+    state.height += cont + rowHeight(chunk, previous);
+  };
+
+  const wouldFit = (chunk: PreviewRow): boolean => {
+    const previous = state.current[state.current.length - 1];
+    const previewShown = new Set(state.shownOnPage);
+    const cont = continuationChrome(
+      chunk,
+      previewShown,
+      state.omitRootHeader,
+    );
+    return state.height + cont + rowHeight(chunk, previous) <= state.maxHeight;
+  };
+
+  // Prefer keeping the whole note together.
+  if (!wouldFit(row) && state.current.length > 0) {
+    startNewPage();
+  }
+
+  if (wouldFit(row)) {
+    placeChunk(row);
+    return;
+  }
+
+  // Note taller than a full page — split by wrapped lines.
+  const wrapped = wrapNotesText(row.line ?? '');
+  let offset = 0;
+  let chunkIndex = 0;
+
+  while (offset < wrapped.length) {
+    const previewShown = new Set(state.shownOnPage);
+    const cont = continuationChrome(row, previewShown, state.omitRootHeader);
+    const remaining = state.maxHeight - state.height - cont;
+    let maxLines = maxNotesLinesForHeight(remaining);
+
+    if (maxLines <= 0) {
+      if (state.current.length === 0) {
+        // Pathological tiny budget — force one line so we make progress.
+        maxLines = 1;
+      } else {
+        startNewPage();
+        continue;
+      }
+    }
+
+    const take = Math.min(maxLines, wrapped.length - offset);
+    const chunkText = wrapped.slice(offset, offset + take).join('\n');
+    placeChunk(notesChunkRow(row, chunkText, chunkIndex));
+    offset += take;
+    chunkIndex += 1;
+
+    if (offset < wrapped.length) {
+      startNewPage();
+    }
+  }
 }
 
 function packRows(
@@ -242,40 +467,57 @@ function packRows(
   leadingChrome = 0,
   omitRootHeader = false,
 ): PreviewRow[][] {
-  const pages: PreviewRow[][] = [];
-  let current: PreviewRow[] = [];
-  let height = leadingChrome;
-  let shownOnPage = new Set<string>();
+  const state: PackState = {
+    pages: [],
+    current: [],
+    height: leadingChrome,
+    shownOnPage: new Set<string>(),
+    leadingChrome,
+    maxHeight,
+    omitRootHeader,
+  };
 
   const startNewPage = () => {
-    if (current.length) pages.push(current);
-    current = [];
-    height = leadingChrome;
-    shownOnPage = new Set<string>();
+    if (state.current.length) state.pages.push(state.current);
+    state.current = [];
+    state.height = leadingChrome;
+    state.shownOnPage = new Set<string>();
   };
 
   for (const row of rows) {
-    const previous = current[current.length - 1];
+    if (row.kind === 'notes') {
+      packNotesIntoPages(row, state);
+      continue;
+    }
+
+    const previous = state.current[state.current.length - 1];
     const rh = rowHeight(row, previous);
-    const previewShown = new Set(shownOnPage);
+    const previewShown = new Set(state.shownOnPage);
     const contChrome = continuationChrome(row, previewShown, omitRootHeader);
 
-    if (current.length > 0 && height + contChrome + rh > maxHeight) {
+    if (
+      state.current.length > 0 &&
+      state.height + contChrome + rh > maxHeight
+    ) {
       startNewPage();
     }
 
-    const contForRow = continuationChrome(row, shownOnPage, omitRootHeader);
-    current.push(row);
-    // Mark structural rows so later children don't re-bill ancestor chrome.
+    const contForRow = continuationChrome(
+      row,
+      state.shownOnPage,
+      omitRootHeader,
+    );
+    state.current.push(row);
     if (row.kind === 'header' || row.kind === 'exercise-title') {
-      shownOnPage.add(row.pathKey);
+      state.shownOnPage.add(row.pathKey);
     }
-    if (row.exerciseKey) shownOnPage.add(row.exerciseKey);
-    height += contForRow + rowHeight(row, current[current.length - 2]);
+    if (row.exerciseKey) state.shownOnPage.add(row.exerciseKey);
+    state.height +=
+      contForRow + rowHeight(row, state.current[state.current.length - 2]);
   }
 
-  if (current.length) pages.push(current);
-  return pages.length ? pages : [[]];
+  if (state.current.length) state.pages.push(state.current);
+  return state.pages.length ? state.pages : [[]];
 }
 
 function contTitle(title: string, pathKey: string, prev: Set<string>): string {
@@ -295,6 +537,10 @@ function headerNode(
     kind: ref.kind,
     children: [],
   };
+}
+
+function appendNotes(node: OutlineNode, text: string): void {
+  node.notes = node.notes ? `${node.notes}\n${text}` : text;
 }
 
 function buildPageTree(
@@ -372,6 +618,28 @@ function buildPageTree(
     } else if (row.kind === 'set-line' && row.line) {
       const ex = ensureExercise(row);
       ex.lines = [...(ex.lines ?? []), row.line];
+    } else if (row.kind === 'notes' && row.line) {
+      if (row.exerciseKey) {
+        appendNotes(ensureExercise(row), row.line);
+      } else if (
+        !row.ownerKey ||
+        row.ownerKey === rootKey ||
+        row.depth === 0
+      ) {
+        appendNotes(tree, row.line);
+      } else {
+        const owner = ensureNode(
+          {
+            depth: row.depth,
+            title: row.title,
+            meta: row.meta,
+            kind: row.outlineKind,
+            pathKey: row.ownerKey,
+          },
+          row.ancestors,
+        );
+        appendNotes(owner, row.line);
+      }
     }
   }
 
@@ -397,6 +665,7 @@ function collectShownPathKeys(pageRows: PreviewRow[]): Set<string> {
       keys.add(row.pathKey);
     }
     if (row.exerciseKey) keys.add(row.exerciseKey);
+    if (row.ownerKey) keys.add(row.ownerKey);
     for (const anc of row.ancestors) {
       keys.add(anc.pathKey);
     }
@@ -441,6 +710,7 @@ function paginateOnce(
 /**
  * Paginate an outline into nested subtrees for LockedOutline.
  * Packs row-by-row into the page-body budget; continued layers get "(cont.)".
+ * Notes stay atomic when they fit; only split when taller than one page.
  */
 export function paginateOutline(
   root: OutlineNode,

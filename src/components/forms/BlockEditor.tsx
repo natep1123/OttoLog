@@ -332,7 +332,7 @@ export function BlockEditor({
             />
 
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Coaching notes</Text>
+              <Text style={styles.fieldLabel}>Block Notes</Text>
               <TextInput
                 value={value.notes ?? ''}
                 onChangeText={(notes) => patch({ notes: notes || null })}

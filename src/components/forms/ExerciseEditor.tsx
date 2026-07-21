@@ -503,7 +503,7 @@ export function ExerciseEditor({
             </View>
 
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Coaching notes</Text>
+              <Text style={styles.fieldLabel}>Exercise Notes</Text>
               <TextInput
                 value={value.notes ?? ''}
                 onChangeText={(notes) => patch({ notes: notes || null })}
@@ -561,6 +561,7 @@ export function ExerciseEditor({
           tool_name: toolWord,
           target_shape_id: value.target_shape_id,
           default_target_shape: value.default_target_shape,
+          notes: value.notes,
         },
         { orderIndex },
       )}

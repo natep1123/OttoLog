@@ -457,18 +457,29 @@ export type OutlineNode = {
   title: string;
   /** Secondary head line (e.g. `4 rounds`). */
   meta?: string;
+  /** Layer coaching notes — only set when non-empty. */
+  notes?: string;
   /** Leaf prescription / override one-liners. */
   lines?: string[];
   children?: OutlineNode[];
   kind?: 'session' | 'block' | 'cluster' | 'exercise' | 'set';
 };
 
+function outlineNotes(notes: string | null | undefined): string | undefined {
+  const trimmed = notes?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
 /** Exercise outline: title + set-group grammar lines. */
 export function outlineExercise(
   draft: Pick<
     ExerciseTemplateInput,
     'name' | 'target_shape_id' | 'default_target_shape'
-  > & { tool_id?: string | null; tool_name?: string | null },
+  > & {
+    tool_id?: string | null;
+    tool_name?: string | null;
+    notes?: string | null;
+  },
   options?: { orderIndex?: number },
 ): OutlineNode {
   const title = exerciseTitle(
@@ -487,9 +498,11 @@ export function outlineExercise(
       formatTargetGroup(group, draft.target_shape_id, { forceCount }),
     )
     .filter((s): s is string => Boolean(s));
+  const notes = outlineNotes(draft.notes);
   return {
     title,
     kind: 'exercise',
+    notes,
     lines: lines.length ? lines : undefined,
   };
 }
@@ -498,7 +511,13 @@ export function outlineExercise(
 export function outlineCluster(
   draft: Pick<
     ClusterTemplateInput,
-    'label_id' | 'label_name' | 'name' | 'rounds' | 'items' | 'overrides'
+    | 'label_id'
+    | 'label_name'
+    | 'name'
+    | 'rounds'
+    | 'items'
+    | 'overrides'
+    | 'notes'
   >,
   options?: { orderIndex?: number },
 ): OutlineNode {
@@ -512,6 +531,7 @@ export function outlineCluster(
         tool_name: item.tool_name,
         target_shape_id: item.target_shape_id,
         default_target_shape: item.targets,
+        notes: item.notes,
       },
       { orderIndex: index },
     );
@@ -530,13 +550,14 @@ export function outlineCluster(
     title: clusterUiTitle(draft.label_name),
     kind: 'cluster',
     meta: `${rounds} round${rounds === 1 ? '' : 's'}`,
+    notes: outlineNotes(draft.notes),
     children: children.length ? children : undefined,
   };
 }
 
 /** Block outline: nested sequences and exercises. */
 export function outlineBlock(
-  draft: Pick<BlockTemplateInput, 'label_name' | 'name' | 'items'>,
+  draft: Pick<BlockTemplateInput, 'label_name' | 'name' | 'items' | 'notes'>,
   options?: { orderIndex?: number },
 ): OutlineNode {
   let clusterIndex = 0;
@@ -558,6 +579,7 @@ export function outlineBlock(
             tool_name: item.tool_name,
             target_shape_id: item.target_shape_id,
             default_target_shape: item.targets,
+            notes: item.notes,
           },
           { orderIndex: exerciseIndex },
         ),
@@ -569,13 +591,17 @@ export function outlineBlock(
   return {
     title: blockUiTitle(draft.label_name),
     kind: 'block',
+    notes: outlineNotes(draft.notes),
     children: children.length ? children : undefined,
   };
 }
 
 /** Session outline: nested blocks → … → sets. */
 export function outlineSession(
-  draft: Pick<SessionTemplateInput, 'label_name' | 'name' | 'blocks'>,
+  draft: Pick<
+    SessionTemplateInput,
+    'label_name' | 'name' | 'blocks' | 'notes'
+  >,
 ): OutlineNode {
   const children = (draft.blocks ?? []).map((block, index) => {
     const { kind: _k, id: _id, ...blockDraft } = block;
@@ -585,6 +611,7 @@ export function outlineSession(
   return {
     title: sessionUiTitle(draft.label_name),
     kind: 'session',
+    notes: outlineNotes(draft.notes),
     children: children.length ? children : undefined,
   };
 }

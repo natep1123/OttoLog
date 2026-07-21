@@ -39,6 +39,7 @@ export function LockedOutline({
   const showTitle = !(depth === 0 && hideRootTitle);
   const hasBody =
     Boolean(showTitle && node.meta) ||
+    Boolean(node.notes) ||
     Boolean(node.lines?.length) ||
     Boolean(node.children?.length);
 
@@ -70,6 +71,9 @@ export function LockedOutline({
         <Text style={styles.meta} numberOfLines={1}>
           {node.meta}
         </Text>
+      ) : null}
+      {node.notes ? (
+        <Text style={styles.notes}>{node.notes}</Text>
       ) : null}
       {node.lines?.length ? (
         <View style={styles.lines}>
@@ -138,6 +142,14 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontMedium,
     fontSize: 12,
     color: colors.textMuted,
+  },
+  notes: {
+    fontFamily: typography.font,
+    fontSize: 12,
+    lineHeight: 17,
+    fontStyle: 'italic',
+    color: colors.textMuted,
+    marginTop: 2,
   },
   lines: {
     gap: 2,
