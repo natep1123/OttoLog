@@ -2,7 +2,7 @@ import { StyleSheet, TextInput, TextInputProps } from 'react-native';
 import { colors, radii, typography } from '../../theme/tokens';
 
 type Props = TextInputProps & {
-  /** When true, use sunrise focus ring (e.g. coaching notes) */
+  /** When true, use sunrise focus ring (legacy; prefer layer-tinted notes) */
   emphasizeFocus?: boolean;
 };
 

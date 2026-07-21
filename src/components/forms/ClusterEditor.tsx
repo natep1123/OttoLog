@@ -77,7 +77,7 @@ import {
 } from './TemplateNameSearch';
 import { TimePartsInput } from './TimePartsInput';
 import { ToggleChip } from './ToggleChip';
-import { clusterItemsLayout } from './formTokens';
+import { NOTES_MAX_LENGTH, clusterItemsLayout } from './formTokens';
 import { FormArrow } from './FormArrow';
 const overrideControlAccent = {
   color: overrideTheme.color,
@@ -820,6 +820,7 @@ export function ClusterEditor({
                 placeholder="e.g., Minimal rest between exercises. Three rounds…"
                 placeholderTextColor={colors.textDim}
                 multiline
+                maxLength={NOTES_MAX_LENGTH}
                 style={[
                   styles.fieldInput,
                   styles.notes,

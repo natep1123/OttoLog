@@ -9,7 +9,13 @@ export type PaginateOptions = {
   heightScale?: number;
 };
 
-type RowKind = 'header' | 'exercise-title' | 'set-line' | 'notes';
+type RowKind =
+  | 'header'
+  | 'exercise-title'
+  | 'set-line'
+  | 'notes'
+  | 'override-line'
+  | 'override-notes';
 
 type AncestorRef = {
   depth: number;
@@ -40,6 +46,10 @@ const NESTED_HEADER = 24;
 const NESTED_META = 16;
 const EXERCISE_TITLE = 22;
 const SET_LINE = 20;
+const OVERRIDE_LINE = 20;
+const OVERRIDE_NOTES_LINE_HEIGHT = 16;
+const OVERRIDE_BLOCK_TOP = 7;
+const OVERRIDE_ITEM_GAP = 6;
 const NOTES_LINE_HEIGHT = 17;
 const NOTES_MARGIN_TOP = 2;
 /** Approx chars/line for italic 12px notes in the modal body. */
@@ -51,7 +61,9 @@ const PACK_SAFETY = 4;
 function isExerciseNode(node: OutlineNode): boolean {
   return (
     node.kind === 'exercise' ||
-    Boolean(node.lines?.length && !node.children?.length)
+    Boolean(
+      (node.lines?.length || node.overrides?.length) && !node.children?.length,
+    )
   );
 }
 
@@ -117,6 +129,16 @@ function maxNotesLinesForHeight(availablePx: number): number {
   return Math.floor((availablePx - NOTES_MARGIN_TOP) / NOTES_LINE_HEIGHT);
 }
 
+function estimateOverrideNotesHeight(text: string): number {
+  return (
+    Math.max(1, wrapNotesText(text).length) * OVERRIDE_NOTES_LINE_HEIGHT
+  );
+}
+
+function isOverrideRow(kind: RowKind): boolean {
+  return kind === 'override-line' || kind === 'override-notes';
+}
+
 export function rowHeight(row: PreviewRow, previous?: PreviewRow): number {
   let h = 0;
   if (row.kind === 'header') {
@@ -130,6 +152,15 @@ export function rowHeight(row: PreviewRow, previous?: PreviewRow): number {
     h = EXERCISE_TITLE;
   } else if (row.kind === 'notes') {
     h = estimateNotesHeight(row.line ?? '');
+  } else if (row.kind === 'override-line') {
+    h = OVERRIDE_LINE;
+    if (!previous || !isOverrideRow(previous.kind)) {
+      h += OVERRIDE_BLOCK_TOP;
+    } else {
+      h += OVERRIDE_ITEM_GAP;
+    }
+  } else if (row.kind === 'override-notes') {
+    h = estimateOverrideNotesHeight(row.line ?? '');
   } else {
     h = SET_LINE;
   }
@@ -140,7 +171,8 @@ export function rowHeight(row: PreviewRow, previous?: PreviewRow): number {
     previous &&
     previous.pathKey !== row.pathKey &&
     row.kind !== 'set-line' &&
-    row.kind !== 'notes'
+    row.kind !== 'notes' &&
+    !isOverrideRow(row.kind)
   ) {
     h += SIBLING_GAP;
   }
@@ -234,6 +266,38 @@ function flattenToRows(
         exerciseKey: pathKey,
       });
     }
+
+    for (
+      let overrideIndex = 0;
+      overrideIndex < (node.overrides?.length ?? 0);
+      overrideIndex += 1
+    ) {
+      const item = node.overrides![overrideIndex];
+      rows.push({
+        kind: 'override-line',
+        depth,
+        title: node.title,
+        line: item.summary,
+        outlineKind: 'exercise',
+        pathKey: `${pathKey}|ov:${overrideIndex}`,
+        ancestorKeys: [...ancestors.map((a) => a.pathKey), pathKey],
+        ancestors: [...ancestors],
+        exerciseKey: pathKey,
+      });
+      if (item.notes) {
+        rows.push({
+          kind: 'override-notes',
+          depth,
+          title: node.title,
+          line: item.notes,
+          outlineKind: 'exercise',
+          pathKey: `${pathKey}|ov:${overrideIndex}|notes`,
+          ancestorKeys: [...ancestors.map((a) => a.pathKey), pathKey],
+          ancestors: [...ancestors],
+          exerciseKey: pathKey,
+        });
+      }
+    }
     return;
   }
 
@@ -316,7 +380,9 @@ function continuationChrome(
   }
 
   if (
-    (row.kind === 'set-line' || row.kind === 'notes') &&
+    (row.kind === 'set-line' ||
+      row.kind === 'notes' ||
+      isOverrideRow(row.kind)) &&
     row.exerciseKey &&
     !shownOnPage.has(row.exerciseKey)
   ) {
@@ -379,9 +445,46 @@ type PackState = {
   omitRootHeader: boolean;
 };
 
+function isOwnerHeaderForNotes(
+  row: PreviewRow,
+  notes: PreviewRow,
+): boolean {
+  if (notes.exerciseKey) {
+    return (
+      row.kind === 'exercise-title' && row.pathKey === notes.exerciseKey
+    );
+  }
+  return (
+    Boolean(notes.ownerKey) &&
+    row.kind === 'header' &&
+    row.pathKey === notes.ownerKey
+  );
+}
+
+/** Rebuild height + shown set after mutating `state.current`. */
+function recomputePackHeight(state: PackState): void {
+  let height = state.leadingChrome;
+  const shown = new Set<string>();
+  for (let i = 0; i < state.current.length; i += 1) {
+    const row = state.current[i];
+    const previous = state.current[i - 1];
+    const cont = continuationChrome(row, shown, state.omitRootHeader);
+    height += cont + rowHeight(row, previous);
+    if (row.kind === 'header' || row.kind === 'exercise-title') {
+      shown.add(row.pathKey);
+    }
+    if (row.exerciseKey) shown.add(row.exerciseKey);
+    if (row.ownerKey) shown.add(row.ownerKey);
+  }
+  state.height = height;
+  state.shownOnPage = shown;
+}
+
 /**
  * Pack notes atomically when they fit; otherwise move the whole note to the
  * next page. Only split by wrapped lines when a note exceeds a full page.
+ * When moving notes forward, pull a trailing owner header along so it isn't
+ * left orphaned on the previous page.
  */
 function packNotesIntoPages(row: PreviewRow, state: PackState): void {
   const startNewPage = () => {
@@ -419,8 +522,15 @@ function packNotesIntoPages(row: PreviewRow, state: PackState): void {
   };
 
   // Prefer keeping the whole note together.
+  let pulledHeader: PreviewRow | null = null;
   if (!wouldFit(row) && state.current.length > 0) {
+    const last = state.current[state.current.length - 1];
+    if (last && isOwnerHeaderForNotes(last, row)) {
+      pulledHeader = state.current.pop() ?? null;
+      recomputePackHeight(state);
+    }
     startNewPage();
+    if (pulledHeader) placeChunk(pulledHeader);
   }
 
   if (wouldFit(row)) {
@@ -618,6 +728,20 @@ function buildPageTree(
     } else if (row.kind === 'set-line' && row.line) {
       const ex = ensureExercise(row);
       ex.lines = [...(ex.lines ?? []), row.line];
+    } else if (row.kind === 'override-line' && row.line) {
+      const ex = ensureExercise(row);
+      ex.overrides = [
+        ...(ex.overrides ?? []),
+        { summary: row.line },
+      ];
+    } else if (row.kind === 'override-notes' && row.line) {
+      const ex = ensureExercise(row);
+      if (!ex.overrides?.length) {
+        ex.overrides = [{ summary: '', notes: row.line }];
+      } else {
+        const last = ex.overrides[ex.overrides.length - 1];
+        last.notes = last.notes ? `${last.notes}\n${row.line}` : row.line;
+      }
     } else if (row.kind === 'notes' && row.line) {
       if (row.exerciseKey) {
         appendNotes(ensureExercise(row), row.line);

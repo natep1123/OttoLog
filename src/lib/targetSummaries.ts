@@ -276,6 +276,47 @@ function formatOverrideChipBit(override: ClusterRoundOverride): string {
   return `${range}→${bits.join(' ')}`;
 }
 
+/** Locked-outline override: summary grammar + optional notes body. */
+function formatOutlineOverride(
+  override: ClusterRoundOverride,
+): OutlineOverride {
+  const range =
+    override.from_round === override.to_round
+      ? `R${override.from_round}`
+      : `R${override.from_round}–${override.to_round}`;
+  const notes = outlineNotes(override.notes);
+
+  if (override.skipped) {
+    return { summary: `${range} skip`, notes };
+  }
+
+  const { patch } = override;
+  const bits: string[] = [];
+  if ('reps' in patch && patch.reps != null) bits.push(String(patch.reps));
+  if ('time_duration' in patch && patch.time_duration) {
+    const t = formatDurationShort(patch.time_duration);
+    if (t) bits.push(t);
+  }
+  if ('distance_value' in patch && patch.distance_value != null) {
+    bits.push(
+      `${patch.distance_value}${patch.distance_unit ? ` ${patch.distance_unit}` : ''}`,
+    );
+  }
+  if ('load_unit' in patch || 'load_value' in patch) {
+    if (patch.load_unit === 'BW') bits.push('BW');
+    else if (patch.load_value != null) {
+      bits.push(
+        `${patch.load_value}${patch.load_unit ? ` ${patch.load_unit}` : ''}`.trim(),
+      );
+    }
+  }
+
+  return {
+    summary: bits.length ? `${range} → ${bits.join(' ')}` : range,
+    notes,
+  };
+}
+
 /** Sequence chips: immediate next layer only (exercise titles). */
 export function summarizeClusterChips(
   draft: Pick<ClusterTemplateInput, 'items'>,
@@ -453,14 +494,23 @@ export function summarizeSessionChips(
 }
 
 /** Structured coach-grammar outline for locked / view mode. */
+export type OutlineOverride = {
+  /** Round-range grammar, e.g. `R16–20 skip` or `R1–20→BW`. */
+  summary: string;
+  /** Override notes — only set when non-empty. */
+  notes?: string;
+};
+
 export type OutlineNode = {
   title: string;
   /** Secondary head line (e.g. `4 rounds`). */
   meta?: string;
   /** Layer coaching notes — only set when non-empty. */
   notes?: string;
-  /** Leaf prescription / override one-liners. */
+  /** Leaf prescription one-liners. */
   lines?: string[];
+  /** Round overrides for a sequence exercise — separate from prescription lines. */
+  overrides?: OutlineOverride[];
   children?: OutlineNode[];
   kind?: 'session' | 'block' | 'cluster' | 'exercise' | 'set';
 };
@@ -537,10 +587,9 @@ export function outlineCluster(
     );
     const ownOverrides = overrides.filter((o) => o.exercise_id === item.id);
     if (ownOverrides.length) {
-      const overrideLines = ownOverrides.map(formatOverrideChipBit);
       return {
         ...node,
-        lines: [...(node.lines ?? []), ...overrideLines],
+        overrides: ownOverrides.map(formatOutlineOverride),
       };
     }
     return node;

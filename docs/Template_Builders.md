@@ -91,7 +91,8 @@ The overflow button opens `MorePanel`, a dashed layer-colored panel labeled
 - Track duration via shared `DurationTrackControl`: toggle plus HH/MM/SS when
   on. Unit labels sit above the time boxes; the toggle aligns with the boxes
   (not the labels). Off state is flush — no reserved empty label lane.
-- Coaching notes. The note field's focused border uses the **card's own layer
+- **Session / Block / Sequence / Exercise Notes** (`NOTES_MAX_LENGTH` in
+  `formTokens.ts`). The note field's focused border uses the **card's own layer
   color** (red/blue/violet/gold), not a global orange.
 - A remove action when the card is nested and removable (for example "Remove from
   block", "Remove from session", "Delete sequence").
@@ -151,28 +152,37 @@ lives only in `LockController` (per-node map + parent tree) — no schema fields
 - **Expand cascade** stays independent of lock (see Shared card chrome).
 - **Collapsed + locked:** Same header + immediate-child pills; no editing. No
   extra chip-stack padding versus unlocked collapsed cards.
-- **Expanded + locked (Session / Block / Sequence):** Form body is replaced by
-  `LockedOutline` — a nested coach-grammar outline of everything below (blocks →
-  sequences → exercises → sets, including sequence override one-liners). Nested
-  entries use a **thin left spine** tinted with each child’s layer color (blue /
-  violet / gold), not the full NestedLayer L-rail. A little extra space sits under
-  the chip row only in this expanded lock view. Map, overrides, More, and add
-  controls are hidden. Session lock outlines omit the redundant root session
-  title inside the outline box (the card header Label already shows it); the
-  screenshot popup also omits that root title.
+- **Expanded + locked (Session / Block / Sequence / Exercise):** Form body is
+  replaced by `LockedOutline` — a nested coach-grammar outline of everything
+  below (blocks → sequences → exercises → sets). Non-empty layer notes render
+  under each title (inline cards truncate; screenshot modal shows full text).
+  Sequence round overrides sit under the exercise prescription as a separate
+  dusk-pink block (summary + optional override notes), with the same thin left
+  spine geometry as nested layers (`borderLeftWidth` + `borderRadius` curls —
+  not the NestedLayer L-rail). Nested entries use a **thin left spine** tinted
+  with each child’s layer color (blue / violet / gold / dusk for overrides). A
+  little extra space sits under the chip row only in this expanded lock view.
+  Map, overrides editor, More, and add controls are hidden. Session lock
+  outlines omit the redundant root session title inside the outline box (the
+  card header Label already shows it); exercise and screenshot popups also omit
+  the root title when the modal/card header already shows it. Collapsed locked
+  exercises keep prescription chips; expanded locked exercises drop chips so
+  they don’t duplicate the outline lines.
 - **Screenshot preview:** While locked, trailing chrome is a maximize control
   that opens `LockedPreviewModal` — full-screen paginated outline for easy
   screenshots. Modal chrome uses `bgInset`; the outline root keeps the host
   layer highlight wash. Pagination packs rows against a measured body budget
   (`lockedPreviewPages.ts`), continuing layers with `(cont.)` across pages.
-- **Exercise locked:** Locking stops at the exercise leaf (no set-row locks). A
-  locked exercise always shows the compact header + prescription pills view — no
-  outline body, Tool/Shape, or targets grid — whether expand would otherwise be
-  open or closed.
+  Layer notes stay atomic when they fit (split only if taller than one page);
+  orphan headers are pulled forward with notes. Multi-page bodies swipe
+  horizontally; chevrons stay in sync with the page label.
+- **Exercise locked:** Locking stops at the exercise leaf (no set-row locks).
+  Expand still works: collapsed = header + pills; expanded = `LockedOutline`
+  (prescription lines + notes) with `hideRootTitle`.
 - Outline builders: `outlineExercise` / `outlineCluster` / `outlineBlock` /
-  `outlineSession` in `targetSummaries.ts`. Session/Block/Sequence outline titles
-  use Label words (`sessionUiTitle` / `blockUiTitle` / `clusterUiTitle`);
-  exercises use names.
+  `outlineSession` in `targetSummaries.ts` (optional `notes` / `overrides` on
+  `OutlineNode`). Session/Block/Sequence outline titles use Label words
+  (`sessionUiTitle` / `blockUiTitle` / `clusterUiTitle`); exercises use names.
 - **Library review mode:** Template and log builders opened from Library pass
   `reviewLockId` into `EditorChrome` so the root node starts locked. Builder
   roots also start expanded so the outline is immediately visible.

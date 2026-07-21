@@ -63,11 +63,11 @@ Library opens of templates and logs use **`reviewMode`**: `EditorChrome` starts 
 | `blockTemplates.ts` | List, get, save, archive / hard-delete; mixed exercise/sequence items; `blockTemplateToDraft` |
 | `sessionTemplates.ts` | List, get, save, archive / hard-delete; nested blocks; `sessionTemplateToDraft`; default Session label |
 | `sessionLogs.ts` | List, get, save, delete session logs; denest draft tree → `sql/014` tables (+ `sql/015` tool links); renest rows → editor draft |
-| `lockedPreviewPages.ts` | Paginate a locked outline into screenshot pages for `LockedPreviewModal` |
+| `lockedPreviewPages.ts` | Paginate a locked outline into screenshot pages for `LockedPreviewModal` (notes/overrides row packing; swipe + chevron sync) |
 | `taxonomy.ts` | Picker lists and Account taxonomy CRUD (tools, analytics, session/block/sequence labels) |
 | `localTime.ts` | Local greeting, week strip, session date keys / labels (`dayjs`) |
 | `displayTitles.ts` | Library titles: custom Name/Brief as typed, else bare kind. Compact UI titles (`sessionUiTitle` / `blockUiTitle` / `clusterUiTitle`): Label word. Log list titles: `sessionLogTitle` (Label + local date + same-day ordinal) |
-| `targetSummaries.ts` | Compress/expand set groups; coach-shorthand summaries and lock outlines for all layers |
+| `targetSummaries.ts` | Compress/expand set groups; coach-shorthand summaries and lock outlines for all layers (notes + outline overrides) |
 
 ### `src/components/`
 
@@ -131,4 +131,4 @@ Account TaxonomyListScreen
 
 ## Forms layer accents
 
-See `formTokens.ts` / `docs/Styling.md`. Session → Block → Sequence → Exercise each own a background + accent rail used by `NestedLayer`, `IconButton`, and `MorePanel`. Session/Block/Sequence headers are label-first; Name/Brief and a `⌕` search shortcut live in the More panel; Exercise keeps its inline name search. Cards show scrollable summary chips from `targetSummaries.ts`, colored by the layer each pill describes with host-colored arrows between them. Library/search titles use custom Name/Brief as typed, else the bare kind word; compact chrome (pills, locked outline, add-button parent refs) uses Label words for Session/Block/Sequence. Locked cards offer a maximize control that opens `LockedPreviewModal` (paginated screenshot outline).
+See `formTokens.ts` / `docs/Styling.md`. Session → Block → Sequence → Exercise each own a background + accent rail used by `NestedLayer`, `IconButton`, and `MorePanel`. Session/Block/Sequence headers are label-first; Name/Brief and a `⌕` search shortcut live in the More panel; Exercise keeps its inline name search. Cards show scrollable summary chips from `targetSummaries.ts`, colored by the layer each pill describes with host-colored arrows between them. Library/search titles use custom Name/Brief as typed, else the bare kind word; compact chrome (pills, locked outline, add-button parent refs) uses Label words for Session/Block/Sequence. Locked cards offer a maximize control that opens `LockedPreviewModal` (paginated screenshot outline; swipe between pages).

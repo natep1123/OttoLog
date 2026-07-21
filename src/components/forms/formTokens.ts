@@ -47,3 +47,6 @@ export const formChevron = {
   fontSize: 22,
   lineHeight: 24,
 } as const;
+
+/** Soft cap for Session / Block / Sequence / Exercise Notes fields. */
+export const NOTES_MAX_LENGTH = 1000;

@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -35,6 +38,7 @@ const BODY_INSET = spacing.sm;
 /**
  * Full-screen locked outline for screenshots. Fixed body height; pagination
  * driven by a one-time content measure vs stable body budget.
+ * Multi-page: swipe horizontally between pages; chevrons stay in sync.
  */
 export function LockedPreviewModal({
   visible,
@@ -66,6 +70,8 @@ export function LockedPreviewModal({
 
   const [fullContentHeight, setFullContentHeight] = useState<number | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
+  const [pageWidth, setPageWidth] = useState(0);
+  const pagerRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (!visible) return;
@@ -94,10 +100,12 @@ export function LockedPreviewModal({
   }, [node, fullContentHeight, singlePageBodyBudget, paginatedBodyBudget, heightScale]);
 
   const pageCount = pages.length;
-  const pageNode = pages[pageIndex] ?? node;
   // Outer pageBody height includes padding; packing uses the inner content budget.
   const contentBudget = pageCount > 1 ? paginatedBodyBudget : singlePageBodyBudget;
   const fixedBodyHeight = contentBudget + BODY_INSET * 2;
+  /** Inner pager width — falls back to card math until onLayout fires. */
+  const slideWidth =
+    pageWidth > 0 ? pageWidth : Math.max(1, cardWidth - BODY_INSET * 2);
   const canPrev = pageIndex > 0;
   const canNext = pageIndex < pageCount - 1;
   const measuring = visible && fullContentHeight === null;
@@ -105,7 +113,21 @@ export function LockedPreviewModal({
 
   useEffect(() => {
     setPageIndex(0);
+    pagerRef.current?.scrollTo({ x: 0, animated: false });
   }, [pages.length]);
+
+  const goToPage = (index: number, animated = true) => {
+    const next = Math.max(0, Math.min(pageCount - 1, index));
+    setPageIndex(next);
+    pagerRef.current?.scrollTo({ x: next * slideWidth, animated });
+  };
+
+  const onPagerScrollEnd = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const next = Math.round(event.nativeEvent.contentOffset.x / slideWidth);
+    setPageIndex(Math.max(0, Math.min(pageCount - 1, next)));
+  };
 
   return (
     <Modal
@@ -169,18 +191,47 @@ export function LockedPreviewModal({
               </View>
 
               <View style={[styles.pageBody, { height: fixedBodyHeight }]}>
-                <LockedOutline
-                  node={pageNode}
-                  layer={layer}
-                  hideRootTitle
-                  fillContainer
-                />
+                <ScrollView
+                  ref={pagerRef}
+                  horizontal
+                  pagingEnabled
+                  nestedScrollEnabled
+                  showsHorizontalScrollIndicator={false}
+                  decelerationRate="fast"
+                  onMomentumScrollEnd={onPagerScrollEnd}
+                  onLayout={(event) => {
+                    const w = Math.round(event.nativeEvent.layout.width);
+                    if (w > 0 && w !== pageWidth) setPageWidth(w);
+                  }}
+                  style={styles.pager}
+                  contentContainerStyle={styles.pagerContent}
+                >
+                  {pages.map((pageNode, index) => (
+                    <View
+                      key={`page-${index}`}
+                      style={[
+                        styles.pageSlide,
+                        {
+                          width: slideWidth,
+                          height: contentBudget,
+                        },
+                      ]}
+                    >
+                      <LockedOutline
+                        node={pageNode}
+                        layer={layer}
+                        hideRootTitle
+                        fillContainer
+                      />
+                    </View>
+                  ))}
+                </ScrollView>
               </View>
 
               {pageCount > 1 ? (
                 <View style={styles.pagination}>
                   <Pressable
-                    onPress={() => setPageIndex((p) => Math.max(0, p - 1))}
+                    onPress={() => goToPage(pageIndex - 1)}
                     disabled={!canPrev}
                     accessibilityRole="button"
                     accessibilityLabel="Previous page"
@@ -200,9 +251,7 @@ export function LockedPreviewModal({
                     Page {pageIndex + 1} of {pageCount}
                   </Text>
                   <Pressable
-                    onPress={() =>
-                      setPageIndex((p) => Math.min(pageCount - 1, p + 1))
-                    }
+                    onPress={() => goToPage(pageIndex + 1)}
                     disabled={!canNext}
                     accessibilityRole="button"
                     accessibilityLabel="Next page"
@@ -295,6 +344,15 @@ const styles = StyleSheet.create({
     paddingVertical: BODY_INSET,
     alignSelf: 'stretch',
     overflow: 'hidden',
+  },
+  pager: {
+    flex: 1,
+  },
+  pagerContent: {
+    flexGrow: 1,
+  },
+  pageSlide: {
+    alignSelf: 'stretch',
   },
   pagination: {
     flexDirection: 'row',

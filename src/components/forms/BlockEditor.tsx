@@ -58,7 +58,7 @@ import {
   TemplateNameSearch,
   type TemplateNameSearchHandle,
 } from './TemplateNameSearch';
-import { blockItemsLayout } from './formTokens';
+import { NOTES_MAX_LENGTH, blockItemsLayout } from './formTokens';
 
 type Props = {
   value: BlockTemplateInput;
@@ -341,6 +341,7 @@ export function BlockEditor({
                 placeholder="e.g., Warm-up block, then strength…"
                 placeholderTextColor={colors.textDim}
                 multiline
+                maxLength={NOTES_MAX_LENGTH}
                 style={[
                   styles.fieldInput,
                   styles.notes,

@@ -45,7 +45,7 @@ import {
   TemplateNameSearch,
   type TemplateNameSearchHandle,
 } from './TemplateNameSearch';
-import { sessionItemsLayout } from './formTokens';
+import { NOTES_MAX_LENGTH, sessionItemsLayout } from './formTokens';
 
 type Props = {
   value: SessionTemplateInput;
@@ -302,6 +302,7 @@ export function SessionEditor({ value, onChange }: Props) {
                 placeholder="e.g., Full body day — keep rest short…"
                 placeholderTextColor={colors.textDim}
                 multiline
+                maxLength={NOTES_MAX_LENGTH}
                 style={[
                   styles.fieldInput,
                   styles.notes,

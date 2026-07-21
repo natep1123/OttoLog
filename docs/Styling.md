@@ -412,13 +412,16 @@ local to each card; the layer chevron rotates `-90deg` when collapsed, and
 collapsing a card also closes its More panel. Opening a collapsed card collapses
 its immediate children (expand cascade). A lock toggle sits immediately after the
 chevron (`chevron · lock · label/title · trailing`). Locked + expanded
-Session/Block/Sequence cards replace the form body with `LockedOutline`: host
-layer wash on the root, and nested entries use a **thin** left spine in each
-child’s layer color (not the 4px L-rail). Locked exercises stay pills-only.
-Lock is ephemeral UI state only (see Template_Builders.md). While locked, a
-maximize trailing control opens `LockedPreviewModal`: modal card chrome uses
-`colors.bgInset`; the outline root keeps the host layer highlight wash. Pages
-paginate densely against the measured body budget.
+Session/Block/Sequence/Exercise cards replace the form body with `LockedOutline`:
+host layer wash on the root, nested entries use a **thin** left spine in each
+child’s layer color (not the 4px L-rail; `borderRadius` curls the spine ends).
+Layer notes and sequence override blocks (dusk-pink summary + notes) appear in
+the outline when present. Collapsed locked exercises stay pills-only; expanded
+locked exercises show the outline. Lock is ephemeral UI state only (see
+Template_Builders.md). While locked, a maximize trailing control opens
+`LockedPreviewModal`: modal card chrome uses `colors.bgInset`; the outline root
+keeps the host layer highlight wash. Pages paginate against the measured body
+budget and swipe horizontally (chevrons stay in sync).
 
 Session/Block/Sequence headers keep Name/Brief out of the header entirely: an
 expanded card shows only the Label selector, a `⌕` search shortcut, and the `⋯`
@@ -434,8 +437,8 @@ Sequence children is the taxonomy **Label** word; exercise pills use the exercis
 name; set-group pills use sunrise orange (`colors.sunrise` / `amberGlow`) already
 used by the active Tool selector and `+ Add sets`. Focused controls take their
 card's layer color — Tool/Shape and analytics selectors focus gold, label
-selectors and coaching notes focus their own layer color — so orange is reserved
-for set-level actions.
+selectors and Session/Block/Sequence/Exercise Notes focus their own layer color —
+so orange is reserved for set-level actions.
 
 Overflow and search triggers use a dashed layer-colored square. Their expanded
 More panel uses the same 1-point dashed outline as the card hairline, on all

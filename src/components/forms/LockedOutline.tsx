@@ -1,6 +1,11 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { OutlineNode } from '../../lib/targetSummaries';
-import { colors, layer as layerTokens, typography } from '../../theme/tokens';
+import {
+  colors,
+  layer as layerTokens,
+  override as overrideTokens,
+  typography,
+} from '../../theme/tokens';
 import type { FormNodeKind } from './formTokens';
 
 type Props = {
@@ -41,6 +46,7 @@ export function LockedOutline({
     Boolean(showTitle && node.meta) ||
     Boolean(node.notes) ||
     Boolean(node.lines?.length) ||
+    Boolean(node.overrides?.length) ||
     Boolean(node.children?.length);
 
   return (
@@ -73,7 +79,13 @@ export function LockedOutline({
         </Text>
       ) : null}
       {node.notes ? (
-        <Text style={styles.notes}>{node.notes}</Text>
+        <Text
+          style={styles.notes}
+          // Inline cards stay compact; screenshot modal shows full notes.
+          numberOfLines={fillContainer ? undefined : 3}
+        >
+          {node.notes}
+        </Text>
       ) : null}
       {node.lines?.length ? (
         <View style={styles.lines}>
@@ -85,6 +97,35 @@ export function LockedOutline({
             >
               {line}
             </Text>
+          ))}
+        </View>
+      ) : null}
+      {node.overrides?.length ? (
+        <View
+          style={[
+            styles.overrides,
+            { borderLeftColor: overrideTokens.color },
+          ]}
+        >
+          {node.overrides.map((item, index) => (
+            <View
+              key={`${item.summary}-${index}`}
+              style={styles.overrideItem}
+            >
+              {item.summary ? (
+                <Text style={styles.overrideSummary} numberOfLines={2}>
+                  {item.summary}
+                </Text>
+              ) : null}
+              {item.notes ? (
+                <Text
+                  style={styles.overrideNotes}
+                  numberOfLines={fillContainer ? undefined : 2}
+                >
+                  {item.notes}
+                </Text>
+              ) : null}
+            </View>
           ))}
         </View>
       ) : null}
@@ -121,6 +162,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignSelf: 'stretch',
   },
+  /** Nested layer spine — thin left border (Block / Circuit / Exercise). */
   nested: {
     borderWidth: 0,
     paddingVertical: 4,
@@ -160,6 +202,39 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     color: colors.text,
+  },
+  /**
+   * Override spine — same geometry as `nested`: thin left border whose ends
+   * curl via borderRadius (inherited on nested from `root`). Do not invent a
+   * separate L-rail / stub chrome here.
+   */
+  overrides: {
+    gap: 6,
+    marginTop: 3,
+    paddingVertical: 4,
+    paddingHorizontal: 0,
+    paddingLeft: 10,
+    marginLeft: 4,
+    borderWidth: 0,
+    borderLeftWidth: 1,
+    borderRadius: 6,
+    backgroundColor: 'transparent',
+  },
+  overrideItem: {
+    gap: 3,
+  },
+  overrideSummary: {
+    fontFamily: typography.fontMedium,
+    fontSize: 12,
+    lineHeight: 17,
+    color: overrideTokens.color,
+  },
+  overrideNotes: {
+    fontFamily: typography.font,
+    fontSize: 11,
+    lineHeight: 16,
+    fontStyle: 'italic',
+    color: colors.textMuted,
   },
   children: {
     gap: 6,

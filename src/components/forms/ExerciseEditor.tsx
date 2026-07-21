@@ -46,6 +46,7 @@ import { LockedOutline } from './LockedOutline';
 import { LockedPreviewModal } from './LockedPreviewModal';
 import { MorePanel } from './MorePanel';
 import { NestedLayer } from './NestedLayer';
+import { NOTES_MAX_LENGTH } from './formTokens';
 import { SearchableSelect } from './SearchableSelect';
 import { TargetsGrid } from './TargetsGrid';
 import { ToggleChip } from './ToggleChip';
@@ -267,11 +268,8 @@ export function ExerciseEditor({
     <NestedLayer
       layer="exercise"
       nested={nested}
-      // Locked exercises always present as the compact header + pills view —
-      // expand/collapse do not change the layout while locked.
-      expanded={locked ? false : expanded}
+      expanded={expanded}
       onExpandedChange={(next) => {
-        if (locked) return;
         const opening = next && !expanded;
         setExpanded(next);
         if (!next) setMoreOpen(false);
@@ -288,7 +286,9 @@ export function ExerciseEditor({
           : undefined
       }
       lockDisabled={forcedByAncestor}
-      metaChips={metaChips}
+      // Collapsed locked: chips carry the prescription. Expanded locked: outline
+      // owns lines + notes — drop chips so they don't duplicate the grammar.
+      metaChips={locked && expanded ? undefined : metaChips}
       title={
         locked ? (
           <Text style={styles.lockedTitle} numberOfLines={1}>
@@ -325,7 +325,23 @@ export function ExerciseEditor({
             )
       }
     >
-      {locked ? null : (
+      {locked ? (
+        <LockedOutline
+          node={outlineExercise(
+            {
+              name: value.name,
+              tool_id: primaryToolId(value.tool_ids),
+              tool_name: toolWord,
+              target_shape_id: value.target_shape_id,
+              default_target_shape: value.default_target_shape,
+              notes: value.notes,
+            },
+            { orderIndex },
+          )}
+          layer="exercise"
+          hideRootTitle
+        />
+      ) : (
         <>
           <View style={styles.controlsRow}>
             <View style={styles.controlCol}>
@@ -512,6 +528,7 @@ export function ExerciseEditor({
                 placeholder="e.g., Focus on explosive hip drive. Keep pace steady…"
                 placeholderTextColor={colors.textDim}
                 multiline
+                maxLength={NOTES_MAX_LENGTH}
                 style={[
                   styles.fieldInput,
                   styles.notes,
