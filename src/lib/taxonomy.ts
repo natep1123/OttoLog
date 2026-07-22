@@ -5,6 +5,11 @@ import {
   NO_TOOL_ID,
   UNCATEGORIZED_ID,
 } from '../constants/sentinelIds';
+import {
+  DEFAULT_PRIMARY_GROUP_CATEGORY,
+  isPrimaryGroupCategory,
+  type PrimaryGroupCategory,
+} from '../constants/primaryGroupCategories';
 
 export type TaxonomyKind =
   | 'tool'
@@ -24,6 +29,8 @@ export type TaxonomyOption = {
   isArchived?: boolean;
   /** Session labels only: empty sessions cannot have blocks */
   isEmpty?: boolean;
+  /** Primary groups only: balance Insights category */
+  category?: string;
 };
 
 export type ManagedTaxonomyRow = {
@@ -34,6 +41,8 @@ export type ManagedTaxonomyRow = {
   usageCount: number;
   /** Session labels only */
   isEmpty?: boolean;
+  /** Primary groups only */
+  category?: string;
 };
 
 type SentinelTable =
@@ -421,13 +430,17 @@ export async function listPrimaryGroups(): Promise<{
 }> {
   const { data, error } = await supabase
     .from('analytics_primary_groups')
-    .select('id, name')
+    .select('id, name, category')
     .is('archived_at', null)
     .order('name', { ascending: true });
 
   if (error) return { data: [], error: error.message };
   return {
-    data: (data ?? []).map((row) => ({ id: row.id, label: row.name })),
+    data: (data ?? []).map((row) => ({
+      id: row.id,
+      label: row.name,
+      category: typeof row.category === 'string' ? row.category : undefined,
+    })),
     error: null,
   };
 }
@@ -435,32 +448,69 @@ export async function listPrimaryGroups(): Promise<{
 export async function createPrimaryGroup(
   userId: string,
   name: string,
+  category: PrimaryGroupCategory = DEFAULT_PRIMARY_GROUP_CATEGORY,
 ): Promise<{ data: TaxonomyOption | null; error: string | null }> {
   const trimmed = name.trim();
   if (!trimmed) return { data: null, error: 'Group name is required.' };
+  if (!isPrimaryGroupCategory(category)) {
+    return { data: null, error: 'Primary group category is required.' };
+  }
 
   const { data: existing } = await supabase
     .from('analytics_primary_groups')
-    .select('id, name')
+    .select('id, name, category')
     .eq('user_id', userId)
     .is('archived_at', null)
     .ilike('name', trimmed)
     .maybeSingle();
 
   if (existing) {
-    return { data: { id: existing.id, label: existing.name }, error: null };
+    return {
+      data: {
+        id: existing.id,
+        label: existing.name,
+        category:
+          typeof existing.category === 'string' ? existing.category : undefined,
+      },
+      error: null,
+    };
   }
 
   const { data, error } = await supabase
     .from('analytics_primary_groups')
-    .insert({ user_id: userId, name: trimmed })
-    .select('id, name')
+    .insert({ user_id: userId, name: trimmed, category })
+    .select('id, name, category')
     .single();
 
   if (error) {
     return { data: null, error: mapWriteError('primary_group', error.message) };
   }
-  return { data: { id: data.id, label: data.name }, error: null };
+  return {
+    data: {
+      id: data.id,
+      label: data.name,
+      category: typeof data.category === 'string' ? data.category : category,
+    },
+    error: null,
+  };
+}
+
+export async function setPrimaryGroupCategory(
+  id: string,
+  category: PrimaryGroupCategory,
+): Promise<{ error: string | null }> {
+  if (!id) return { error: 'Primary group is required.' };
+  if (!isPrimaryGroupCategory(category)) {
+    return { error: 'Primary group category is required.' };
+  }
+
+  const { error } = await supabase
+    .from('analytics_primary_groups')
+    .update({ category, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) return { error: mapWriteError('primary_group', error.message) };
+  return { error: null };
 }
 
 /**
@@ -786,14 +836,21 @@ export async function listManagedTaxonomy(
   );
   let query = supabase
     .from(table)
-    .select('id, name, archived_at')
+    .select('*')
     .order('name', { ascending: true });
   if (!includeArchived) query = query.is('archived_at', null);
 
   const { data, error } = await query;
   if (error) return { data: [], error: error.message };
 
-  const ids = (data ?? []).map((row) => row.id);
+  const rows = (data ?? []) as {
+    id: string;
+    name: string;
+    archived_at: string | null;
+    category?: string;
+  }[];
+
+  const ids = rows.map((row) => row.id);
   let usage = new Map<string, number>();
   if (kind === 'primary_group') {
     usage = await countPrimaryGroupUsage(ids);
@@ -808,12 +865,15 @@ export async function listManagedTaxonomy(
   }
 
   return {
-    data: (data ?? []).map((row) => ({
+    data: rows.map((row) => ({
       id: row.id,
       name: row.name,
       archivedAt: row.archived_at,
       isSystem: false,
       usageCount: usage.get(row.id) ?? 0,
+      ...(kind === 'primary_group' && typeof row.category === 'string'
+        ? { category: row.category }
+        : {}),
     })),
     error: null,
   };
@@ -947,9 +1007,16 @@ export async function createManagedTaxonomy(
   kind: TaxonomyKind,
   userId: string,
   name: string,
+  options?: { category?: PrimaryGroupCategory },
 ): Promise<{ data: TaxonomyOption | null; error: string | null }> {
   if (kind === 'tool') return createTool(userId, name);
-  if (kind === 'primary_group') return createPrimaryGroup(userId, name);
+  if (kind === 'primary_group') {
+    return createPrimaryGroup(
+      userId,
+      name,
+      options?.category ?? DEFAULT_PRIMARY_GROUP_CATEGORY,
+    );
+  }
   if (kind === 'analytics_tag') return createAnalyticsTag(userId, name);
   if (kind === 'muscle_group') return createMuscleGroup(userId, name);
   if (kind === 'session_label') return createSessionLabel(userId, name);

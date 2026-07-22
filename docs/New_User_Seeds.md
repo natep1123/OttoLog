@@ -5,8 +5,8 @@
 > term for the tag slot is **Variations** (DB table remains `analytics_tags`).
 > Shorter seed map: [`Label_Library.md`](./Label_Library.md). Still parked:
 > seed SQL content dump, starter templates, in-app user guide. Set-row
-> `intensity` / `set_type` columns ship in `sql/greenfield/`; UI + denest are
-> chat 5.
+> `intensity` / `set_type` columns ship in `sql/greenfield/`; UI + denest landed
+> in chat 5.
 >
 > Decision rules: [`Label_Library.md`](./Label_Library.md),
 > [`Analytics_Labeling.md`](./Analytics_Labeling.md).
@@ -333,4 +333,4 @@ Later (once derived math / rollups are added — deferred for now):
   `analytics_tags` table later.
 - In-app user guide ("how OttoLog is meant to be used"), which houses the 0–10
   intensity legend and the taxonomy how-to.
-- Chat 5 app work: denest/renest variations, `track_intensity` UI, Insights MVP.
+- Chat 5 app work: denest/renest variations, `track_intensity` UI, Insights MVP *(done)*.

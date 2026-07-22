@@ -255,6 +255,17 @@ export function ExerciseEditor({
     });
   };
 
+  const onToggleIntensity = () => {
+    const track_intensity = !value.track_intensity;
+    patch({
+      track_intensity,
+      default_target_shape: value.default_target_shape.map((t) => ({
+        ...t,
+        intensity: track_intensity ? t.intensity ?? null : null,
+      })),
+    });
+  };
+
   const onToggleDuration = () => {
     const track_duration = !value.track_duration;
     patch({
@@ -422,6 +433,13 @@ export function ExerciseEditor({
                 active={value.track_analytics}
                 onPress={onToggleAnalytics}
               />
+              <ToggleChip
+                label={
+                  value.track_intensity ? 'Intensity on' : 'Track intensity'
+                }
+                active={value.track_intensity}
+                onPress={onToggleIntensity}
+              />
               {value.track_analytics ? (
                 <View style={styles.analyticsFields}>
                   <View style={styles.field}>
@@ -557,6 +575,7 @@ export function ExerciseEditor({
             targetShapeId={value.target_shape_id}
             targets={value.default_target_shape}
             trackAnalytics={value.track_analytics}
+            trackIntensity={value.track_intensity}
             referenceTitle={resolvedExerciseTitle}
             onChangeTargets={onChangeTargets}
             lockedSingle={subitem}

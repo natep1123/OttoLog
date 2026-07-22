@@ -432,6 +432,7 @@ export function ClusterEditor({
           .join(', ') || null,
       target_shape_id: data.target_shape_id,
       track_analytics: data.track_analytics,
+      track_intensity: Boolean(data.track_intensity),
       primary_group_ids: coercePrimaryGroupIds({
         primary_group_ids: data.primary_group_ids,
         primary_group_id: data.primary_group_id,

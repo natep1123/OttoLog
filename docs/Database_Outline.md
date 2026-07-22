@@ -33,7 +33,7 @@ When outline, archived docs, and live SQL disagree, use this order:
 **App slice live**
 
 - **Home**: dashboard with quick actions (build session template, browse exercises, manage taxonomy) and local week preview placeholder
-- **Insights**: placeholder tab (coming soon)
+- **Insights**: base MVP — volume by PG, balance by category, working sets × muscle, tonnage; filters for Variations / Tools / session label (`src/lib/insights.ts`)
 - **Create** → Log a session (from scratch or from a session template) → denest save; Templates hub → Session / Block / Sequence / Exercise builders
 - **Library** → Templates and Logs: browse, search, open in review mode (locked + expanded outline), edit / archive / delete
 - Searchable create-comboboxes for tools, primary groups, and variations in the exercise builder
@@ -73,10 +73,10 @@ Condensed schema for a **fresh** Supabase project. Do **not** run over live `001
 
 **Not live yet**
 
-- Insights UI / query helpers in the app (chat 5 — also denest/renest + intensity)
 - Seed content dump for New User Seeds PGs / ~60 variations / tools (chat 6)
 - Postgres `fn_denest_session_log` / `fn_renest_session_log` wrappers (optional)
 - AI-assisted log drafting; e1RM / ACWR / session-load rollups
+- Insights UI polish (charts beyond bar lists)
 
 Applied migrations *(current project — historical path)*:
 
@@ -379,9 +379,9 @@ Sentinels cannot be renamed, archived, or deleted. User taxonomy rows may be sof
 - If `track_analytics = false`, `primary_group_id` is null, link rows are empty, and there are no `analytics_tag_links` (editor `analytics_tag_ids` is `[]`).
 - Multiple differently named exercises can share one `analytics_primary_groups` row so volume rolls up together. Complexes may select **multiple** PGs so the same volume accrues to each chart (do not sum PG totals into one grand total).
 - Variations (`analytics_tags`) are optional many-to-many modifiers and never replace primary groups. Product UI: **Variations**.
-- On **live** schema, variations persist only on exercise templates; log renest currently drops them. **Greenfield** denests variations onto `log_*_tag_links` so Insights can filter logged volume.
+- On **greenfield**, denest writes variations onto `log_*_tag_links`; renest restores them. Live deprecated schema still lacks those tables.
 - **Suggested variations** (soft): Account → Taxonomy → Primary group → Suggested variations. Empty suggestions → exercise variation picker shows the full A→Z pool. Any suggestions → Suggested section first; **Show all** reveals the full A→Z list underneath (suggested variations appear in both; toggling one flips both). Multi-PG unions suggestions. Does not affect muscle groups.
-- **Greenfield PG `category`:** required text enum for balance Insights. Live `001`–`019` has no `category` column yet.
+- **Greenfield PG `category`:** required text enum for balance Insights. Account taxonomy + `createPrimaryGroup` write it. Live `001`–`019` has no `category` column yet.
 
 ---
 
@@ -516,7 +516,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 | 4 | `exercise_templates` | First Create → save → Library path *(done)* |
 | 5 | `cluster_templates` | Sequence Create → save → Library *(done)* |
 | 5b | `block_templates` / `session_templates` | Full template library *(done — run `sql/009`, `sql/010`)* |
-| 6 | Log tables (`sql/014`) + app denest/renest | Session logging *(done)*; Insights/analytics still open |
+| 6 | Log tables + app denest/renest (greenfield `007` + `sessionLogs.ts`) | Session logging + Insights MVP *(chat 5)* |
 | 6b | Multi-tool links (`sql/015`) | Exercises with multiple tools *(done)* |
 
 ---

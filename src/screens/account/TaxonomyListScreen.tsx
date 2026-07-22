@@ -18,6 +18,12 @@ import { ScreenHeader } from '../../components/ScreenHeader';
 import { StatusText } from '../../components/StatusText';
 import { TextField } from '../../components/TextField';
 import {
+  DEFAULT_PRIMARY_GROUP_CATEGORY,
+  PRIMARY_GROUP_CATEGORY_OPTIONS,
+  isPrimaryGroupCategory,
+  type PrimaryGroupCategory,
+} from '../../constants/primaryGroupCategories';
+import {
   createAnalyticsTag,
   createManagedTaxonomy,
   deleteTaxonomy,
@@ -27,6 +33,7 @@ import {
   mergeTaxonomyOptions,
   renameTaxonomy,
   resolveTaxonomyOptions,
+  setPrimaryGroupCategory,
   setPrimaryGroupSuggestedTags,
   setSessionLabelEmpty,
   setTaxonomyArchived,
@@ -36,6 +43,7 @@ import {
   type TaxonomyKind,
   type TaxonomyOption,
 } from '../../lib/taxonomy';
+import { FormSelect } from '../../components/forms/FormSelect';
 import { SearchableSelect } from '../../components/forms/SearchableSelect';
 import { ToggleChip } from '../../components/forms/ToggleChip';
 import { colors, radii, spacing, typography } from '../../theme/tokens';
@@ -62,11 +70,18 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const [createName, setCreateName] = useState('');
+  const [createCategory, setCreateCategory] = useState<PrimaryGroupCategory>(
+    DEFAULT_PRIMARY_GROUP_CATEGORY,
+  );
   const [creating, setCreating] = useState(false);
 
   const [selected, setSelected] = useState<ManagedTaxonomyRow | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [editCategory, setEditCategory] = useState<PrimaryGroupCategory>(
+    DEFAULT_PRIMARY_GROUP_CATEGORY,
+  );
   const [renameBusy, setRenameBusy] = useState(false);
+  const [categoryBusy, setCategoryBusy] = useState(false);
   const [emptyBusy, setEmptyBusy] = useState(false);
   const [suggestedTagIds, setSuggestedTagIds] = useState<string[]>([]);
   const [tagOptions, setTagOptions] = useState<TaxonomyOption[]>([]);
@@ -107,7 +122,8 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
   }, [rows, searchQuery]);
 
   const closeSheet = () => {
-    if (renameBusy || confirmBusy || emptyBusy || suggestionsBusy) return;
+    if (renameBusy || categoryBusy || confirmBusy || emptyBusy || suggestionsBusy)
+      return;
     setSelected(null);
     setSheetError(null);
     setConfirmKind(null);
@@ -119,6 +135,11 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
     if (row.isSystem) return;
     setSelected(row);
     setRenameValue(row.name);
+    setEditCategory(
+      row.category && isPrimaryGroupCategory(row.category)
+        ? row.category
+        : DEFAULT_PRIMARY_GROUP_CATEGORY,
+    );
     setSheetError(null);
     setSuggestedTagIds([]);
     setTagOptions([]);
@@ -177,6 +198,7 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
       kind,
       userId,
       trimmed,
+      kind === 'primary_group' ? { category: createCategory } : undefined,
     );
     setCreating(false);
     if (createError) {
@@ -184,6 +206,7 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
       return;
     }
     setCreateName('');
+    setCreateCategory(DEFAULT_PRIMARY_GROUP_CATEGORY);
     await load(true);
   };
 
@@ -202,6 +225,23 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
       return;
     }
     setSelected(null);
+    await load(true);
+  };
+
+  const onSaveCategory = async () => {
+    if (!selected || kind !== 'primary_group' || categoryBusy) return;
+    setCategoryBusy(true);
+    setSheetError(null);
+    const { error: catError } = await setPrimaryGroupCategory(
+      selected.id,
+      editCategory,
+    );
+    setCategoryBusy(false);
+    if (catError) {
+      setSheetError(catError);
+      return;
+    }
+    setSelected({ ...selected, category: editCategory });
     await load(true);
   };
 
@@ -235,6 +275,7 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
   const usageLabel = (row: ManagedTaxonomyRow) => {
     if (row.isSystem) return 'System default. Locked.';
     const parts: string[] = [];
+    if (kind === 'primary_group' && row.category) parts.push(row.category);
     if (kind === 'session_label' && row.isEmpty) parts.push('Empty session');
     if (row.usageCount === 0) parts.push('Unused');
     else {
@@ -293,6 +334,20 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
             returnKeyType="done"
             onSubmitEditing={() => void onCreate()}
           />
+          {kind === 'primary_group' ? (
+            <View style={styles.categoryField}>
+              <Text style={styles.fieldLabel}>Category</Text>
+              <FormSelect
+                options={PRIMARY_GROUP_CATEGORY_OPTIONS}
+                value={createCategory}
+                onChange={(id) =>
+                  setCreateCategory(id as PrimaryGroupCategory)
+                }
+                fill
+                accessibilityLabel="Primary group category"
+              />
+            </View>
+          ) : null}
         </View>
         <Button
           label={creating ? 'Adding…' : 'Add'}
@@ -398,11 +453,42 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
               onPress={() => void onRename()}
               disabled={
                 renameBusy ||
+                categoryBusy ||
                 emptyBusy ||
                 !renameValue.trim() ||
                 renameValue.trim() === selected?.name
               }
             />
+
+            {kind === 'primary_group' && selected ? (
+              <View style={styles.suggestBlock}>
+                <Text style={styles.fieldLabel}>Category</Text>
+                <Text style={styles.hint}>
+                  Powers balance Insights (Push / Pull / …). Required.
+                </Text>
+                <FormSelect
+                  options={PRIMARY_GROUP_CATEGORY_OPTIONS}
+                  value={editCategory}
+                  onChange={(id) =>
+                    setEditCategory(id as PrimaryGroupCategory)
+                  }
+                  fill
+                  accessibilityLabel="Primary group category"
+                />
+                <Button
+                  label={categoryBusy ? 'Saving…' : 'Save category'}
+                  onPress={() => void onSaveCategory()}
+                  disabled={
+                    categoryBusy ||
+                    editCategory ===
+                      (selected.category &&
+                      isPrimaryGroupCategory(selected.category)
+                        ? selected.category
+                        : DEFAULT_PRIMARY_GROUP_CATEGORY)
+                  }
+                />
+              </View>
+            ) : null}
 
             {kind === 'session_label' && selected ? (
               <View style={styles.emptyToggleRow}>
@@ -508,6 +594,10 @@ const styles = StyleSheet.create({
   },
   createField: {
     flex: 1,
+  },
+  categoryField: {
+    marginTop: spacing.sm,
+    gap: 4,
   },
   addBtn: {
     marginBottom: 1,

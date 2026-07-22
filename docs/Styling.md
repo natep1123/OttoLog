@@ -346,7 +346,7 @@ Users navigate to Welcome by pressing the wordmark. They move directly between L
 
 ### Shell
 
-Home now uses a dashboard layout. Insights is a placeholder. Create, Library, and Account use hub / list / builder screens with:
+Home now uses a dashboard layout. Insights shows base volume / balance rollups over complete logs. Create, Library, and Account use hub / list / builder screens with:
 
 - Header-sized wordmark
 - Screen title + muted subtitle via `ScreenHeader`
@@ -366,7 +366,7 @@ The week strip is a placeholder layout, not a session calendar yet.
 
 ### Insights
 
-Placeholder screen (`InsightsComingSoonScreen`). No analytics UI yet; relational log tables are ready for later surfaces.
+`InsightsScreen` — date / Variations / Tools / session-label filters; bar lists for volume by PG, balance by category, working sets × muscle, tonnage. Data via `src/lib/insights.ts` (greenfield log tables).
 
 ### Account
 

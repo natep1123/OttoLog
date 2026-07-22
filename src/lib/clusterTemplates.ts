@@ -53,6 +53,7 @@ export function exerciseDraftToClusterItem(
     tool_name: draft.tool_name?.trim() || null,
     target_shape_id: draft.target_shape_id,
     track_analytics: draft.track_analytics,
+    track_intensity: Boolean(draft.track_intensity),
     primary_group_ids,
     primary_group_id: primaryPrimaryGroupId(primary_group_ids),
     analytics_tag_ids: draft.analytics_tag_ids ?? [],
@@ -75,6 +76,7 @@ export function clusterItemToExerciseDraft(
     tool_name: item.tool_name ?? null,
     target_shape_id: item.target_shape_id,
     track_analytics: Boolean(item.track_analytics),
+    track_intensity: Boolean(item.track_intensity),
     primary_group_ids,
     primary_group_id: primaryPrimaryGroupId(primary_group_ids),
     analytics_tag_ids: item.analytics_tag_ids ?? [],
@@ -248,6 +250,7 @@ function normalizeContent(raw: unknown): ClusterContent {
       target_shape_id:
         typeof r.target_shape_id === 'string' ? r.target_shape_id : '',
       track_analytics: Boolean(r.track_analytics),
+      track_intensity: Boolean(r.track_intensity),
       primary_group_ids,
       primary_group_id: primaryPrimaryGroupId(primary_group_ids),
       analytics_tag_ids: Array.isArray(r.analytics_tag_ids)
@@ -578,6 +581,7 @@ export async function saveClusterTemplate(
       const primary_group_ids = item.track_analytics
         ? coercePrimaryGroupIds(item)
         : [];
+      const track_intensity = Boolean(item.track_intensity);
       return {
         ...item,
         kind: 'exercise' as const,
@@ -585,6 +589,7 @@ export async function saveClusterTemplate(
         tool_ids,
         tool_id: primaryToolId(tool_ids),
         notes: item.notes?.trim() || null,
+        track_intensity,
         primary_group_ids,
         primary_group_id: primaryPrimaryGroupId(primary_group_ids),
         analytics_tag_ids: item.track_analytics
@@ -597,7 +602,10 @@ export async function saveClusterTemplate(
         targets: sanitizeTargetsForShape(
           item.target_shape_id,
           buildTargets(1, item.targets),
-        ),
+        ).map((t) => ({
+          ...t,
+          intensity: track_intensity ? t.intensity ?? null : null,
+        })),
       };
     }),
     overrides: overrides.map((o) => ({

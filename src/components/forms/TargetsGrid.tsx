@@ -11,6 +11,14 @@ import {
   DISTANCE_UNIT_CODES,
   LOAD_UNIT_CODES,
 } from '../../constants/lockedAtoms';
+import {
+  DEFAULT_SET_TYPE,
+  INTENSITY_UI_OPTIONS,
+  SET_TYPE_OPTIONS,
+  intensityToUiValue,
+  normalizeIntensityForStorage,
+  type SetType,
+} from '../../constants/setTypes';
 import { fieldsForTargetShape } from '../../constants/targetShapeFields';
 import type {
   DistanceUnitCode,
@@ -44,6 +52,8 @@ type Props = {
   targetShapeId: string;
   targets: ExerciseTarget[];
   trackAnalytics: boolean;
+  /** When true, show set-row Intensity column */
+  trackIntensity?: boolean;
   /** Resolved exercise title shown as the add destination. */
   referenceTitle: string;
   /**
@@ -89,6 +99,7 @@ export function TargetsGrid({
   targetShapeId,
   targets,
   trackAnalytics,
+  trackIntensity = false,
   referenceTitle,
   onChangeTargets,
   lockedSingle = false,
@@ -185,6 +196,10 @@ export function TargetsGrid({
         target: {
           ...emptyTarget(1),
           track_analytics: last?.target.track_analytics ?? null,
+          set_type: last?.target.set_type ?? DEFAULT_SET_TYPE,
+          intensity: trackIntensity
+            ? (last?.target.intensity ?? null)
+            : null,
         },
       },
     ]);
@@ -199,6 +214,10 @@ export function TargetsGrid({
           target: {
             ...emptyTarget(1),
             track_analytics: groups[0]?.target.track_analytics ?? null,
+            set_type: groups[0]?.target.set_type ?? DEFAULT_SET_TYPE,
+            intensity: trackIntensity
+              ? (groups[0]?.target.intensity ?? null)
+              : null,
           },
         },
       ]);
@@ -239,6 +258,14 @@ export function TargetsGrid({
             <View style={[styles.colLoad, styles.headCell]}>
               <Text style={styles.th}>Load</Text>
             </View>
+            <View style={[styles.colSetType, styles.headCell]}>
+              <Text style={styles.th}>Type</Text>
+            </View>
+            {trackIntensity ? (
+              <View style={[styles.colIntensity, styles.headCell]}>
+                <Text style={styles.th}>Intensity</Text>
+              </View>
+            ) : null}
             {trackAnalytics ? (
               <View style={[styles.colAnalytics, styles.headCell]}>
                 <Text style={styles.th}>Analytics</Text>
@@ -266,6 +293,8 @@ export function TargetsGrid({
                 <View style={styles.colDist} />
               ) : null}
               <View style={styles.colLoad} />
+              <View style={styles.colSetType} />
+              {trackIntensity ? <View style={styles.colIntensity} /> : null}
               {trackAnalytics ? <View style={styles.colAnalytics} /> : null}
               {!lockedSingle ? <View style={styles.colRemove} /> : null}
             </View>
@@ -407,6 +436,44 @@ export function TargetsGrid({
                     accessibilityLabel="Load unit"
                   />
                 </View>
+
+                <View style={styles.colSetType}>
+                  <FormSelect
+                    compact
+                    options={SET_TYPE_OPTIONS}
+                    value={target.set_type ?? DEFAULT_SET_TYPE}
+                    onChange={(id) =>
+                      patchGroup(groupIndex, {
+                        set_type: id as SetType,
+                      })
+                    }
+                    accessibilityLabel={`Set type for row ${groupIndex + 1}`}
+                  />
+                </View>
+
+                {trackIntensity ? (
+                  <View style={styles.colIntensity}>
+                    <FormSelect
+                      compact
+                      options={INTENSITY_UI_OPTIONS.map((o) => ({
+                        id: o.id,
+                        label: o.label,
+                      }))}
+                      value={String(intensityToUiValue(target.intensity))}
+                      onChange={(id) => {
+                        const hit = INTENSITY_UI_OPTIONS.find(
+                          (o) => o.id === id,
+                        );
+                        patchGroup(groupIndex, {
+                          intensity: normalizeIntensityForStorage(
+                            hit?.value ?? null,
+                          ),
+                        });
+                      }}
+                      accessibilityLabel={`Intensity for row ${groupIndex + 1}`}
+                    />
+                  </View>
+                ) : null}
 
                 {trackAnalytics ? (
                   <View style={styles.colAnalytics}>
@@ -605,6 +672,18 @@ const styles = StyleSheet.create({
     flexBasis: 0,
     paddingHorizontal: 4,
     alignItems: 'center',
+  },
+  colSetType: {
+    width: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  colIntensity: {
+    width: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
   },
   colAnalytics: {
     width: 72,

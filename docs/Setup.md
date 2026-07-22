@@ -50,6 +50,18 @@ After greenfield `004`, **No Tool** and the Session / Block / Sequence system-nu
 
 Schema notes (category, log variation links, `set_type` / `intensity`, `track_intensity`): [`Database_Outline.md`](./Database_Outline.md) Current Status.
 
+### Greenfield apply checklist (fresh Supabase only)
+
+Do **not** run this over a project that already has `sql/deprecated/001`–`019`.
+
+1. New Supabase project → enable email/password Auth
+2. SQL Editor → run `sql/greenfield/001` … `007` **in order** (one file per query)
+3. Confirm sentinels: No Tool + Session / Block / Sequence null labels exist
+4. Point `.env.local` at the new project URL + anon key; restart Metro
+5. Smoke: create account → create PG **with category** → save exercise with Intensity on + set type → log a complete session → reopen log (variations / intensity round-trip) → Insights shows volume
+6. Optional: call `ensure_default_muscle_groups()` / `ensure_default_template_labels()` if lists look empty (also auto-called from Account taxonomy)
+7. Chat 6 later: seed PG / variation / tool content into the ensure stubs
+
 **Auth vs profile:** credentials in `auth.users`; profile `username` in `public.users` where `id = auth.uid()`.
 
 ## 4. Run the app
@@ -70,7 +82,8 @@ Scan the QR code in Expo Go.
 6. **Library** → Templates → Exercises / Sequences / Blocks / Sessions → reopen (review mode) and unlock to edit
 7. **Library** → Logs → reopen a saved log → edit / delete
 8. **Account** → Taxonomy → add a tool
-9. **Home** → quick actions navigate; **Insights** shows the placeholder
+9. **Home** → quick actions navigate; **Insights** shows volume / balance for complete logs (needs greenfield schema)
+10. **Account** → Taxonomy → Primary groups → create with **category**; edit category on existing rows
 
 ## Troubleshooting
 

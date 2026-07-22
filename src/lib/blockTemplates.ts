@@ -167,6 +167,7 @@ export function normalizeExerciseItem(raw: unknown): BlockExerciseItem {
       ? r.target_shape_id
       : base.target_shape_id;
   const track_analytics = Boolean(r.track_analytics);
+  const track_intensity = Boolean(r.track_intensity);
   const tool_ids = coerceToolIds({
     tool_ids: Array.isArray(r.tool_ids) ? (r.tool_ids as string[]) : undefined,
     tool_id: typeof r.tool_id === 'string' ? r.tool_id : undefined,
@@ -188,6 +189,7 @@ export function normalizeExerciseItem(raw: unknown): BlockExerciseItem {
       typeof r.tool_name === 'string' ? r.tool_name : base.tool_name ?? null,
     target_shape_id,
     track_analytics,
+    track_intensity,
     primary_group_ids,
     primary_group_id: primaryPrimaryGroupId(primary_group_ids),
     analytics_tag_ids: Array.isArray(r.analytics_tag_ids)
@@ -314,6 +316,7 @@ export function prepareBlockItemForSave(item: BlockItem): BlockItem {
     const primary_group_ids = item.track_analytics
       ? coercePrimaryGroupIds(item)
       : [];
+    const track_intensity = Boolean(item.track_intensity);
     return {
       ...item,
       kind: 'exercise',
@@ -321,6 +324,7 @@ export function prepareBlockItemForSave(item: BlockItem): BlockItem {
       tool_ids,
       tool_id: primaryToolId(tool_ids),
       notes: item.notes?.trim() || null,
+      track_intensity,
       primary_group_ids,
       primary_group_id: primaryPrimaryGroupId(primary_group_ids),
       analytics_tag_ids: item.track_analytics
@@ -329,7 +333,12 @@ export function prepareBlockItemForSave(item: BlockItem): BlockItem {
       muscle_group_ids: item.track_analytics
         ? normalizeMuscleGroupIds(item.muscle_group_ids)
         : [],
-      targets: sanitizeTargetsForShape(item.target_shape_id, item.targets),
+      targets: sanitizeTargetsForShape(item.target_shape_id, item.targets).map(
+        (t) => ({
+          ...t,
+          intensity: track_intensity ? t.intensity ?? null : null,
+        }),
+      ),
     };
   }
   return {
@@ -344,15 +353,23 @@ export function prepareBlockItemForSave(item: BlockItem): BlockItem {
       const primary_group_ids = ex.track_analytics
         ? coercePrimaryGroupIds(ex)
         : [];
+      const track_intensity = Boolean(ex.track_intensity);
       return {
         ...ex,
         tool_ids,
         tool_id: primaryToolId(tool_ids),
+        track_intensity,
         primary_group_ids,
         primary_group_id: primaryPrimaryGroupId(primary_group_ids),
         muscle_group_ids: ex.track_analytics
           ? normalizeMuscleGroupIds(ex.muscle_group_ids)
           : [],
+        targets: sanitizeTargetsForShape(ex.target_shape_id, ex.targets).map(
+          (t) => ({
+            ...t,
+            intensity: track_intensity ? t.intensity ?? null : null,
+          }),
+        ),
       };
     }),
   };

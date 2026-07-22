@@ -6,6 +6,7 @@ import type {
   ExerciseTemplateWithTags,
 } from '../types/exerciseTemplate';
 import { TARGET_SHAPE_IDS } from '../constants/lockedAtoms';
+import { DEFAULT_SET_TYPE } from '../constants/setTypes';
 import { fieldsForTargetShape } from '../constants/targetShapeFields';
 import { NO_TOOL_ID } from '../constants/sentinelIds';
 
@@ -20,6 +21,8 @@ export function emptyTarget(set: number): ExerciseTarget {
     load_value: null,
     load_unit: 'BW',
     track_analytics: null,
+    set_type: DEFAULT_SET_TYPE,
+    intensity: null,
   };
 }
 
@@ -66,6 +69,8 @@ export function sanitizeTargetsForShape(
   return targets.map((t) => {
     const next = emptyTarget(t.set);
     next.track_analytics = t.track_analytics;
+    next.set_type = t.set_type ?? DEFAULT_SET_TYPE;
+    next.intensity = t.intensity ?? null;
     if (fields.has('reps')) next.reps = t.reps;
     if (fields.has('is_per_side')) next.is_per_side = t.is_per_side;
     if (fields.has('time_duration')) {
@@ -184,6 +189,7 @@ export function defaultExerciseDraft(): ExerciseTemplateInput {
     tool_ids: [NO_TOOL_ID],
     target_shape_id: TARGET_SHAPE_IDS.reps,
     track_analytics: false,
+    track_intensity: false,
     primary_group_ids: [],
     primary_group_id: null,
     analytics_tag_ids: [],
@@ -405,6 +411,7 @@ export async function getExerciseTemplate(
     data: {
       ...template,
       tool_id: primaryToolId(tool_ids),
+      track_intensity: Boolean(template.track_intensity),
       default_target_shape: Array.isArray(template.default_target_shape)
         ? template.default_target_shape
         : [],
@@ -482,11 +489,15 @@ export async function saveExerciseTemplate(
     tool_id: primaryToolId(tool_ids),
     target_shape_id: draft.target_shape_id,
     track_analytics: draft.track_analytics,
+    track_intensity: Boolean(draft.track_intensity),
     primary_group_id,
     default_target_shape: sanitizeTargetsForShape(
       draft.target_shape_id,
       draft.default_target_shape,
-    ),
+    ).map((t) => ({
+      ...t,
+      intensity: draft.track_intensity ? t.intensity ?? null : null,
+    })),
     track_duration: draft.track_duration,
     duration: draft.track_duration ? draft.duration : null,
     notes: draft.notes?.trim() || null,

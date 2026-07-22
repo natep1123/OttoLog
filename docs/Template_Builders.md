@@ -254,8 +254,10 @@ Header controls, left to right: Tools, Shape.
   Distance, Time & Reps, Distance). Changing shape migrates existing target rows
   into the new shape's fields.
 
-The targets grid below shows the columns for the current shape. When Track
-analytics is on, each group also carries an include-in-rollups flag.
+The targets grid below shows the columns for the current shape. Every set row
+has a **Type** (Warmup / Working / …, default Working). When Track intensity is
+on, each group also shows an Intensity picker (0 = clear/`NULL`; 0.5–10). When
+Track analytics is on, each group also carries an include-in-rollups flag.
 
 Analytics is opt-in in the More panel. When on, it reveals required Primary
 analytics group(s) (multi searchable create-combobox; typically one), optional
@@ -264,7 +266,8 @@ Variation pickers soft-filter by the selected primary group(s)’ **suggested
 variations** when any are configured (empty suggestions = full A→Z; otherwise
 Suggested + Show all). Complexes with multiple PGs show a warning that volume
 accrues to each chart and must not be summed into one grand total. When off,
-primary groups, muscles, and variations clear.
+primary groups, muscles, and variations clear. **Intensity** is a separate More
+toggle (`track_intensity`) that gates the set-row Intensity column.
 How to choose values: `docs/Analytics_Labeling.md`.
 
 ### Exercise as a sequence subitem
@@ -365,7 +368,8 @@ propagate to templates that already copied it.
 
 ## Not built yet
 
-- Insights / analytics surfaces over relational log tables.
+- Insights MVP over relational log tables (`InsightsScreen` + `src/lib/insights.ts`).
+- e1RM / ACWR / richer charts (deferred).
 - Optional Postgres `fn_denest_session_log` / `fn_renest_session_log` wrappers
   (app denest/renest already ships).
 - Dropping legacy `cluster_templates.cluster_type` after full label cutover.

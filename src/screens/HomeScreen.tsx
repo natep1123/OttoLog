@@ -20,7 +20,7 @@ import { SessionBuilderScreen } from './create/SessionBuilderScreen';
 import { SessionLogBuilderScreen } from './create/SessionLogBuilderScreen';
 import { LogFromTemplateScreen } from './create/LogFromTemplateScreen';
 import { HomeDashboardScreen } from './home/HomeDashboardScreen';
-import { InsightsComingSoonScreen } from './insights/InsightsComingSoonScreen';
+import { InsightsScreen } from './insights/InsightsScreen';
 import { LibraryHubScreen } from './library/LibraryHubScreen';
 import { LibraryTemplatesHubScreen } from './library/LibraryTemplatesHubScreen';
 import { LibraryScreen } from './library/LibraryScreen';
@@ -506,7 +506,7 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
     activeTab === 'account' && accountStack.screen === 'hub';
 
   const renderInsights = () => (
-    <InsightsComingSoonScreen onBrandPress={goHomeBrand} />
+    <InsightsScreen onBrandPress={goHomeBrand} />
   );
 
   return (

@@ -43,6 +43,8 @@ export type ClusterExerciseItem = {
   tool_name?: string | null;
   target_shape_id: string;
   track_analytics: boolean;
+  /** Opt-in set-row intensity (greenfield); mirrors exercise templates */
+  track_intensity?: boolean;
   /** Ordered primary group ids; prefer this over primary_group_id when present */
   primary_group_ids?: string[];
   /** Primary (= first) group — kept for SQL CHECK / compatibility */

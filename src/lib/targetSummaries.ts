@@ -40,13 +40,17 @@ function analyticsKey(value: boolean | null | undefined): string {
   return 'null';
 }
 
-/** Equality key for compression. Ignores `set`; respects analytics flag. */
+/** Equality key for compression. Ignores `set`; respects analytics / set_type / intensity. */
 export function targetKey(
   target: ExerciseTarget,
   targetShapeId: string,
 ): string {
   const fields = new Set(fieldsForTargetShape(targetShapeId));
-  const parts: string[] = [`a:${analyticsKey(target.track_analytics)}`];
+  const parts: string[] = [
+    `a:${analyticsKey(target.track_analytics)}`,
+    `st:${target.set_type ?? 'Working'}`,
+    `i:${target.intensity ?? '∅'}`,
+  ];
 
   if (fields.has('reps')) parts.push(`r:${target.reps ?? '∅'}`);
   if (fields.has('is_per_side')) {

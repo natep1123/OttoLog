@@ -3,6 +3,8 @@
  * Official FK: target_shape_id (not comp_category_id).
  */
 
+import type { SetType } from '../constants/setTypes';
+
 export type DistanceUnitCode = 'mi' | 'km' | 'm';
 export type LoadUnitCode = 'lbs' | 'kg' | 'BW';
 
@@ -16,6 +18,13 @@ export type ExerciseTarget = {
   load_value: number | null;
   load_unit: LoadUnitCode;
   track_analytics: boolean | null;
+  /** Greenfield log_sets.set_type; default Working */
+  set_type?: SetType;
+  /**
+   * Greenfield log_sets.intensity. UI 0 = unset; persist NULL (never 0).
+   * Half-steps 0.5–10 when set.
+   */
+  intensity?: number | null;
 };
 
 export type ExerciseTemplateRow = {
@@ -27,6 +36,8 @@ export type ExerciseTemplateRow = {
   tool_id: string;
   target_shape_id: string;
   track_analytics: boolean;
+  /** Opt-in set-row intensity column (greenfield) */
+  track_intensity: boolean;
   primary_group_id: string | null;
   default_target_shape: ExerciseTarget[];
   track_duration: boolean;
@@ -50,6 +61,8 @@ export type ExerciseTemplateInput = {
   tool_name?: string | null;
   target_shape_id: string;
   track_analytics: boolean;
+  /** More-menu Intensity toggle — gates set-row intensity inputs */
+  track_intensity: boolean;
   /**
    * Ordered primary group ids when tracking. Empty when tracking off.
    * `primary_group_id` on save is derived as primary_group_ids[0] (or null).
