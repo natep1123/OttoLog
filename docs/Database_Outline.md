@@ -535,12 +535,14 @@ Do not create the full graph in one migration. Ship in dependency order:
 
 ## Insights query contract
 
-**Product direction (canonical):** [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md)
+**Product board:** [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md)
 — Insights hub: **Dashboard** (fast unsaved PG facets) + **Query builder** (nested
-savable/lockable — in progress). Madlib: FOR subject → SHOW facets → WHERE
-nest/identity → IN window. `InsightQuery` in `src/lib/insights.ts` powers the
-**Dashboard** today (Phases 2–3a). Persistence (`saved_insights`) is Query builder
-work — **ask before migrating**.
+savable/lockable). **Query builder nest contract:** [`Insights_Query_Builder.md`](./Insights_Query_Builder.md)
+(Query → Section → Breakdown → Subject → Measure). `InsightQuery` + `loadInsightQuery`
+in `src/lib/insights.ts` power the **Dashboard** (Phases 2–3a); `loadQueryFacts` +
+`querybuilder/engine.ts` compute the QB **client-side** over the same
+`v_log_set_facts` (no new fact columns). Persistence (`saved_queries`) is the QB
+save slice — **ask before migrating** (no `008` until then).
 
 ### Query definition (app, Dashboard — Phases 2–3a)
 
@@ -580,7 +582,7 @@ identity. Category on a PG is **balance metadata**, not a home-screen peer to PG
   set; `ol_hms_to_seconds` / `ol_distance_to_meters` give canonical numeric time
   (seconds) and distance (**meters**; UI presents mi/km by preference).
 
-**Deferred:** query-definition persistence (`saved_insights`), trends, derived
+**Deferred:** query-definition persistence (`saved_queries`), trends, derived
 facets (tonnage/e1RM as advanced), PG-groups multi-axis, Postgres denest RPCs,
 rename `analytics_tags`. Category-partition vs credit-each on balance saved views
 remains an open product question.

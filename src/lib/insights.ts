@@ -72,7 +72,7 @@ export type InsightQueryResult = {
   panels: PgPanelResult[];
 };
 
-type Fact = {
+export type Fact = {
   sessionLogId: string;
   sessionCategoryId: string;
   blockLabelId: string | null;
@@ -98,7 +98,7 @@ const FACET_LABELS: Record<InsightFacetId, string> = {
   sets: 'Sets',
 };
 
-function daysAgoKey(days: number): string {
+export function daysAgoKey(days: number): string {
   const d = new Date(`${todayDateKey()}T12:00:00`);
   d.setDate(d.getDate() - days);
   const y = d.getFullYear();
@@ -254,7 +254,7 @@ function passesPgIdentity(
   return true;
 }
 
-function majorityUnit(units: string[]): string | undefined {
+export function majorityUnit(units: string[]): string | undefined {
   if (units.length === 0) return undefined;
   const counts = new Map<string, number>();
   for (const u of units) {
@@ -371,6 +371,25 @@ type FactRow = {
   tool_ids: string[] | null;
 };
 
+/** Map a raw fact row → `Fact` (shared by the Dashboard + Query builder reads). */
+function mapFactRow(row: FactRow): Fact {
+  return {
+    sessionLogId: row.session_log_id,
+    sessionCategoryId: row.session_category_id,
+    blockLabelId: row.block_label_id,
+    sequenceLabelId: row.sequence_label_id,
+    primaryGroupIds: asStringArray(row.primary_group_ids),
+    tagIds: asStringArray(row.variation_ids),
+    toolIds: asStringArray(row.tool_ids),
+    setType: normalizeSetType(row.set_type),
+    effectiveReps: asNumber(row.effective_reps),
+    timeSeconds: asNumber(row.time_seconds),
+    distanceMeters: asNumber(row.distance_meters),
+    loadValue: asNumber(row.load_value),
+    loadUnit: asNullableString(row.load_unit),
+  };
+}
+
 /**
  * Run a draft Insight query. Returns null panels when no PGs selected
  * (caller should show empty state without calling, but safe if called).
@@ -466,21 +485,7 @@ export async function loadInsightQuery(
   const facts: Fact[] = [];
   for (const row of (factData ?? []) as unknown as FactRow[]) {
     if (row.track_analytics === false) continue;
-    facts.push({
-      sessionLogId: row.session_log_id,
-      sessionCategoryId: row.session_category_id,
-      blockLabelId: row.block_label_id,
-      sequenceLabelId: row.sequence_label_id,
-      primaryGroupIds: asStringArray(row.primary_group_ids),
-      tagIds: asStringArray(row.variation_ids),
-      toolIds: asStringArray(row.tool_ids),
-      setType: normalizeSetType(row.set_type),
-      effectiveReps: asNumber(row.effective_reps),
-      timeSeconds: asNumber(row.time_seconds),
-      distanceMeters: asNumber(row.distance_meters),
-      loadValue: asNumber(row.load_value),
-      loadUnit: asNullableString(row.load_unit),
-    });
+    facts.push(mapFactRow(row));
   }
 
   const scoped = facts.filter((f) => passesScope(f, query, setTypes));
@@ -518,6 +523,167 @@ export async function loadInsightQuery(
     error: null,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Query builder fact read (v2) — same source/scope engine as the Dashboard, but
+// returns the raw scoped facts (all PGs) so the nested builder can group and
+// aggregate client-side per Subject/Measure. No new fact columns. See
+// `docs/Insights_Query_Builder.md` §5.
+// ---------------------------------------------------------------------------
+
+export type QueryWindow = { fromDate: string; toDate: string };
+
+export type QueryFactScope = {
+  sessionCategoryIds: string[];
+  blockLabelIds: string[];
+  sequenceLabelIds: string[];
+};
+
+export type QuerySetPolicy = {
+  setTypes: SetType[];
+  includeWarmups: boolean;
+};
+
+export type QueryFactsResult = {
+  /** Scoped facts across all PGs (Subjects filter to their own PG + identity). */
+  facts: Fact[];
+  sessionCount: number;
+  sessionsPerWeek: number;
+};
+
+/** Effective set-type allow-list for a query builder set policy. */
+export function effectiveSetTypesFor(policy: QuerySetPolicy): SetType[] {
+  const base =
+    policy.setTypes.length > 0 ? [...policy.setTypes] : (['Working'] as SetType[]);
+  if (!policy.includeWarmups) return base;
+  if (base.includes('Warmup')) return base;
+  return [...base, 'Warmup'];
+}
+
+/** Scope predicate for query builder facts (nest labels + set type). */
+function passesQueryScope(
+  fact: Fact,
+  scope: QueryFactScope,
+  setTypes: SetType[],
+): boolean {
+  if (
+    scope.sessionCategoryIds.length > 0 &&
+    !scope.sessionCategoryIds.includes(fact.sessionCategoryId)
+  ) {
+    return false;
+  }
+  if (scope.blockLabelIds.length > 0) {
+    if (!fact.blockLabelId || !scope.blockLabelIds.includes(fact.blockLabelId)) {
+      return false;
+    }
+  }
+  if (scope.sequenceLabelIds.length > 0) {
+    if (
+      !fact.sequenceLabelId ||
+      !scope.sequenceLabelIds.includes(fact.sequenceLabelId)
+    ) {
+      return false;
+    }
+  }
+  if (setTypes.length > 0 && !setTypes.includes(fact.setType)) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Load scoped facts for a Query builder run. Reuses the Dashboard's session
+ * window + `v_log_set_facts` read + track_analytics + credit-each rules; applies
+ * the Section scope + set policy. Returns raw facts for client-side aggregation.
+ */
+export async function loadQueryFacts(
+  window: QueryWindow,
+  scope: QueryFactScope,
+  setPolicy: QuerySetPolicy,
+): Promise<{ data: QueryFactsResult | null; error: string | null }> {
+  let sessionQuery = supabase
+    .from('session_logs')
+    .select('id, category_id, session_date')
+    .eq('status', 'complete')
+    .gte('session_date', window.fromDate)
+    .lte('session_date', window.toDate)
+    .order('session_date', { ascending: false });
+
+  if (scope.sessionCategoryIds.length > 0) {
+    sessionQuery = sessionQuery.in('category_id', scope.sessionCategoryIds);
+  }
+
+  const { data: sessions, error: sessionError } = await sessionQuery;
+  if (sessionError) return { data: null, error: sessionError.message };
+
+  const sessionRows = (sessions ?? []) as {
+    id: string;
+    category_id: string;
+    session_date: string;
+  }[];
+
+  const sessionsPerWeek =
+    Math.round(
+      (sessionRows.length / weeksInWindow(window.fromDate, window.toDate)) * 10,
+    ) / 10;
+
+  if (sessionRows.length === 0) {
+    return {
+      data: { facts: [], sessionCount: 0, sessionsPerWeek: 0 },
+      error: null,
+    };
+  }
+
+  const sessionIds = sessionRows.map((s) => s.id);
+  const setTypes = effectiveSetTypesFor(setPolicy);
+
+  const { data: factData, error: factError } = await supabase
+    .from('v_log_set_facts')
+    .select(
+      [
+        'set_id',
+        'session_log_id',
+        'session_date',
+        'session_status',
+        'session_category_id',
+        'block_label_id',
+        'sequence_label_id',
+        'track_analytics',
+        'set_type',
+        'effective_reps',
+        'time_seconds',
+        'distance_meters',
+        'load_value',
+        'load_unit',
+        'primary_group_ids',
+        'variation_ids',
+        'tool_ids',
+      ].join(', '),
+    )
+    .in('session_log_id', sessionIds)
+    .eq('session_status', 'complete');
+
+  if (factError) return { data: null, error: factError.message };
+
+  const scoped: Fact[] = [];
+  for (const row of (factData ?? []) as unknown as FactRow[]) {
+    if (row.track_analytics === false) continue;
+    const fact = mapFactRow(row);
+    if (passesQueryScope(fact, scope, setTypes)) scoped.push(fact);
+  }
+
+  return {
+    data: {
+      facts: scoped,
+      sessionCount: sessionRows.length,
+      sessionsPerWeek,
+    },
+    error: null,
+  };
+}
+
+/** Per-PG identity gate re-exported for the client-side query engine. */
+export { passesPgIdentity };
 
 // Re-export for screens that build the set-type filter options.
 export { SET_TYPES };

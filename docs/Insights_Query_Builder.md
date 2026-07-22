@@ -1,408 +1,377 @@
-# Insights Query Builder — nesting design
+# Insights Query Builder — nesting design (v2)
 
-> **Status:** Design contract — **§8 decisions signed off (Jul 22).** Cleared for
-> **slice 1** (builder shell, no persistence). Still no app / SQL work from this doc
-> alone; slice 4 `saved_insights` migration needs a fresh ask. Nate owns the go and
-> the commit gate.
+> **Status:** Design contract — **layer model v2 signed off (Jul 22).** This
+> **replaces** the v1 flat-subject model (flat Subject cards + one optional Group).
+> v1 is dead: it read as "Dashboard in builder skin" because the old §8 mandated
+> flat subjects and argued *against* the 4-level tree. We are overturning that.
+>
+> **New direction:** the Query builder mirrors the **log / template builders** —
+> same nest depth, same chrome, same collapse / lock → grammar / preview /
+> save-reopen DNA — with a real **SQL meaning at every layer, hidden** behind
+> friendly nodes. **Slice 1 (nest skeleton, no persistence) shipped**
+> (ephemeral). No `saved_queries` migration from this doc alone —
+> ask at the save slice. Nate owns the go and the commit gate.
 >
 > **Read alongside:** [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md)
 > (product direction: hub = Dashboard + Query builder), [`Template_Builders.md`](./Template_Builders.md)
-> (the builder chrome to learn from), [`Database_Outline.md`](./Database_Outline.md)
-> (fact grain + Insights query contract), [`Styling.md`](./Styling.md) (form chrome),
-> and [`Status.md`](./Status.md) (Next #1).
+> (the builder chrome this now clones), [`Database_Outline.md`](./Database_Outline.md)
+> (fact grain), [`Styling.md`](./Styling.md) (form chrome + the new cool query
+> palette), and [`Status.md`](./Status.md) (Next #1).
 >
-> **Ground truth today:** `src/lib/insights.ts` (`InsightQuery`, `loadInsightQuery`,
-> `v_log_set_facts` read + facet aggregation), `src/screens/insights/InsightsDashboardScreen.tsx`
-> (per-PG scope cards — the *feel*, not the target IA),
-> `src/screens/insights/InsightsQueryBuilderScreen.tsx` (placeholder), builder chrome
-> under `src/components/forms/` (`NestedLayer`, `CoordRow`, `LockController`,
-> `ExpansionController`, `LockedOutline`, `LockedPreviewModal`, `Disclosure`,
-> `MorePanel`, `SearchableSelect`).
+> **Ground truth today:** `src/lib/insights.ts` — `loadInsightQuery` +
+> `v_log_set_facts` (Dashboard read) **and** `loadQueryFacts` (raw scoped facts for
+> the QB); `src/screens/insights/InsightsDashboardScreen.tsx` (the *fast unsaved*
+> look — **not** the Query builder target IA); `src/screens/insights/InsightsQueryBuilderScreen.tsx`
+> (**slice 1 nest skeleton — shipped, ephemeral**); `src/components/querybuilder/`
+> — the live `Qb*` nest chrome (`QbLayer`, `QbCoordRow`, `QbAddChildButton`,
+> `Qb{Query,Section,Breakdown,Subject}Card`, `QbMeasureRow`), `types.ts` draft
+> model, `engine.ts` client-side aggregate; `tokens.ts` `queryLayer` + `measureChip`
+> (cool palette). Forked from builder chrome under `src/components/forms/`
+> (`NestedLayer`, `CoordRow`, `LockController`, `ExpansionController`, `LockedOutline`,
+> `LockedPreviewModal`, `Disclosure`, `MorePanel`, `SearchableSelect`) — the DNA
+> slices 2+ still draw on for lock / preview / save.
 
 ---
 
 ## 1. Status / non-goals
 
-**In scope (this doc):** how the Query builder nests — what layers exist, what
-collapses, what locks to grammar, what is per-subject vs query-global, and where
-it reuses vs departs from the template/log builders.
+**In scope (this doc):** how the Query builder nests — the layers, what each one
+*means in SQL* (hidden), what collapses, what locks to grammar, what is scoped
+where, and how it forks the template/log builder chrome.
 
 **Non-goals / guardrails:**
 
 - **Dashboard is out of scope.** `InsightsDashboardScreen` stays the fast, unsaved
-  PG facet look. Do not redesign it here. The Query builder is the *second* tool in
-  the hub, not a Dashboard rewrite.
-- **No new fact schema.** Reuse `v_log_set_facts` and the existing `insights.ts`
-  aggregation ideas. One `log_sets` row = one fact; nothing about the grain changes.
-- **No `008` group→movement taxonomy.** Soft modifier scoping only (variations /
-  tools as any-of filters, never enforced). This design does not depend on a
-  Group→Movement drill-down.
-- **No `saved_insights` migration yet.** Persistence is a real slice, but the table
-  gets authored only after Nate approves the shape. Ask before migrating.
+  PG facet look. The Query builder is the *second* tool in the hub — a full nested
+  builder, not a Dashboard variant. **Do not borrow the Dashboard readout layout.**
+- **No new fact schema.** Reuse `v_log_set_facts` and the `insights.ts`
+  aggregation. One `log_sets` row = one fact. Grouping + aggregate ops are computed
+  **client-side** over the existing view for capability-first. **No migration**
+  (no `saved_queries`, no `008`) until Nate asks at the save slice.
 - **No derived facets by default.** Tonnage / e1RM stay advanced, off the critical
   path (same rule as Dashboard).
-- Coach-plain voice in any copy sketch below. Grammar strings are illustrative;
-  exact chip syntax tracks the builder override-notation overhaul.
+- Coach-plain voice. SQL is *taught by structure*, never shown by default; a
+  "Show as SQL" reveal is a later optional stretch (§7), not v1.
 
 ---
 
-## 2. The core departure — Insights nests differently than a workout
+## 2. Core principle — a query IS a nest (hide the SQL)
 
-The template/log builders nest **Session → Block → Sequence → Exercise → Sets**
-because that is the *authoring shape of a workout*. It is a structural tree: a set
-belongs to exactly one exercise, in exactly one sequence/block, in one session.
+A SELECT statement nests almost 1:1 with the workout builder. That is the unlock:
+we don't back off SQL, we **hide** it. Building a Query feels exactly like building
+a Session; underneath, each layer is a SQL clause.
 
-An Insights ask is **not** a workout. Its spine is the **thing you want to measure**
-(the Primary Group), and the workout structure (session / block / sequence labels)
-is *scope you filter by*, applied sideways — the same PG can be filtered by any
-label at any level at once. So cloning the four-level structural tree would be
-wrong: it would force depth and hierarchy the question doesn't have.
-
-Two structural facts flip between the two products:
-
-| | Template / log builder | Insights Query builder |
+| Workout builder | Query builder | SQL it (secretly) is |
 |---|---|---|
-| Spine | Structural nest (Session→…→Set) | **Subject** (Primary Group) |
-| Nest labels | *Are* the spine (each node owns one) | *Filters* applied across subjects (WHERE) |
-| Authoring direction | Nests **up** (build a tree) | Denests **down** (one subject → many result rows via split) |
-| Leaf | A prescribed set (`3×10 @ BW`) | A **facet selection** (show reps, summarized) |
-| Depth | Fixed 4 levels, always | Shallow (2), with **one optional** semantic group level |
+| **Session** (the day) | **Query** (the report) | `FROM your logs` + date window |
+| **Block** (a section) | **Section** (a result table) | `SELECT … WHERE` scope |
+| **Sequence** (loops rounds) | **Breakdown** (“For each…”) | `GROUP BY` — the loop |
+| **Exercise** (a movement) | **Subject** (a Primary Group) | `WHERE primary_group = …` + identity |
+| **Set** (reps × load) | **Measure** (op × field) | `SELECT MAX(reps)` — one column |
 
-So nesting *is* wanted — collapse, lock-to-grammar, preview, save/reopen all carry
-over — but the **tree shape** does not. The Query builder keeps the builder *DNA*
-and drops the builder *skeleton*.
+Same depth (5 layers). Same chrome (rails, collapse chevron, lock → grammar, meta
+chips, `+ Add …` controls). The depth is **earned** — every layer carries genuine
+SQL meaning, so nothing is ceremony.
+
+**Naming is deliberately disjoint from the workout family** so a query **Section**
+never collides with a workout **Block**, and **Breakdown** never collides with
+**Primary Group** ("Group" is banned for this reason). Code lives in its own
+namespace (`src/components/querybuilder/`, `Qb*`) with **no** legacy aliases like
+`cluster = sequence`.
 
 ---
 
-## 3. Bottom-up layer model (the meat)
-
-Built the way OttoLog was built: start at the atom and climb.
+## 3. Layer model (top-down: Query → Section → Breakdown → Subject → Measure)
 
 ```
-L4  Ask                 name + notes, lock/preview, save/reopen        (top chrome)
-L3  Query-global        window (rolling|pinned) · nest scope · set policy
-L2  Ask body            flat list of Subject cards  (+ optional Group level)
-L1  Subject card        PG + per-subject identity scope + facet set + split
-L0  Facet atom          one measure (reps|time|distance|load|sets) + summary op
+Query        the report      FROM logs · date window · name/notes · lock/preview
+  Section    a result table  WHERE scope (nest labels · set policy)      [exactly ONE in v1]
+    Breakdown  "For each …"   GROUP BY one dimension · wraps subjects     [optional · no nesting]
+      Subject  a Primary Group  WHERE pg = · identity any-of (variations/tools)
+        Measure  op × field     SELECT sum|avg|max|min|count (reps|time|distance|load|sets)
 ```
 
-Read it upward: a **facet** is what one logged set contributes; a **subject** owns
-its facets and identity; the **body** stacks subjects (optionally grouped);
-**query-global** chrome scopes them all; the **ask** wraps it with save/lock.
+Read it as a workout would read: a **Query** is the day, a **Section** is a block
+of it, a **Breakdown** loops like a sequence, a **Subject** is the movement, a
+**Measure** is one set-target. Subjects can sit directly in the Section (ungrouped)
+or inside a Breakdown (grouped) — exactly like exercises sit directly in a block or
+inside a sequence.
 
-### L0 — Facet atom (the leaf; the "set/target" analog)
+### Query (root · = Session)
 
-The smallest unit of an ask is **not** a set you type — it's a **facet**: which
-measure to show for a subject, and how to summarize it.
+The whole report. Opening it feels like opening a Session card.
 
-- **Measures (shape-driven, atomic):** `reps · time · distance · load · sets` —
-  exactly the `InsightFacetId` set already in `insights.ts`. A measure appears only
-  when the subject's exercises *logged* it in-window (NULL discipline), or the
-  target shape says it's expected (empty-state copy, not a fake zero).
-- **Summary op (per facet):** `sum` default; `load` = `avg` (matches Dashboard,
-  `buildPanel`); `sets` = count. `max / min / latest / per-session avg` are later
-  ops, not v1.
-- **Never sum unlike measures.** Reps + time never collapse into one number. This
-  is structural in the UI, not a lint (same rule as Phase 1a).
-- **Counts-as (later):** PG `natural_metric` decides which facet opens *expanded
-  first*, not the only facet. Phase 4 / needs the taxonomy column — off the critical
-  path here.
+- **Holds:** the data source (your complete session logs), the **date window**
+  (rolling preset `last 7 / 28 / this week`, or pinned `from`/`to`), and
+  **name + notes** (via `MorePanel` DNA). One Section beneath it.
+- **SQL:** `FROM training_log WHERE session_date IN window` (+ complete-only).
+- **Collapses to:** name + window + Section summary grammar line.
+- **Locks to:** the paginated grammar outline root (`LockedPreviewModal` family)
+  for screenshot/share.
 
-**Collapses to:** a token inside the subject's grammar line, e.g. `450 reps`,
-`avg 20 lb (12 sets)`. Reuses `formatFacetDisplay` verbatim.
+### Section (= Block) — **exactly one in v1**
 
-**Locks to:** the same token — a facet has no "editable when unlocked" body of its
-own beyond its toggle + op; it *is* grammar already. This is the cleanest carryover
-from the set row → prescription chip pattern.
+One result **table**. Auto-created inside every new Query; the user does not add or
+remove it in v1. Multi-Section (a mini-report with several tables) is **later**.
 
-**Per-subject vs global:** facets are **per-subject** (Pushups can show reps+time+load;
-Deadhangs only time). There is no global facet bar — that was a Dashboard-era idea
-already retired.
+- **Holds:** the **scope WHERE** for this table — nest labels (session / block /
+  sequence any-of) and **set policy** (set types + Working/warmups). Its children:
+  an ordered list of Subjects and/or Breakdowns.
+- **SQL:** one `SELECT … WHERE <scope> GROUP BY <breakdowns>` statement.
+- **v1 note:** because there is exactly one Section, its scope reads as the
+  query-global WHERE. When multi-Section lands, each table gets its own scope.
+- **Collapses to:** scope grammar + child summary.
+- **Locks to:** the outline header line (window + scope).
 
-### L1 — Subject card (the real nestable unit; the "Exercise card" analog)
+### Breakdown (“For each …” · = Sequence) — optional, **no nesting**
 
-This is where builder DNA lands hardest. A **Subject card** is one Primary Group and
-everything about *how* to read it. It behaves like an `ExerciseEditor` card:
-collapsible, lockable, grammar when closed.
+The looping mechanism. A Breakdown is `GROUP BY`: it wraps 1+ Subjects and fans
+each one out into per-group rows plus a **totals line**. This is the workout
+builder's sequence → rounds → performed-sets denest, made structural.
 
-A subject card holds:
+- **Holds:** one **dimension** to group by, and the Subjects grouped under it.
+- **v1 dimensions:** **`variation` · `tool`** (reuse the existing per-PG data;
+  credit-each safe). `date bucket` (day/week/month) and `nest label` are the first
+  **later** additions (see Open decisions). **PG is never a Breakdown dimension** —
+  Subjects already *are* the PG axis.
+- **Depth cap:** **no Breakdown inside a Breakdown** in v1 — sequences don't nest
+  sequences, so we don't invent deeper nesting than the workout builder. (Multi-key
+  `GROUP BY a, b` is deferred with multi-Section.)
+- **SQL:** `GROUP BY <dimension>` with a rollup/totals row.
+- **Collapses to:** `For each <dimension>` + a member chip row.
+- **Locks to:** grammar; locked+expanded renders the grouped sub-rows + totals as a
+  `LockedOutline`-style block.
 
-1. **Subject = one PG** (the chart noun). One PG per card. Complexes that credit
-   multiple PGs are handled by **credit-each under the hood** (pick the PG you want;
-   never sum PG cards). Multi-PG-in-one-card is *not* a v1 shape — stacked single-PG
-   cards read cleaner and match the fact model.
-2. **Per-subject identity scope (soft):** variations (any-of) and tools (any-of).
-   This is exactly today's `variationIdsByPg` / `toolIdsByPg` — the Dashboard already
-   scopes these per PG. Soft suggestions via `listPrimaryGroupSuggestedTagIds`
-   (`suggestedIds` on `SearchableSelect`). **Never enforced** (no `008`). **Set type /
-   warmups are global-only (L3) in v1 — not a per-subject override.** Intensity / load
-   bands are later, also not v1.
-3. **Facet set (L0 children):** which measures + ops to show for this PG.
-4. **Split by (optional):** expand this one subject into result sub-rows plus a
-   **totals line** — by `variation | tool | load bucket | nest label | date bucket`.
-   This is the "per-exercise breakdown: modifiers / loads / variations, then a
-   totals line" from Status/proposal. It is the Insights analog of a **sequence
-   expanding rounds/overrides into performed sets**: one authored row denests into
-   many result rows. v1 splits = variation + tool (reuse per-PG data); load/date
-   buckets later.
+### Subject (= Exercise) — one Primary Group
 
-**Collapses to:** one grammar line (subject + facet totals), e.g.
-`Pullups · 450 reps · avg 20 lb`. Same idea as an exercise card's prescription
-chips; exact syntax tracks the override-notation overhaul.
+The chart noun. The PG sits in the **name slot** (where the exercise-name typeahead
+lives); identity pickers sit where the exercise's do.
 
-**Locks to:** grammar. Unlocked = full editable body (PG swap, identity pickers,
-facet toggles, split control). Locked = read-only grammar line, and when
-locked+expanded, the split breakdown renders as a `LockedOutline`-style block
-(sub-rows + totals) instead of the editors.
+- **Holds:** **one PG** (never multi-PG-in-one-card — complexes credit-each under
+  the hood), **identity any-of** (variations, tools — soft `suggestedIds`, **never
+  enforced**, no `008`), and its **Measures**.
+- **SQL:** `WHERE primary_group = :pg [AND variation IN … AND tool IN …]`.
+- **Collapses to:** `Pullups · max 24 reps · avg 20 lb` (PG + its measure tokens).
+- **Locks to:** grammar; unlocked = editable body (PG swap, identity pickers, its
+  Measures). Inside a Breakdown, its Measures render per-group sub-rows + totals.
 
-**Per-subject vs global:** identity scope + facets + split are **per-subject**.
-Nest-label scope and window default are **global** (L3) but a subject *may* override
-nest scope locally (deferred — see Open decisions).
+### Measure (leaf · = Set) — operation × field
 
-### L2 — Ask body (flat subject list + one optional group level)
+The smallest unit and the home of **operations**. A Measure is one aggregate
+column: an **op** applied to a **field**.
 
-Default body = a **flat, ordered list of subject cards** (stacked panels, same
-readout as the Dashboard, now in builder chrome). No forced Block/Sequence wrapper.
-Add-control vocabulary is `+ Add Primary Group`, not `+ Add block`.
-
-**The one place real nesting is allowed — an optional `Group` container:**
-
-- A Group wraps 2+ subject cards for a *semantic* reason, not a structural one:
-  **compare** (side-by-side panels) or **balance rollup** (credit-each combined,
-  e.g. Push/Pull/Lower). It carries a rollup mode, a label, and its own collapse/lock.
-- Depth cap: **one** group level. No group-in-group. Nesting earns its keep only
-  when the user asks two subjects to be read together.
-- Ungrouped subjects and groups coexist in the same ordered body list.
-
-This is the deliberate departure: nesting exists, but it is **opt-in and semantic**,
-capped at one level, never the 4-deep structural clone.
-
-**Collapses / locks:** a Group behaves like a `NestedLayer` parent — collapse hides
-its subjects to a summary chip row; lock forces its subjects locked (reuse
-`LockController` ancestor-forcing exactly).
-
-### L3 — Query-global chrome (not a nest node)
-
-Everything that scopes the whole ask. This is *chrome*, not a top-of-tree node — it
-does not add depth.
-
-- **Window:** date range with a **mode** in the definition — `rolling` preset
-  (last 7 / 28 / this week) vs `pinned` (`from`/`to`). Reuse `SessionDateControl`.
-  "Pullups last 7 days" stays live; "Pullups week of June 13" stays historic.
-- **Nest scope (WHERE):** session / block / sequence label any-of, global default
-  for all subjects. Reuse `sessionCategoryIds` / `blockLabelIds` / `sequenceLabelIds`
-  and `passesScope` unchanged.
-- **Set policy:** Working-only default + warmups toggle + set-type filter (existing
-  `setTypes` / `includeWarmups` / `effectiveSetTypes`).
-
-Presented as `Disclosure` sections (like the Dashboard's Scope) plus the date row.
-When the ask is locked, this collapses into the **outline header line** (window +
-scope grammar), not a separate node.
-
-### L4 — Ask top (save / reopen / lock / preview)
-
-- **Name + notes:** first-class, via `MorePanel` DNA (name typeahead lane + notes).
-  A Saved Insight is a named query template, same family as session logs/templates.
-- **Lock (whole ask):** the ask root locks to a clean, paginated grammar outline for
-  screenshot/share — `LockedPreviewModal` family. Per-subject and per-group locks are
-  the same `LockController` tree beneath it.
-- **Save / list / rename / delete:** `saved_insights` (definition JSON), Library-like
-  picker to reopen. **Reopen → dropdowns OPEN + lock=TRUE clean view**, re-run live
-  (or historic if the window is pinned). Ask before the migration.
+- **Ops (v1):** **`sum · avg · max · min · count`.** `latest` / `count of distinct`
+  are later. No other ops in v1.
+- **Fields (shape-driven, atomic):** `reps · time · distance · load · sets` — the
+  existing `InsightFacetId` set in `insights.ts`. A field appears only when the
+  Subject's exercises *logged* it in-window (NULL discipline — empty-state copy,
+  never a fake zero).
+- **Smart default op** when a Measure is added: `load → avg`; `reps/time/distance →
+  sum`; `sets → count` (matches Dashboard / `buildPanel`). User can change the op.
+- **`count`** is `COUNT(*)` = number of matching sets (field selector moot; show as
+  `count · sets`). `count of distinct sessions` is the *later* count-distinct op.
+- **Never mix units in one Measure** — a Measure is exactly one field, so reps + time
+  can never collapse into one number. This is structural, not a lint.
+- **Your example:** "most reps in one set" = **`max` × `reps`**.
+- **Collapses / locks to:** a value token (`max 24 reps`, `avg 20 lb`). It *is*
+  grammar already — the cleanest carryover from the set-row → prescription-chip.
 
 ---
 
 ## 4. What collapses / locks / scopes — quick matrix
 
-| Layer | Collapses to | Locks to | Editable when unlocked | Per-subject or global |
+| Layer | Collapses to | Locks to | Editable when unlocked | Scope it owns |
 |---|---|---|---|---|
-| L0 Facet | a value token | same token | measure toggle + summary op | **per-subject** |
-| L1 Subject | one grammar line | grammar (+ outline breakdown if expanded) | PG, identity pickers, facets, split | **per-subject** |
-| L2 Group *(opt)* | summary chip row | forces children locked | label, members, rollup mode | groups subjects |
-| L3 Query-global | into outline header line | header grammar | window, nest scope, set policy | **global** |
-| L4 Ask | (root) | full paginated outline | name, notes | ask |
+| **Query** | name + window + section grammar | outline root (paginated) | window, name, notes | date window (global) |
+| **Section** | scope grammar + child summary | outline header line | nest labels, set policy | `WHERE` scope (one table) |
+| **Breakdown** | `For each <dim>` + member chips | grammar (+ grouped sub-rows/totals if expanded) | dimension, members | `GROUP BY` dimension |
+| **Subject** | PG + measure tokens | grammar (+ per-group breakdown if inside one) | PG, identity pickers, measures | `WHERE pg =` + identity |
+| **Measure** | a value token | same token | op + field | the aggregate column |
+
+Lock granularity = **full tree** (Query / Section / Breakdown / Subject / Measure),
+reusing `LockController` ancestor-forcing + unlock-own-locks-children, with a new
+`query` root id. Collapse and lock stay orthogonal axes, same as the workout family.
 
 ---
 
-## 5. Builder DNA reuse map
+## 5. Builder DNA reuse map + definition shape
 
-What to lift from `src/components/forms/`, and how it maps.
+Fork the chrome, don't reinvent it. New code under `src/components/querybuilder/`
+with `Qb*` names; **distinct cool analytics palette** (own 4-step ramp) so a query
+nest never looks like a workout nest.
 
-| Builder chrome | Reuse in Query builder | Notes / departure |
+| Builder chrome (`src/components/forms/`) | Query builder (`src/components/querybuilder/`) | Notes / departure |
 |---|---|---|
-| `NestedLayer` + `CoordRow` | Subject cards and Group cards | Same card shell (rail, collapse chevron, lock toggle, `metaChips`, `trailing`, `label`/`title`). Subject uses a **PG picker** where Exercise uses a name search; Group uses a label. No 4-layer token spine — pick one Insights accent (subject) + a group accent; do **not** import Session/Block/Sequence red/blue/violet, which encode structural roles this product doesn't have. |
-| `LockController` / `useNodeLock` / `LOCK_ROOT` | Whole-ask + per-group + per-subject lock | Ephemeral UI state, ancestor-forcing, unlock-own-locks-children — all carry over unchanged. Add an `insight` root id. |
-| `ExpansionController` + `EditorTools` tray | "Collapse subjects" / "Unlock & Expand All" | Same tray pattern above the form. |
-| `LockedOutline` | Subject split breakdown + group rollup when locked+expanded | New outline builder (`outlineInsightSubject` / `outlineInsightAsk`) emitting facet/split lines instead of set prescriptions. Same thin-left-spine geometry + notes rendering. |
-| `LockedPreviewModal` + `lockedPreviewPages` | Screenshot/share of the locked ask | Same paginated, swipeable modal. The "chef's kiss" contract Nate wants Insights to share. |
-| `Disclosure` | Query-global scope + set policy | Same as Dashboard's Scope disclosure today. |
-| `MorePanel` | Ask name + notes (and per-subject notes later) | Name/Brief + notes lane; keeps the card header clean. |
-| `SearchableSelect` (`suggestedIds`) | PG picker, per-subject variations/tools | Already used on the Dashboard per-PG cards; soft suggestions reused as-is. |
-| `insights.ts` `InsightQuery` + `loadInsightQuery` + `v_log_set_facts` | The read + aggregation engine | Extend the *definition* (below); keep the fact read + `passesScope` / `passesPgIdentity` / `buildPanel` shape. Split-by adds grouping *within* a PG's facts; still credit-each safe. |
+| `NestedLayer` + `CoordRow` | `QbLayer` + reuse `CoordRow` geometry | Same shell (rail, chevron, lock toggle, `metaChips`, `trailing`, title/label). Subject uses a **PG picker** in the name slot; Breakdown uses a **dimension picker** as its label. **New cool 4-token palette** (`queryLayer` in `tokens.ts`) — do **not** reuse the warm Session/Block/Sequence/Exercise rails. |
+| `LockController` / `useNodeLock` / `LOCK_ROOT` | whole-Query + per-layer lock | Ephemeral UI state, ancestor-forcing, unlock-own-locks-children — carry over unchanged. Add a `query` root id. |
+| `ExpansionController` + `EditorTools` tray | “Collapse all” / “Unlock & Expand All” | Same tray above the form. |
+| `LockedOutline` | Breakdown sub-rows + totals; Subject/Measure grammar when locked+expanded | New outline builder (`outlineQuery` / `outlineSection` / `outlineSubject`) emitting measure/breakdown lines instead of set prescriptions. Same thin-left-spine geometry + notes rendering. |
+| `LockedPreviewModal` + `lockedPreviewPages` | screenshot/share of the locked Query | Same paginated, swipeable modal. The share payoff Insights should match. |
+| `Disclosure` | Section scope + set policy | Same as the Dashboard's Scope disclosure today. |
+| `MorePanel` | Query name + notes | Name/Brief lane + notes; keeps the header clean. |
+| `SearchableSelect` (`suggestedIds`) | PG picker, per-Subject variations/tools, Breakdown dimension | Soft suggestions reused as-is. |
+| `insights.ts` `loadInsightQuery` + `v_log_set_facts` | `insights.ts` `loadQueryFacts` + `querybuilder/engine.ts` | **Shipped:** `loadQueryFacts` returns raw scoped facts (reusing `passesScope`-style scope + `passesPgIdentity` + credit-each); `engine.ts` (`applyMeasure`/`evaluateSection`) does client-side `GROUP BY` + the five ops. No new fact columns. |
 
-**Definition shape (superset of `InsightQuery`, for the saved ask):**
+**Definition shape (the saved Query — client-side model, no table yet):**
 
 ```
-SavedInsightDefinition
-  window:   { mode: 'rolling', preset } | { mode: 'pinned', fromDate, toDate }
-  scope:    { sessionCategoryIds, blockLabelIds, sequenceLabelIds }   // global WHERE
-  setPolicy:{ setTypes, includeWarmups }
-  body:     Array< SubjectNode | GroupNode >                          // ordered
-    SubjectNode { pgId, variationIds[], toolIds[], facets:[{ id, op }], splitBy? }
-    GroupNode   { label, rollup:'compare'|'combined', subjects: SubjectNode[] }
-  meta:     { name, notes }
+SavedQueryDefinition
+  window:  { mode:'rolling', preset } | { mode:'pinned', fromDate, toDate }
+  name, notes
+  section: {                                  // exactly ONE in v1 (auto-created)
+    scope:     { sessionCategoryIds, blockLabelIds, sequenceLabelIds }
+    setPolicy: { setTypes, includeWarmups }
+    children:  Array< SubjectNode | BreakdownNode >     // ordered
+  }
+  SubjectNode   { pgId, variationIds[], toolIds[], measures: MeasureNode[] }
+  BreakdownNode { dimension: 'variation' | 'tool', subjects: SubjectNode[] }   // no nested breakdowns
+  MeasureNode   { op: 'sum'|'avg'|'max'|'min'|'count', field: 'reps'|'time'|'distance'|'load'|'sets' }
 ```
 
-`variationIds` / `toolIds` per subject = today's `variationIdsByPg` /
-`toolIdsByPg`, hoisted onto the node so a subject owns its own scope. Nothing here
-requires new fact columns.
+`variationIds` / `toolIds` per Subject = today's `variationIdsByPg` /
+`toolIdsByPg`, hoisted onto the node. Nothing here needs new fact columns. When the
+save slice comes, this JSON becomes the `saved_queries` definition — **ask before
+that migration.**
 
 ---
 
-## 6. Where template nesting maps cleanly vs must differ
+## 6. Defaults — a new Query is never five empty shells
 
-**Maps cleanly (keep):**
+Opening a fresh Query pre-seeds the common path so simple asks are one or two taps:
 
-- Card chrome, collapse/lock as independent axes, ancestor-forced lock, unlock →
-  own-lock children collapsed. (`NestedLayer` + `LockController`.)
-- Lock = **presentation mode** → paginated grammar outline for share.
-  (`LockedOutline` + `LockedPreviewModal`.)
-- Name + notes in a `MorePanel`; save as a named template; reopen live.
-- Soft, suggestion-driven pickers (`SearchableSelect` + `suggestedIds`).
-- "One authored row expands into many performed rows" — the **sequence rounds/
-  overrides → performed sets** idea becomes **subject → split sub-rows → totals**.
+```
+Query  (rolling · last 7 days, unnamed)
+  Section  (no scope — all complete sessions)
+    Subject  (empty PG — pick one)
+      Measure (empty — pick op × field, smart default once field known)
+```
 
-**Must differ (and why):**
-
-- **No fixed 4-level tree.** Depth is 2 (subject → facet) + one optional Group.
-  Insights questions are shallow; forcing Block/Sequence wrappers adds ceremony
-  with no meaning.
-- **Nest labels are filters, not spine.** Session/block/sequence labels are global
-  WHERE (L3), optionally per-subject override — not a node each set belongs to.
-- **Leaf is a selection, not a value.** You pick "show reps (sum)"; you don't type
-  `3×10 @ BW`. Facets read the data; targets prescribe it.
-- **Direction reverses.** Templates nest up (author a tree); asks denest down (a
-  subject fans out into result rows). The visible "nesting" in results is *computed*,
-  not authored.
-- **No structural color spine.** The red/blue/violet/gold layer tokens encode
-  Session/Block/Sequence/Exercise roles. Insights has no such roles — use one subject
-  accent, don't smuggle in the workout palette.
+No Breakdown by default (it's optional, like a sequence). The user picks a PG in the
+Subject, picks a field for the Measure (op smart-defaults), and already has a
+result. Adding a Breakdown, more Subjects, or more Measures scales up from there via
+`+ Add Breakdown` / `+ Add Subject` / `+ Add Measure` — mirroring the workout
+add-buttons.
 
 ---
 
-## 7. Murph example asks (nested outlines)
+## 7. Worked examples
 
-### Query A — Murph weighted work (Pullups / Pushups / Squats)
+### A — Murph weighted work (three subjects, no breakdown)
 
-Authored (unlocked body):
+Authored (unlocked):
 
 ```
-Ask  "Murph — weighted work"
-  Window   rolling · last 7 days
-  Scope    Block = Challenge          (global WHERE)
-  Set      Working only
-  Subjects
-    ▸ Pullups   facets: reps (sum), load (avg)
-    ▸ Pushups   facets: reps (sum)
-    ▸ Squats    facets: reps (sum), load (avg)
+Query  "Murph — weighted work"    rolling · last 7 days
+  Section   scope: Block = Challenge · Working only
+    Subject  Pullups   measures: sum reps · avg load
+    Subject  Pushups   measures: sum reps
+    Subject  Squats    measures: sum reps · avg load
 ```
 
-Locked grammar (what `LockedPreviewModal` would page):
+Locked grammar (reads like an English SELECT):
 
 ```
 Murph — weighted work
-last 7 days · Block: Challenge · Working
+Challenge · last 7 days · Working
   Pullups   450 reps · avg 20 lb (12 sets)
   Pushups   900 reps
   Squats    600 reps · avg 45 lb
 ```
 
-Note: no combined total across Pullups/Pushups/Squats — unlike measures, credit-each.
+No total across Pullups/Pushups/Squats — unlike measures, credit-each.
 
-### Query B — Cardio + hangs (Gait + Deadhangs), with a split
+### B — A Breakdown (the loop) — Pullups by variation, with a max
 
 Authored:
 
 ```
-Ask  "Cardio + hangs"
-  Window   rolling · last 7 days
-  Subjects
-    ▸ Gait       facets: distance (sum), time (sum)   split by: variation
-    ▸ Deadhangs  facets: time (sum)
+Query  "Pullup PRs"    rolling · last 28 days
+  Section   (all sessions)
+    Breakdown  "For each variation"
+      Subject  Pullups   measures: max reps · avg load
 ```
 
-Locked grammar (Gait's split denests into sub-rows + a totals line):
+Locked grammar (per-group sub-rows + totals):
 
 ```
-Cardio + hangs
-last 7 days
-  Gait                       split: variation
-    ├ Ruck     2.0 mi · 34 min
-    ├ Run      1.0 mi · 9 min
-    └ total    3.0 mi · 43 min
-  Deadhangs   6:30 hang time
+Pullup PRs
+last 28 days
+  For each variation — Pullups
+    ├ Weighted    max 12 reps · avg 35 lb
+    ├ Strict      max 18 reps
+    └ total       max 18 reps
 ```
 
-Deadhangs shows only time (no fake distance); Gait keeps distance and time separate
-(no fake combined metric). The split is the sequence-expansion analog: one authored
-subject, many computed rows.
+`max × reps` is the "most reps in one set" ask. The Breakdown is the sequence-
+expansion analog: one authored Subject, many computed rows + a totals line.
 
-### Optional — balance as a Group (the one nesting level)
-
-```
-Ask  "Push / Pull balance"  (saved, not the home screen)
-  Window   rolling · last 28 days
-  Group  "Push"  rollup: combined     → Pushups, Dips, Overhead Press   (credit-each)
-  Group  "Pull"  rollup: combined     → Pullups, Rows, Deadhangs
-```
-
-Groups are where deliberate nesting pays off — compare/rollup, capped at one level.
+Secret SQL (never shown by default; the "Show as SQL" later stretch):
+`SELECT variation, MAX(reps), AVG(load) FROM facts WHERE pg='Pullups' AND date>=… GROUP BY variation`.
 
 ---
 
-## 8. Decisions (signed off — Jul 22)
+## 8. Decisions (v2 — signed off Jul 22)
 
-All resolved by Nate. Build to these; reopen only if a slice surfaces a real
-conflict.
+Supersedes the v1 §8 table. Build to these.
 
-| # | Decision | Ruling (v1) |
+| # | Decision | Ruling (v1 of the new model) |
 |---|---|---|
-| 1 | Depth cap | **Flat subjects + one optional Group.** No group-in-group. |
-| 2 | Split-by dims | **`variation` + `tool` only.** Load / date buckets later. |
-| 3 | Nest scope | **Global-only.** Per-subject override deferred. |
-| 4 | Summary ops | **`sum` / load `avg` / sets `count` only** (match Dashboard). No ops picker yet. |
-| 5 | `saved_insights` | JSON shape in §5 approved. **Author the migration only at slice 4**, after shell + lock + split feel right — **ask again then.** No `008`. |
-| 6 | Reopen / home | **Saved-list first → opens OPEN + locked.** Blank draft via a **"New ask"** entry. |
-| 7 | Group rollup | **Credit-each for v1 `combined`.** Partition = later toggle on the Group node. |
-| 8 | One PG per card | **Confirmed.** Multi-PG = stacked cards, never multi-PG-in-one-card. |
-| 9 | Lock granularity | **Full tree** (ask / group / subject). Reuse `LockController`. |
-| 10 | Set policy scope | **Set type + warmups stay global-only (L3).** No per-subject set-type override on L1 in v1. |
-
-**Build order (locked):** slices **1 → 2 → 3** before any save. **Groups stay
-slice 5** — balance nesting must not delay the shell.
+| 1 | Layers | **Query → Section → Breakdown → Subject → Measure.** Mirror the workout nest depth. |
+| 2 | Sections | **Exactly one Section**, auto-created under Query. Multi-Section later. |
+| 3 | Breakdown | **Wraps Subjects. No nested Breakdowns** (don't out-nest the workout builder). |
+| 4 | Breakdown dims | **`variation` + `tool`** for v1. `date bucket` / `nest label` later. **PG is never a dim.** |
+| 5 | Ops (Measure) | **`sum · avg · max · min · count`** only. `latest` / `count-distinct` later. |
+| 6 | Fields | `reps · time · distance · load · sets` (existing `InsightFacetId`). NULL discipline. |
+| 7 | One PG per Subject | **Confirmed.** Complexes credit-each under the hood; never multi-PG-in-one-card. |
+| 8 | Identity scope | Per-Subject variations/tools, **soft/never enforced** (no `008`). |
+| 9 | Set policy + nest scope | **Section-level (WHERE).** With one Section this reads query-global. |
+| 10 | Lock granularity | **Full tree** (Query / Section / Breakdown / Subject / Measure) via `LockController`. |
+| 11 | Naming / code | Product: Query/Section/Breakdown/Subject/Measure. Code: `src/components/querybuilder/`, `Qb*`, **no** legacy aliases. Saved artifact = **Query**. |
+| 12 | Palette | **Distinct cool analytics ramp** (own 4-token block in `tokens.ts`); reuse chrome geometry only. |
+| 13 | Defaults | New Query opens **Query → Section → empty Subject → empty Measure** (no Breakdown). |
+| 14 | Engine | **Client-side group/aggregate** over `v_log_set_facts`. **No migration** until Nate asks. |
+| 15 | SQL teaching | English-SELECT grammar is enough. **"Show as SQL" is a later optional stretch.** |
 
 ---
 
 ## 9. Phased build slices (capability first)
 
-Each slice is small and leaves the Dashboard untouched. No commit without Nate.
+Each slice is small and leaves the Dashboard untouched. No commit without Nate. The
+v1 flat shell has been **scrapped** and replaced by the nest skeleton below.
 
-- **Slice 0 — design (this doc).** Nesting contract + definition shape. No code.
-- **Slice 1 — builder shell (no persistence).** Replace the placeholder with a real
-  form: flat Subject cards in `NestedLayer` chrome, per-subject facets + identity
-  scope (reuse `loadInsightQuery` as-is), global window/scope/set-policy disclosures,
-  collapse per card. Ephemeral only. This is "Dashboard readout in builder skin."
-- **Slice 2 — lock + preview.** Wire `LockController` (ask/subject) → grammar line;
-  `LockedOutline` for expanded-locked subjects; `LockedPreviewModal` for share.
-  Ephemeral, still no save.
-- **Slice 3 — per-subject split + totals.** Extend `insights.ts` aggregation to group
-  a PG's facts by variation/tool with a totals line (credit-each safe). Render the
-  breakdown in-card and in the locked outline.
-- **Slice 4 — save / reopen.** `saved_insights` (ask first), name+notes via
-  `MorePanel`, Library-like list/picker, rolling-vs-pinned window in the definition,
-  reopen → OPEN + locked, re-run live.
-- **Slice 5 — groups + seeds.** Optional Group/compare level + balance rollup;
-  1–2 seeded default asks for new accounts (with Chat 6).
+- **Slice 0 — this doc (v2 layer model).** Contract + definition shape. No code. **Done.**
+- **Slice 1 — nest skeleton (no persistence). ✅ Shipped in tree (ephemeral).**
+  `InsightsQueryBuilderScreen` is the real nest: `QbLayer` chrome (cool `queryLayer`
+  palette) rendering Query → Section → (optional Breakdown) → Subject → Measure, with
+  collapse per node and `+ Add Breakdown / Subject / Measure`. Defaults per §6.
+  Reads via `loadQueryFacts` (raw scoped facts) + `querybuilder/engine.ts`
+  client-side group/aggregate (the five ops). Reload loses the draft.
+- **Slice 2 — lock + preview.** Wire `LockController` (full tree) → grammar lines;
+  `LockedOutline` for expanded-locked Breakdowns/Subjects; `LockedPreviewModal` for
+  share. Still ephemeral.
+- **Slice 3 — Breakdown depth + totals polish.** Firm up the grouped sub-rows +
+  totals rendering in-card and in the locked outline (credit-each safe).
+- **Slice 4 — save / reopen.** `saved_queries` (**ask first**), name + notes via
+  `MorePanel`, Library-like list/picker, rolling-vs-pinned window persisted, reopen
+  → OPEN + locked, re-run live (or historic if pinned).
+- **Slice 5 — multi-Section + more dims/ops + seeds.** Multiple Sections (mini-
+  report), `date bucket` / `nest label` breakdown dims, `latest` / `count-distinct`
+  ops, 1–2 seeded default Queries for new accounts (with Chat 6).
 
-Polish (madlib phrasing, chip grammar) rides on top once the nested form + save/lock
-hold.
+Polish (madlib phrasing, chip grammar, "Show as SQL") rides on top once the nested
+form + save/lock hold.
+
+---
+
+## 10. Open decisions (not blocking slice 1)
+
+- **Breakdown dimensions beyond variation/tool:** `date bucket` (day/week/month) is
+  the obvious next and unlocks trend asks — promote in slice 5 or sooner?
+- **Multi-key GROUP BY:** deferred with multi-Section; revisit only if a real ask
+  needs two grouping keys at once.
+- **Cool palette exact hexes:** pick the 4-step ramp with `Styling.md` at build
+  time; add a `queryLayer` token block to `tokens.ts` (mirror `layer` geometry).
+- **Where "add Subject/Measure" affordances live** when locked vs unlocked — follow
+  the workout builder's resolution once the skeleton is on device.
+- **Empty Measure display:** how an unfilled Measure reads before op×field is chosen
+  (placeholder token vs hidden until valid).

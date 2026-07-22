@@ -75,6 +75,63 @@ export const layer = {
   },
 } as const;
 
+/**
+ * Insights Query builder chrome — a distinct **cool analytics** ramp so a query
+ * nest (Query → Section → Breakdown → Subject) never reads as a workout nest
+ * (Session/Block/Sequence/Exercise). Same geometry as `layer`; teal → aqua hues.
+ * The Measure leaf is a chip token (like Set), not a rail. See
+ * `docs/Insights_Query_Builder.md` §5/§12.
+ */
+export const queryLayer = {
+  query: {
+    bg: '#0a0c0e',
+    border: 'rgba(63, 174, 159, 0.12)',
+    rail: { color: '#3fae9f', width: 4, glow: null },
+    chip: {
+      color: '#3fae9f',
+      background: 'rgba(63, 174, 159, 0.21)',
+    },
+  },
+  section: {
+    bg: '#0b0d0f',
+    border: 'rgba(63, 159, 196, 0.12)',
+    rail: { color: '#3f9fc4', width: 4, glow: null },
+    chip: {
+      color: '#3f9fc4',
+      background: 'rgba(63, 159, 196, 0.21)',
+    },
+  },
+  breakdown: {
+    bg: '#0c0e11',
+    border: 'rgba(91, 143, 214, 0.12)',
+    rail: { color: '#5b8fd6', width: 4, glow: null },
+    chip: {
+      color: '#5b8fd6',
+      background: 'rgba(91, 143, 214, 0.21)',
+    },
+  },
+  subject: {
+    bg: '#0e1012',
+    border: 'rgba(72, 196, 201, 0.12)',
+    rail: {
+      color: '#48c4c9',
+      width: 4,
+      glow: '0 0 8px rgba(72, 196, 201, 0.32)',
+    },
+    chip: {
+      color: '#48c4c9',
+      background: 'rgba(72, 196, 201, 0.3)',
+    },
+  },
+} as const;
+
+/** Measure leaf chip (cool analog of the amber Set chip in `CoordRow`). */
+export const measureChip = {
+  color: '#48c4c9',
+  border: 'rgba(72, 196, 201, 0.28)',
+  background: 'rgba(72, 196, 201, 0.15)',
+} as const;
+
 /** Sparse round-override UI inside Cluster editors — intentionally dusk pink. */
 export const override = {
   color: colors.dusk,

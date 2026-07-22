@@ -6,20 +6,24 @@
 ## Canonical docs (do not paste wholesale)
 
 - [`Setup.md`](./Setup.md), [`Project_Structure.md`](./Project_Structure.md), [`Database_Outline.md`](./Database_Outline.md), [`Template_Builders.md`](./Template_Builders.md), [`Styling.md`](./Styling.md), [`Label_Library.md`](./Label_Library.md), [`New_User_Seeds.md`](./New_User_Seeds.md), [`Analytics_Labeling.md`](./Analytics_Labeling.md)
+- Insights: [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md) (product board) + [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) (Query builder nest contract)
 
 ## Current baseline
 
 - Stack / greenfield path: `sql/greenfield/001`–`007` (facts view in `007`; no `008`)
 - Live smoke DB: **OttoLog** Supabase (greenfield; email/password; confirm-email OFF for smoke)
-- App: Insights is now a **card hub** (like Library / Create) → **Dashboard** (the shipped PG-first facet readout; fast, not saved) + **Query builder** (placeholder for the nested, savable, lockable builder now in progress)
+- App: Insights is now a **card hub** (like Library / Create) → **Dashboard** (the shipped PG-first facet readout; fast, not saved) + **Query builder** (v2 **nest skeleton shipped**: Query → Section → Breakdown → Subject → Measure, ephemeral; lock/preview + save next). Nest contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md)
 - **Analytics direction (locked, Jul 22 reframe):** Insights = **two tools**. **Dashboard** = quick unsaved PG/facet look. **Query builder** = the real product bet: a **nested query form** that mirrors the log/template builders — collapsing dropdowns per layer, lockability + grammar-condensed locked view + preview modal, and **savable/reusable** asks (save like a template, reopen to the OPEN + locked clean view). See [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md). v1 Hybrid/cube doc archived under `docs/deprecated/`
 - Seeds: `sql/seeds/murph_personal_seed.sql` applied on `n8.perry` (personal smoke only; not Chat 6)
 - Living board: this file (linked from AGENTS / README / Project_Structure)
 
 ## Shipped recently (newest first)
 
-- **Insights reframed to a card hub (Jul 22)** — Insights tab is now a hub (`InsightsHubScreen`) like Library / Create, with two cards: **Query builder** (placeholder screen, "Building" badge) and **Dashboard** (the per-PG facet UI we've built so far). Routing added via `InsightsStack` in `HomeScreen.tsx` (hub / dashboard / queryBuilder; resets on tab-leave + brand tap). Old `InsightsScreen.tsx` → `InsightsDashboardScreen.tsx` (header now "Dashboard", `onBack`). **Saving is not on the Dashboard** — it's a fast look. The nested savable/lockable builder lives behind the Query builder card (placeholder for now). Direction shift: the earlier "per-PG cards = Phase 3" plan is now the **Dashboard**; the real Phase 3 is the nested query builder.
-- **Insights Phase 3 slice A (per-PG scope cards)** — *(now the Dashboard)* selecting Primary Groups spawns one editable card per PG. Each card holds its own Variations + Tools pickers (scoped to that PG only, soft — never enforced) above that PG's facet results. Variations picker wires `suggestedIds` from `listPrimaryGroupSuggestedTagIds(pgId)` (Show all still reaches the full pool). `InsightQuery` identity filters are now per-PG maps (`variationIdsByPg` / `toolIdsByPg`); aggregation applies each PG's filters to its own panel (credit-each unchanged). Nest labels + set type + dates + Working/warmups stay query-global in the Scope disclosure. Single global Variations/Tools filters removed (no rival UI). Category browse chips unchanged. No `008`. **Saved Insights + lock = slice B (not started; ask before `saved_insights` migration).**
+- **Insights Query builder — v2 slice 1: nest skeleton (Jul 22)** — scrapped the flat shell and rebuilt `InsightsQueryBuilderScreen` as the real nest: **Query → Section → (optional) Breakdown → Subject → Measure**, mirroring the log/template builder chrome with a **distinct cool analytics palette**. New code under `src/components/querybuilder/` (`Qb*`, no legacy aliases): `QbLayer`/`QbCoordRow`/`QbAddChildButton` fork the `NestedLayer`/`CoordRow`/`AddChildButton` geometry reading a new `queryLayer` cool ramp + `measureChip` token in `tokens.ts`; editors `QbQueryCard`/`QbSectionCard`/`QbBreakdownCard`/`QbSubjectCard`/`QbMeasureRow`. Defaults per §6 (Query → Section → empty Subject → empty Measure, no Breakdown). PG picker in the Subject name slot; per-Subject Variations/Tools (soft `suggestedIds`); Section-level nest scope + set policy; global date window. **Client-side aggregate** over `v_log_set_facts`: `insights.ts` gained `loadQueryFacts` (reuses the Dashboard fact read/scope/credit-each); `querybuilder/engine.ts` adds `applyMeasure`/`evaluateSection` (ops sum/avg/max/min/count × fields reps/time/distance/load/sets, NULL discipline, Breakdown groups + totals). Collapse per node; `+ Add Breakdown/Subject/Measure`. Ephemeral only (reload loses the draft). **No lock/preview (slice 2), no save/`saved_queries` (slice 4), no migration.** Dashboard + hub routing untouched. Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §9 slice 1.
+- **Insights Query builder — v2 layer model signed off (Jul 22)** — **overturned the v1 flat design.** New contract: Query builder mirrors log/template builders — Query → Section → Breakdown → Subject → Measure (= Session → Block → Sequence → Exercise → Set); ops at Measure leaf; one auto Section; Breakdown wraps Subjects (no nesting); dims variation/tool; client-side aggregate; `Qb*` + cool palette; saved artifact = **Query**. Full contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
+- **Insights Query builder — slice 1 flat shell (Jul 22 — SCRAPPED)** — flat “Dashboard in builder skin” form removed when the v2 nest landed. Dashboard still uses `loadInsightQuery`/`buildPanel`.
+- **Insights reframed to a card hub (Jul 22)** — Insights tab is a hub (`InsightsHubScreen`) like Library / Create, with **Query builder** + **Dashboard** cards. Routing via `InsightsStack` in `HomeScreen.tsx` (hub / dashboard / queryBuilder). Old `InsightsScreen.tsx` → `InsightsDashboardScreen.tsx`. Saving is not on the Dashboard.
+- **Insights Phase 3 slice A (per-PG scope cards)** — *(now the Dashboard)* selecting Primary Groups spawns one editable card per PG. Each card holds its own Variations + Tools pickers (scoped to that PG only, soft — never enforced) above that PG's facet results. Variations picker wires `suggestedIds` from `listPrimaryGroupSuggestedTagIds(pgId)` (Show all still reaches the full pool). `InsightQuery` identity filters are now per-PG maps (`variationIdsByPg` / `toolIdsByPg`); aggregation applies each PG's filters to its own panel (credit-each unchanged). Nest labels + set type + dates + Working/warmups stay query-global in the Scope disclosure. Single global Variations/Tools filters removed (no rival UI). Category browse chips unchanged. No `008`. *(Save + lock superseded by the v2 Query builder slices — table is now `saved_queries` at slice 4; still ask before migrating.)*
 - **Insights Phase 2 (query builder MVP)** — draft form home: FOR Primary Groups → stacked per-PG facet panels (reps/time/distance/load/sets as logged) → Scope disclosure (session/block/sequence + variations/tools/set type) → dates (last 7) + Working/warmups; `v_log_set_facts` + load facet (no tonnage default); 1a lens/metric/balance chrome removed
 - **Insights Phase 1a (substrate)** — `v_log_set_facts`; metric-aware dashboard (interim IA — **replaced** by Phase 2)
 - **Analytics direction locked** — PG-first query builder + Saved Insights + lock; v1 Hybrid proposal → `docs/deprecated/Analytics_Overhaul_Proposal_v1_hybrid_cube.md`
@@ -34,7 +38,7 @@
 
 ## Next (priority order)
 
-1. **Insights Query builder — nested, savable, lockable** — build out the Query builder card (currently a placeholder). **Nesting design contract:** [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) (bottom-up layer model + DNA reuse + slices) — read before any UI work. Mirror the log/template builder *DNA* (collapse / lock → grammar / preview / save-reopen) but **not** the 4-level tree: Insights nests by **subject** (PG) with facet leaves, nest labels as filters, and one optional Group level. Save/list/rename/delete reusable asks (`saved_insights` — **ask before migrating**); reopen → dropdown=OPEN + lock=TRUE clean view; per-subject split (variations / tools / loads) + totals line. Capability first (slices in the contract §9), then polish. Dashboard stays the fast unsaved look. See proposal §5–6 + §9 Phase 3b.
+1. **Insights Query builder — v2 slices 2+ (lock/preview, then save)** — v2 **slice 1 nest skeleton shipped**: `src/components/querybuilder/` `Qb*` nest (Query → Section → Breakdown → Subject → Measure), cool palette, collapse + `+ Add …`, client-side aggregate over `v_log_set_facts`, ephemeral. **Contract:** [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §9. **Next: slice 2 = lock + preview** (wire `LockController` full tree → grammar lines; `LockedOutline` for expanded-locked Breakdowns/Subjects; `LockedPreviewModal` for share; the `Qb*` chrome already accepts lock props). Then totals polish (3), save/reopen `saved_queries` (4 — **ask before migrating**), multi-Section + more dims/ops + seeds (5). Dashboard stays the fast unsaved look.
 2. **Identity conviction** — PG + Variations + muscles (+ tools + nest labels); category stays PG metadata for balance **saved views**; Counts as = default facet (Phase 4)
 3. **PG Counts as + Chat 6 (Phase 4)** — `natural_metric` on PGs; Account edit; New User Seeds dump
 4. **Exercise lock ↔ pills scroll** — exercise form correctly hides the pills scroller when lock=ON and dropdown=OPEN, and shows it when lock=OFF or lock=ON + dropdown=COLLAPSED. Explore mirror on Sequence / Block / Session builders
@@ -42,21 +46,18 @@
 6. **Auth / landing UI** — restyle landing, sign-in, and create-account screens to match current [`Styling.md`](./Styling.md) / app chrome
 7. **Prod hardening (when keeping OttoLog)** — Auth email confirm / SMTP; key rotation; backups / PITR; never ship `service_role` in app
 
-## Query builder direction (Jul 22 reframe — pick up here next session)
+## Query builder direction (v2 — pick up at slice 2)
 
 Insights is a **card hub**. Per-PG cards + soft suggestions shipped as the
-**Dashboard** (fast, unsaved). Next work is the **Query builder** screen.
-**Design contract now written:** [`Insights_Query_Builder.md`](./Insights_Query_Builder.md)
-(layer model facet → subject → body/groups → query-global → ask; DNA reuse map;
-`SavedInsightDefinition` shape; slices 0–5). Summary:
+**Dashboard** (fast, unsaved). The **Query builder** is a **nested** builder that
+mirrors the log/template builders — **Query → Section → Breakdown → Subject →
+Measure**, ops at the Measure leaf (op × field), own `Qb*` chrome + cool palette.
+Full nest contract (layer model, DNA reuse, `SavedQueryDefinition` shape, slices
+0–5): [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
 
-- **Builder family:** nested collapsing dropdowns per layer — same product family as Session/Block/Sequence/Exercise builders, not a one-off analytics form.
-- **Save ≈ templates/logs:** nameable + notes; reopen → OPEN + locked clean view; re-run live (or historic if dates pinned).
-- **Dynamic vs static windows:** e.g. “Pullups last 7 days” (rolling) vs “Pullups week of June 13” (pinned) — part of the saved definition.
-- **Lock per layer:** grammar-condensed line when locked; expand to edit; preview modal = Locked Preview family.
-- **Per-exercise breakdown:** modifiers / loads / variations across the data, then a totals line.
-- **Capability first**, friendliness after.
-- Dashboard keeps category browse + per-PG soft suggestions as the quick path.
+- **Shipped:** slice 1 nest skeleton (ephemeral). **Next:** slice 2 lock + preview → totals polish → save/reopen (`saved_queries`, **ask first**) → multi-Section + more dims/ops + seeds.
+- **Save ≈ templates/logs (later):** nameable + notes; reopen → OPEN + locked clean view; re-run live (rolling) or historic (pinned window).
+- **v1 flat Subject-card QB is dead** — do not rebuild it. Dashboard keeps category browse + per-PG soft suggestions as the quick path.
 
 ## Parked
 
@@ -98,7 +99,7 @@ Rough priority bands only; not sequenced against Phase 3. Ideas stay ideas until
 
 ## Open questions
 
-- Query builder: nesting design **signed off** ([`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §8, Jul 22) — flat subjects + one Group level; split-by = variation/tool; global-only nest scope + set policy; ops = sum / load avg / count; saved-list home → OPEN+locked, blank via "New ask"; group rollup credit-each (partition later); full-tree lock; `saved_insights` at slice 4 (ask before migrating). No open sub-questions blocking slice 1.
+- Query builder: **v2 layer model signed off** ([`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §8, Jul 22) — overturns the v1 flat model. **Query → Section → Breakdown → Subject → Measure** (mirror the workout nest); one auto Section (multi later); Breakdown wraps Subjects, no nesting, dims = variation/tool; ops = sum/avg/max/min/count at the Measure leaf; full-tree lock; client-side aggregate over `v_log_set_facts`; `saved_queries` at slice 4 (ask before migrating); `src/components/querybuilder/` `Qb*` + cool palette. Non-blocking open items in the doc §10 (extra breakdown dims, exact palette hexes, empty-Measure display).
 - Query builder: dynamic date presets (last 7 / last 28 / this week / custom fixed range) — rolling vs pinned lives in the saved definition (slice 4)
 - Dashboard lock/collapse grammar — still open if Dashboard ever grows lock; today it stays unlocked/fast
 - Grouped taxonomy (Group → Movement → Modifier): Option A vs B; enforced vs soft modifier scoping? See [`Analytics_Labeling.md`](./Analytics_Labeling.md) proposal
@@ -111,5 +112,5 @@ Rough priority bands only; not sequenced against Phase 3. Ideas stay ideas until
 - Pull-to-refresh: global rule vs per-tab
 - Brand: logo / slogan / icon timing vs Auth landing restyle
 
-Dashboard (Phases 2–3a) lean locks applied; Query builder **design signed off** ([`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §8, Jul 22) — **cleared for slice 1** (builder shell, no persistence) in a fresh chat. Build order 1→2→3 before any save; groups + `saved_insights` are slice 4–5 (ask before that migration).
+Dashboard (Phases 2–3a) lean locks applied; Query builder **v2 slice 1 nest skeleton shipped** ([`Insights_Query_Builder.md`](./Insights_Query_Builder.md), Jul 22) — `querybuilder/` `Qb*` nest (cool palette, client-side aggregate over `v_log_set_facts`, ephemeral). Agent map + skill aligned. **Next: slice 2 = lock + preview**, then totals polish (3); `saved_queries` is slice 4 (ask before that migration).
 

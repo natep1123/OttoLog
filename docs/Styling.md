@@ -370,7 +370,7 @@ Insights is a **card hub** (`InsightsHubScreen`, `HubAction` rows like Library /
 
 `InsightsDashboardScreen` — PG-first facet readout (fast, unsaved): Primary Group multiselect first (with category browse chips), one editable card per PG (per-PG Variations / Tools with soft `suggestedIds` + facet results), global Scope disclosure (session / block / sequence labels + set type), date window + Working/warmups. Data via `src/lib/insights.ts` on `v_log_set_facts`.
 
-`InsightsQueryBuilderScreen` — placeholder for the nested, savable, lockable query builder (Phase 3). Uses `ScreenHeader` + card list of planned pieces.
+`InsightsQueryBuilderScreen` — the nested Query builder (Query → Section → Breakdown → Subject → Measure). Its `Qb*` chrome (`src/components/querybuilder/`) forks the workout builder's `NestedLayer`/`CoordRow` geometry but paints a **distinct cool analytics palette** — the `queryLayer` 4-step ramp + `measureChip` in `tokens.ts` — so a query nest never reads as a workout nest. **Never reuse the warm Session/Block/Sequence/Exercise rails here.** v2 nest skeleton shipped (ephemeral); lock/preview + save later. Nest contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
 
 ### Account
 
@@ -403,6 +403,11 @@ hardcoding per-component colors.
 | Block | `#0d0b0f` | cool blue `#4a7fb5` | solid 4px |
 | Sequence | `#0f0d11` | cool violet `#7a6bc9` | solid 4px |
 | Exercise | `#100e12` | muted warm gold `#d6aa66` | solid 4px with glow |
+
+The **Query builder** nest is a **parallel** family: it consumes a separate cool
+`queryLayer` ramp (Query / Section / Breakdown / Subject) + `measureChip` in
+`tokens.ts`, mirroring this geometry but **never** these warm `layer` tokens. Its
+Measure leaf is a chip (cool analog of the amber Set chip), not a rail.
 
 The backgrounds are solid and progress monotonically from Session to Exercise;
 card borders are 1-point outlines at 12% of the layer color. Every nested card

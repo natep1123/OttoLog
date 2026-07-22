@@ -1,33 +1,156 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { ScreenHeader } from '../../components/ScreenHeader';
-import { colors, radii, spacing, typography } from '../../theme/tokens';
+import { QbQueryCard } from '../../components/querybuilder/QbQueryCard';
+import { evaluateSection, type SectionResult } from '../../components/querybuilder/engine';
+import {
+  defaultQueryDraft,
+  isBreakdown,
+  type QueryDraft,
+} from '../../components/querybuilder/types';
+import { loadQueryFacts, type QueryFactsResult } from '../../lib/insights';
+import {
+  listAnalyticsTags,
+  listBlockLabels,
+  listClusterLabels,
+  listPrimaryGroups,
+  listPrimaryGroupSuggestedTagIds,
+  listSessionLabels,
+  listTools,
+  type TaxonomyOption,
+} from '../../lib/taxonomy';
+import { colors, spacing, typography } from '../../theme/tokens';
 
 type Props = {
   onBrandPress?: () => void;
   onBack?: () => void;
 };
 
-const PLANNED: { title: string; body: string }[] = [
-  {
-    title: 'Nested query form',
-    body: 'Build an ask the way you build a log or template: collapsing dropdowns, layer by layer, with madlib-style selectors for operations.',
-  },
-  {
-    title: 'Lock per layer',
-    body: 'Lock a dropdown to a grammar-condensed line, or expand it to edit. A preview modal shows the full locked outline.',
-  },
-  {
-    title: 'Save and revisit',
-    body: 'Save an ask like a template. Reopening shows the clean locked view of everything you chose, re-run against current data.',
-  },
-  {
-    title: 'Per-exercise breakdown',
-    body: 'Each exercise query splits into its modifiers, loads, and variations across the data, then a totals line.',
-  },
-];
+/** Collect the distinct PG ids referenced anywhere in the draft. */
+function collectPgIds(draft: QueryDraft): string[] {
+  const ids = new Set<string>();
+  for (const child of draft.section.children) {
+    if (isBreakdown(child)) {
+      for (const s of child.subjects) if (s.pgId) ids.add(s.pgId);
+    } else if (child.pgId) {
+      ids.add(child.pgId);
+    }
+  }
+  return [...ids];
+}
 
-/** Placeholder for the nested, savable Insights query builder (in progress). */
+/**
+ * Insights Query builder — v2 slice 1 (nest skeleton, ephemeral).
+ *
+ * A full nested builder mirroring the log/template builders: Query → Section →
+ * (optional) Breakdown → Subject → Measure, with hidden SQL meaning per layer.
+ * Cool analytics palette (`querybuilder/` `Qb*` chrome). Results are computed
+ * client-side over `v_log_set_facts`. No lock/preview (slice 2), no save
+ * (slice 4). Draft is lost on reload — expected this slice.
+ */
 export function InsightsQueryBuilderScreen({ onBrandPress, onBack }: Props) {
+  const [draft, setDraft] = useState<QueryDraft>(() => defaultQueryDraft());
+  const [factsResult, setFactsResult] = useState<QueryFactsResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [primaryGroups, setPrimaryGroups] = useState<TaxonomyOption[]>([]);
+  const [sessionLabels, setSessionLabels] = useState<TaxonomyOption[]>([]);
+  const [blockLabels, setBlockLabels] = useState<TaxonomyOption[]>([]);
+  const [sequenceLabels, setSequenceLabels] = useState<TaxonomyOption[]>([]);
+  const [variations, setVariations] = useState<TaxonomyOption[]>([]);
+  const [tools, setTools] = useState<TaxonomyOption[]>([]);
+  const [suggestedByPg, setSuggestedByPg] = useState<Record<string, string[]>>(
+    {},
+  );
+
+  // Load taxonomy pools once.
+  const loadMeta = useCallback(async () => {
+    const [pgs, labels, blocks, sequences, tags, toolRows] = await Promise.all([
+      listPrimaryGroups(),
+      listSessionLabels(),
+      listBlockLabels(),
+      listClusterLabels(),
+      listAnalyticsTags(),
+      listTools(),
+    ]);
+    setPrimaryGroups(pgs.data);
+    setSessionLabels(labels.data);
+    setBlockLabels(blocks.data);
+    setSequenceLabels(sequences.data);
+    setVariations(tags.data);
+    setTools(toolRows.data);
+  }, []);
+
+  useEffect(() => {
+    void loadMeta();
+  }, [loadMeta]);
+
+  // Fact read depends only on window + scope + set policy (not name/measures).
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const windowKey = JSON.stringify(draft.window);
+  const scopeKey = JSON.stringify(draft.section.scope);
+  const policyKey = JSON.stringify(draft.section.setPolicy);
+
+  const loadFacts = useCallback(async () => {
+    const d = draftRef.current;
+    setLoading(true);
+    setError(null);
+    const { data, error: loadError } = await loadQueryFacts(
+      d.window,
+      d.section.scope,
+      d.section.setPolicy,
+    );
+    setLoading(false);
+    if (loadError) {
+      setError(loadError);
+      setFactsResult(null);
+      return;
+    }
+    setFactsResult(data);
+  }, []);
+
+  useEffect(() => {
+    void loadFacts();
+  }, [loadFacts, windowKey, scopeKey, policyKey]);
+
+  // Soft suggested variations per referenced PG.
+  const pgKey = collectPgIds(draft).sort().join(',');
+  useEffect(() => {
+    const ids = pgKey ? pgKey.split(',') : [];
+    if (ids.length === 0) {
+      setSuggestedByPg({});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const entries = await Promise.all(
+        ids.map(async (id) => {
+          const { data } = await listPrimaryGroupSuggestedTagIds(id);
+          return [id, data] as const;
+        }),
+      );
+      if (!cancelled) setSuggestedByPg(Object.fromEntries(entries));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pgKey]);
+
+  // Aggregate client-side (pure) whenever facts or the section shape change.
+  const results: SectionResult = useMemo(
+    () => (factsResult ? evaluateSection(factsResult.facts, draft.section) : {}),
+    [factsResult, draft.section],
+  );
+
+  const meta = factsResult
+    ? {
+        sessionCount: factsResult.sessionCount,
+        sessionsPerWeek: factsResult.sessionsPerWeek,
+      }
+    : null;
+
   return (
     <ScrollView
       style={styles.scroll}
@@ -36,29 +159,40 @@ export function InsightsQueryBuilderScreen({ onBrandPress, onBack }: Props) {
     >
       <ScreenHeader
         title="Query builder"
-        subtitle="Nested, savable analytics. In progress."
+        subtitle="Build a nested ask, layer by layer. Draft only — not saved yet."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />
 
-      <Text style={styles.lead}>
-        The plan: mirror the log and template builders for querying your data.
-        Author a readable ask, lock it into clean grammar, save it, and reopen it
-        any time. For now this is a placeholder while it comes together.
-      </Text>
+      <QbQueryCard
+        draft={draft}
+        results={results}
+        meta={meta}
+        loading={loading}
+        error={error}
+        primaryGroups={primaryGroups}
+        onPrimaryGroupsChange={setPrimaryGroups}
+        sessionLabels={sessionLabels}
+        onSessionLabelsChange={setSessionLabels}
+        blockLabels={blockLabels}
+        onBlockLabelsChange={setBlockLabels}
+        sequenceLabels={sequenceLabels}
+        onSequenceLabelsChange={setSequenceLabels}
+        variations={variations}
+        onVariationsChange={setVariations}
+        tools={tools}
+        onToolsChange={setTools}
+        suggestedByPg={suggestedByPg}
+        onChange={setDraft}
+      />
 
-      <View style={styles.list}>
-        {PLANNED.map((item) => (
-          <View key={item.title} style={styles.card}>
-            <Text style={styles.cardTitle}>{item.title}</Text>
-            <Text style={styles.cardBody}>{item.body}</Text>
-          </View>
-        ))}
-      </View>
-
-      <Text style={styles.footnote}>
-        Use Dashboard for a quick look while this is built.
-      </Text>
+      <Pressable
+        onPress={() => setDraft(defaultQueryDraft())}
+        style={styles.resetBtn}
+        accessibilityRole="button"
+      >
+        <Text style={styles.resetText}>Reset draft</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -71,37 +205,14 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  lead: {
-    fontFamily: typography.font,
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.textMuted,
+  resetBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    alignSelf: 'flex-start',
   },
-  list: {
-    gap: spacing.sm,
-  },
-  card: {
-    gap: 4,
-    padding: spacing.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.bgElevated,
-  },
-  cardTitle: {
-    fontFamily: typography.fontSemiBold,
-    fontSize: 15,
-    color: colors.text,
-  },
-  cardBody: {
-    fontFamily: typography.font,
+  resetText: {
+    fontFamily: typography.fontMedium,
     fontSize: 13,
-    lineHeight: 19,
-    color: colors.textMuted,
-  },
-  footnote: {
-    fontFamily: typography.font,
-    fontSize: 13,
-    color: colors.textDim,
+    color: colors.sunrise,
   },
 });

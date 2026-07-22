@@ -23,7 +23,8 @@ Expo ~57 · React Native · TypeScript · Supabase (Auth + Postgres + RLS)
 | Doc | When |
 |-----|------|
 | [`docs/Status.md`](docs/Status.md) | Living ops board: shipped / next / parked / open questions |
-| [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md) | Insights: hub = Dashboard + Query builder (QB = nested savable/lockable) |
+| [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md) | Insights **product board**: hub = Dashboard (shipped) + Query builder |
+| [`docs/Insights_Query_Builder.md`](docs/Insights_Query_Builder.md) | Insights **Query builder nest contract** (Query→Section→Breakdown→Subject→Measure) |
 | [`docs/Project_Structure.md`](docs/Project_Structure.md) | Folders, tabs, data flow, lib map |
 | [`docs/Setup.md`](docs/Setup.md) | Env, migration order, smoke test |
 | [`docs/Database_Outline.md`](docs/Database_Outline.md) | Schema, naming glossary, RLS, sentinels |
@@ -39,6 +40,7 @@ Expo ~57 · React Native · TypeScript · Supabase (Auth + Postgres + RLS)
 - Naming: follow the glossary in `Database_Outline.md` (no synonym invention).
 - Legacy internal name **cluster** = product **Sequence** (`ClusterEditor`, `cluster_templates`, …).
 - Templates nest Session → Block → Sequence → Exercise; logs denest/renest via `src/lib/sessionLogs.ts`.
+- Insights = **card hub** → **Dashboard** (fast unsaved PG facets) + **Query builder** (nested savable/lockable). QB **mirrors the workout nest** — Query → Section → Breakdown → Subject → Measure — with its own `src/components/querybuilder/` `Qb*` chrome + cool `queryLayer` palette (never the workout rails). Nest shape = `docs/Insights_Query_Builder.md`. The v1 flat Subject-card QB is **dead** — don't rebuild it.
 - Cursor rules under `.cursor/rules/` point at these docs by scope — open matching files so the right rule attaches.
 - When a feature/phase chat closes, update `docs/Status.md` (Shipped / Next / Parked / Open questions) — do not paste that board into always-on rules.
 

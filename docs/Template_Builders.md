@@ -368,9 +368,12 @@ propagate to templates that already copied it.
 
 ## Not built yet
 
-- Insights Phase 3+ (Saved Insights, lock grammar, Counts as defaults) — see
-  `docs/Status.md` / `docs/Analytics_Overhaul_Proposal.md`. Phase 2 draft query
-  on `v_log_set_facts` already ships.
+- Insights **Query builder** forks this builder's nest DNA (collapse / lock →
+  grammar / preview / save-reopen) into a **parallel** family — Query → Section →
+  Breakdown → Subject → Measure — with its own `src/components/querybuilder/`
+  `Qb*` chrome + cool palette (never these warm rails). Nest skeleton shipped;
+  lock/preview + save later. Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
+  Dashboard = the fast unsaved look. See also `docs/Status.md`.
 - e1RM / ACWR / richer charts (deferred).
 - Optional Postgres `fn_denest_session_log` / `fn_renest_session_log` wrappers
   (app denest/renest already ships).
