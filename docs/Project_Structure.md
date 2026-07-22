@@ -13,8 +13,10 @@ ottolog-app/
 ├── .cursor/
 │   ├── rules/              Scoped Cursor rules (point at docs; do not paste them)
 │   └── skills/             Repeatable workflows (SQL migrations, taxonomy labeling)
-├── sql/                    Supabase migrations — greenfield/ (canonical); deprecated/ historical
+├── sql/                    Supabase migrations — greenfield/ (canonical 001–007); deprecated/ historical
+│   └── seeds/              Optional personal smoke scripts (not migrations)
 ├── docs/                   Official project docs (this folder)
+│   ├── Status.md           Living ops board (shipped / next / parked)
 │   ├── Database_Outline.md
 │   ├── Project_Structure.md
 │   ├── Setup.md
@@ -43,7 +45,7 @@ No React Navigation yet. **`HomeScreen`** holds five bottom tabs and a nested st
 | Tab | Hub | Live drill-in | Stubs |
 |-----|-----|---------------|-------|
 | **Home** | Dashboard | Quick actions → Create session builder / Library exercises / Account taxonomy | Week → sessions (Soon) |
-| **Insights** | Volume / balance / muscles / tonnage (MVP) | Filters: date, Variations, Tools, session label | `src/lib/insights.ts` |
+| **Insights** | Volume / balance / muscles / tonnage (MVP) | Lens + filters: date, Variations, Tools, session / block label, set type | `src/lib/insights.ts` |
 | **Create** | Create hub | Log from scratch / from template; Templates → Session / Block / Sequence / Exercise builders | AI-assisted log |
 | **Library** | Library hub | Templates → Sessions / Blocks / Sequences / Exercises; Logs → log editor (review mode) | — |
 | **Account** | Account hub | Taxonomy → lists; Settings → Danger zone | Profile, Preferences |
@@ -70,7 +72,7 @@ Library opens of templates and logs use **`reviewMode`**: `EditorChrome` starts 
 | `blockTemplates.ts` | List, get, save, archive / hard-delete; mixed exercise/sequence items; `blockTemplateToDraft` |
 | `sessionTemplates.ts` | List, get, save, archive / hard-delete; nested blocks; `sessionTemplateToDraft`; default Session label |
 | `sessionLogs.ts` | List, get, save, delete session logs; denest draft tree → log tables (tools / PG / muscle / **variation** links, `track_intensity`, `set_type` / `intensity`); renest rows → editor draft |
-| `insights.ts` | Insights MVP aggregates over complete logs (volume, balance, working sets, tonnage + filters) |
+| `insights.ts` | Insights MVP: lens (PG / category / muscle / nest labels) + filters over complete logs |
 | `lockedPreviewPages.ts` | Paginate a locked outline into screenshot pages for `LockedPreviewModal` (notes/overrides row packing; swipe + chevron sync) |
 | `taxonomy.ts` | Picker lists and Account taxonomy CRUD (tools, analytics + PG **category**, session/block/sequence labels) |
 | `localTime.ts` | Local greeting, week strip, session date keys / labels (`dayjs`) |

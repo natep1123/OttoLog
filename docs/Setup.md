@@ -42,29 +42,30 @@ sql/greenfield/004_taxonomy.sql
 sql/greenfield/005_analytics.sql
 sql/greenfield/006_templates.sql
 sql/greenfield/007_session_logs.sql
-sql/greenfield/008_analytics_facts.sql
 ```
 
-`008` is additive (two IMMUTABLE parse helpers + the read-only `v_log_set_facts`
-view for Insights grains). It changes no tables; safe to re-run.
+`007` includes the log tree **and** Insights helpers (`ol_hms_to_seconds`,
+`ol_distance_to_meters`) plus the read-only `v_log_set_facts` view. No separate
+`008` file.
 
 Do **not** mix greenfield with the old incremental set. Historical `sql/001`–`019` live under `sql/deprecated/` (already-applied projects only; do not re-run on a greenfield DB).
 
 After greenfield `004`, **No Tool** and the Session / Block / Sequence system-null labels exist once for the whole project (fixed UUIDs). Signup does not create copies per user. Nest-label defaults (`Main`, Rest/`is_empty`, …) come from `ensure_default_template_labels()`. Muscle defaults from `ensure_default_muscle_groups()`. PG / variation / tool New User Seeds content dumps are stubs until chat 6.
 
-Schema notes (category, log variation links, `set_type` / `intensity`, `track_intensity`): [`Database_Outline.md`](./Database_Outline.md) Current Status.
+Schema notes (category, log variation links, `set_type` / `intensity`, `track_intensity`, fact view): [`Database_Outline.md`](./Database_Outline.md) Current Status.
 
 ### Greenfield apply checklist (fresh Supabase only)
 
 Do **not** run this over a project that already has `sql/deprecated/001`–`019`.
 
 1. New Supabase project → enable email/password Auth
-2. SQL Editor → run `sql/greenfield/001` … `008` **in order** (one file per query)
+2. SQL Editor → run `sql/greenfield/001` … `007` **in order** (one file per query)
 3. Confirm sentinels: No Tool + Session / Block / Sequence null labels exist
 4. Point `.env.local` at the new project URL + anon key; restart Metro
 5. Smoke: create account → create PG **with category** → save exercise with Intensity on + set type → log a complete session → reopen log (variations / intensity round-trip) → Insights shows volume
 6. Optional: call `ensure_default_muscle_groups()` / `ensure_default_template_labels()` if lists look empty (also auto-called from Account taxonomy)
-7. Chat 6 later: seed PG / variation / tool content into the ensure stubs
+7. Optional personal smoke: `sql/seeds/murph_personal_seed.sql` (one account; not a migration)
+8. Chat 6 later: seed PG / variation / tool content into the ensure stubs
 
 **Auth vs profile:** credentials in `auth.users`; profile `username` in `public.users` where `id = auth.uid()`.
 
@@ -103,4 +104,4 @@ Scan the QR code in Expo Go.
 | Muscle groups missing | Apply greenfield `005_analytics.sql`; call `ensure_default_muscle_groups` |
 | PG `category` / intensity / log variations missing | You are on deprecated `001`–`019` — use greenfield for a fresh project |
 
-Schema: [`Database_Outline.md`](./Database_Outline.md). Folders: [`Project_Structure.md`](./Project_Structure.md).
+Schema: [`Database_Outline.md`](./Database_Outline.md). Folders: [`Project_Structure.md`](./Project_Structure.md). Ops board: [`Status.md`](./Status.md).

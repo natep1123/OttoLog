@@ -366,7 +366,7 @@ The week strip is a placeholder layout, not a session calendar yet.
 
 ### Insights
 
-`InsightsScreen` — date / Variations / Tools / session-label filters; bar lists for volume by PG, balance by category, working sets × muscle, tonnage. Data via `src/lib/insights.ts` (greenfield log tables).
+`InsightsScreen` — lens picker (PG / category / muscle / session / block / sequence label) plus date / Variations / Tools / session-label / block-label / set-type filters; bar lists for volume, balance by category, working sets × muscle, tonnage. Data via `src/lib/insights.ts` (greenfield log tables; fact view in `007` not wired yet).
 
 ### Account
 

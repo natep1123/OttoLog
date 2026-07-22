@@ -46,9 +46,9 @@ Shipped:
 
 Docs synced (rev. 3): Variations product term, block `Main` / `Wellness`,
 `Competition Fights` plural, category + lean variation model. Still parked:
-New User Seeds SQL content dump, starter templates. Greenfield schema + chat 5
-app cutover cover `category`, log variation links, intensity / set type, and
-Insights MVP.
+New User Seeds SQL content dump, starter templates. Greenfield `001`–`007`
+(+ chat 5 app) cover `category`, log variation links, intensity / set type,
+Insights lenses, and `v_log_set_facts` in `007`. Ops board: [`Status.md`](./Status.md).
 
 ---
 

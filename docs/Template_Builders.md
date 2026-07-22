@@ -368,7 +368,8 @@ propagate to templates that already copied it.
 
 ## Not built yet
 
-- Insights MVP over relational log tables (`InsightsScreen` + `src/lib/insights.ts`).
+- Point Insights at `v_log_set_facts`; time / distance metrics; lbs/kg tonnage normalize
+  (MVP lenses + bar lists already ship — see `docs/Status.md`).
 - e1RM / ACWR / richer charts (deferred).
 - Optional Postgres `fn_denest_session_log` / `fn_renest_session_log` wrappers
   (app denest/renest already ships).

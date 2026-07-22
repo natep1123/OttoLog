@@ -57,7 +57,7 @@ When outline, archived docs, and live SQL disagree, use this order:
 | Incomplete nest-label seed (`Workout` vs `Main`, missing Wellness / …) | New User Seeds labels |
 | No New User Seeds PG / variation / tool seed RPCs (stubs only in greenfield) | First-run vocabulary (chat 6) |
 
-**Greenfield (authored, not applied to production)** — `sql/greenfield/001`–`008`
+**Greenfield (authored, not applied to production)** — `sql/greenfield/001`–`007`
 
 Condensed schema for a **fresh** Supabase project. Do **not** run over live `001`–`019`. Closes the Insights gaps above; keeps identifiers stable (`analytics_tags`, `cluster_*`, sentinel UUIDs).
 
@@ -69,8 +69,7 @@ Condensed schema for a **fresh** Supabase project. Do **not** run over live `001
 | `004_taxonomy.sql` | Tools + nest labels + New User Seeds nest list (`Main`, `Wellness`, Rest/`is_empty`, …) |
 | `005_analytics.sql` | PGs **+ `category`**, tags, muscles, suggestions; muscle seed; **stubs** for PG/variation/tool ensure |
 | `006_templates.sql` | All template layers + template link tables + `track_intensity` |
-| `007_session_logs.sql` | Log tree + tool/PG/muscle/**tag** links + `set_type` / `intensity` + `track_intensity` |
-| `008_analytics_facts.sql` | **Additive.** IMMUTABLE `ol_hms_to_seconds` / `ol_distance_to_meters` + read-only `v_log_set_facts` (one row per set, flattened to session/block/sequence labels + PG/category/muscle/variation/tool). Insights grain source. No table changes. |
+| `007_session_logs.sql` | Log tree + tool/PG/muscle/**tag** links + `set_type` / `intensity` + `track_intensity` + Insights helpers (`ol_hms_to_seconds` / `ol_distance_to_meters`) + `v_log_set_facts` |
 
 **Not live yet**
 
@@ -83,7 +82,7 @@ Applied migrations *(current project — historical path)*:
 
 - `sql/deprecated/001_users.sql` … `sql/deprecated/019_primary_group_tag_suggestions.sql`
 
-Canonical path for **new** projects: `sql/greenfield/001`–`008` (see `docs/Setup.md`).
+Canonical path for **new** projects: `sql/greenfield/001`–`007` (see `docs/Setup.md`).
 
 ---
 
@@ -562,7 +561,7 @@ group-by), never exercise identity.
   from the set grain once.
 - **App layer:** `src/lib/insights.ts` (single set-anchored fetch, O(1) Map
   joins, lens + block-label + set-type filters).
-- **Additive fact layer (greenfield `008`):** `v_log_set_facts` flattens the log
+- **Fact layer (greenfield `007`):** `v_log_set_facts` flattens the log
   tree per set; `ol_hms_to_seconds` / `ol_distance_to_meters` give canonical
   numeric time (seconds) and distance (**meters** canonical; UI presents mi/km by
   preference). Structural node durations power "minutes"; set `time_duration`
@@ -587,13 +586,15 @@ Category-partition (vs credit-each) revisit is open.
 
 | Doc | Role |
 |-----|------|
+| `docs/Status.md` | Living ops board (shipped / next / parked) — not a schema contract |
 | `docs/Template_Builders.md` | Shipped builder behavior (Session / Block / Sequence / Exercise / logs) |
-| `docs/Analytics_Labeling.md` | Primary Group vs tags vs nest labels — how to organize analytics vocabulary |
+| `docs/Analytics_Labeling.md` | Primary Group vs Variations vs nest labels — how to organize analytics vocabulary |
+| `docs/New_User_Seeds.md` | Full new-account seed catalog |
 | `docs/Styling.md` | Official visual system |
 | `docs/Project_Structure.md` | Folders, navigation, key files |
 | `docs/deprecated/original-concept/Backend/Database_Design.md` | Historical schema + JSON tree. Retired names (`composition_categories`), retired seeding model. Log tables now live; prefer `sql/greenfield/007` + this outline |
 | `docs/deprecated/` | Archived design set (README explains what is stale) |
-| `sql/` | `greenfield/` = canonical fresh-project set; `deprecated/` = old `001`–`019` |
+| `sql/` | `greenfield/` `001`–`007` = canonical; `seeds/` = optional personal smoke; `deprecated/` = old `001`–`019` |
 
 ---
 
