@@ -1,20 +1,24 @@
 /**
- * Insights aggregates against greenfield log tables.
+ * Insights aggregates against greenfield `v_log_set_facts`.
  *
- * Grain model (chat 5.5): every fact (a log set) carries its own dimension
- * keys — session label, block label, sequence label, plus the exercise
- * identity (PG / category / muscle / variation / tool). A single "lens"
- * chooses which dimension the headline volume chart groups by; stacked
- * filters narrow the fact set regardless of lens.
+ * Grain model: every fact (a log set) carries its own dimension keys —
+ * session label, block label, sequence label, plus exercise identity
+ * (PG / category / muscle / variation / tool). A single "lens" chooses
+ * which dimension the headline chart groups by; stacked filters narrow
+ * the fact set regardless of lens.
+ *
+ * Metric model (Phase 1a):
+ *  - User picks Reps | Time | Distance | Tonnage | Sets, or Auto.
+ *  - Auto per bucket: distance if any, else time if any, else reps.
+ *    (Phase 1b: PG `natural_metric` / "Counts as" replaces the heuristic.)
+ *  - Never sum across different metrics into one total.
  *
  * Credit rule (decision: credit-each, documented):
  *  - Per-PG, per-category, and per-muscle rollups deliberately double-count.
- *    A multi-PG complex credits each PG's chart; a multi-muscle exercise
- *    credits each muscle. NEVER sum those rows into one grand total.
- *  - Session / block / sequence label lenses count each set ONCE (a set lives
- *    in exactly one session/block/sequence), so those are honest partitions.
- *  - Honest totals (sessionCount, workingSetsTotal, tonnageTotal) are computed
- *    once at the set grain, never by summing a credited dimension.
+ *    NEVER sum those rows into one grand total.
+ *  - Session / block / sequence label lenses count each set ONCE.
+ *  - Honest totals (sessionCount, workingSetsTotal, tonnageTotal) are
+ *    computed once at the set grain, never by summing a credited dimension.
  */
 
 import { PRIMARY_GROUP_CATEGORIES } from '../constants/primaryGroupCategories';
@@ -40,6 +44,24 @@ export const INSIGHTS_LENS_OPTIONS: { id: InsightsLens; label: string }[] = [
   { id: 'sequenceLabel', label: 'Sequence label' },
 ];
 
+/** User-facing measure for the headline chart. */
+export type InsightsMetric = 'reps' | 'time' | 'distance' | 'tonnage' | 'sets';
+
+/** Metric selector including Auto (per-bucket heuristic until PG Counts as). */
+export type InsightsMetricMode = InsightsMetric | 'auto';
+
+export const INSIGHTS_METRIC_OPTIONS: {
+  id: InsightsMetricMode;
+  label: string;
+}[] = [
+  { id: 'auto', label: 'Auto' },
+  { id: 'reps', label: 'Reps' },
+  { id: 'time', label: 'Time' },
+  { id: 'distance', label: 'Distance' },
+  { id: 'tonnage', label: 'Tonnage' },
+  { id: 'sets', label: 'Sets' },
+];
+
 /** Lenses that credit multiple dimensions per set (never sum their rows). */
 const CREDIT_EACH_LENSES: ReadonlySet<InsightsLens> = new Set<InsightsLens>([
   'primaryGroup',
@@ -57,13 +79,37 @@ export function lensLabel(lens: InsightsLens): string {
   );
 }
 
+export function metricLabel(metric: InsightsMetricMode): string {
+  return (
+    INSIGHTS_METRIC_OPTIONS.find((o) => o.id === metric)?.label ?? 'Auto'
+  );
+}
+
+/** Short unit for a resolved metric (Auto rows carry their own). */
+export function metricUnit(metric: InsightsMetric): string {
+  switch (metric) {
+    case 'reps':
+      return 'reps';
+    case 'time':
+      return 'min';
+    case 'distance':
+      return 'mi';
+    case 'tonnage':
+      return '';
+    case 'sets':
+      return 'sets';
+  }
+}
+
 export type InsightsFilters = {
   /** Inclusive YYYY-MM-DD */
   fromDate: string;
   /** Inclusive YYYY-MM-DD */
   toDate: string;
-  /** Which dimension the headline volume chart groups by */
+  /** Which dimension the headline chart groups by */
   lens: InsightsLens;
+  /** Headline measure; Auto = per-bucket heuristic */
+  metric: InsightsMetricMode;
   /** Empty = all session labels */
   sessionCategoryIds: string[];
   /** Empty = all block labels */
@@ -72,26 +118,39 @@ export type InsightsFilters = {
   variationIds: string[];
   /** Empty = all tools; match if exercise has any of these tools */
   toolIds: string[];
-  /** Empty = all set types */
+  /**
+   * Set-type allow-list. Default Working-only.
+   * `includeWarmups` adds Warmup when the list is the Working-only default.
+   */
   setTypes: SetType[];
+  /** When true and setTypes is Working-only default, also include Warmup. */
+  includeWarmups: boolean;
 };
 
 export type NamedTotal = {
   id: string;
   name: string;
   value: number;
+  /** Resolved metric for this row (always set; differs across rows when Auto). */
+  metric: InsightsMetric;
 };
 
 export type InsightsSnapshot = {
   lens: InsightsLens;
+  metricMode: InsightsMetricMode;
   sessionCount: number;
   /** Sessions per week across the selected window (honest, header grain). */
   sessionsPerWeek: number;
   /** Working sets counted once each (honest total, not per-muscle). */
   workingSetsTotal: number;
-  /** Volume (effective reps) grouped by the active lens. */
+  /** Volume grouped by the active lens + metric. Never sum Auto rows. */
   volumeByLens: NamedTotal[];
-  /** Balance rolled up by PG category (credit-each; do not sum). */
+  /**
+   * Names that had tracked sets in-window but zero contribution for the
+   * selected fixed metric (omitted from the chart). Empty when Auto.
+   */
+  omittedForMetric: string[];
+  /** Balance rolled up by PG category (credit-each; data-only; do not sum). */
   balanceByCategory: NamedTotal[];
   /** Working-set counts credited per muscle (do not sum across muscles). */
   workingSetsByMuscle: NamedTotal[];
@@ -102,6 +161,7 @@ export type InsightsSnapshot = {
 };
 
 type Fact = {
+  sessionLogId: string;
   sessionCategoryId: string;
   blockLabelId: string | null;
   sequenceLabelId: string | null;
@@ -110,13 +170,14 @@ type Fact = {
   tagIds: string[];
   toolIds: string[];
   setType: SetType;
-  reps: number | null;
-  isPerSide: boolean;
-  loadValue: number | null;
-  loadUnit: string | null;
+  effectiveReps: number;
+  timeSeconds: number;
+  distanceMeters: number;
+  tonnage: number;
 };
 
 const SEQUENCE_NONE_ID = '__no_sequence__';
+const METERS_PER_MILE = 1609.344;
 
 function daysAgoKey(days: number): string {
   const d = new Date(`${todayDateKey()}T12:00:00`);
@@ -129,35 +190,106 @@ function daysAgoKey(days: number): string {
 
 export function defaultInsightsFilters(): InsightsFilters {
   return {
-    fromDate: daysAgoKey(27),
+    fromDate: daysAgoKey(6), // last 7 days inclusive
     toDate: todayDateKey(),
     lens: 'primaryGroup',
+    metric: 'auto',
     sessionCategoryIds: [],
     blockLabelIds: [],
     variationIds: [],
     toolIds: [],
-    setTypes: [],
+    setTypes: ['Working'],
+    includeWarmups: false,
   };
 }
 
-function effectiveReps(reps: number | null, isPerSide: boolean): number {
-  if (reps == null || reps <= 0) return 0;
-  return reps * (isPerSide ? 2 : 1);
+/** Effective set-type allow-list after the warmups toggle. */
+export function effectiveSetTypes(filters: InsightsFilters): SetType[] {
+  const base =
+    filters.setTypes.length > 0 ? [...filters.setTypes] : (['Working'] as SetType[]);
+  if (!filters.includeWarmups) return base;
+  if (base.includes('Warmup')) return base;
+  return [...base, 'Warmup'];
 }
 
-function setTonnage(
-  reps: number | null,
-  loadValue: number | null,
-  loadUnit: string | null,
-  isPerSide: boolean,
-): number {
-  if (reps == null || reps <= 0) return 0;
-  if (loadValue == null || loadValue <= 0) return 0;
-  if (loadUnit !== 'lbs' && loadUnit !== 'kg') return 0;
-  return loadValue * effectiveReps(reps, isPerSide);
+/** Format a stored metric value for display (time→min, distance→mi). */
+export function formatMetricValue(
+  value: number,
+  metric: InsightsMetric,
+): string {
+  if (metric === 'time') {
+    const minutes = value / 60;
+    if (minutes >= 10) return String(Math.round(minutes));
+    if (minutes >= 1) return minutes.toFixed(1);
+    return value > 0 ? value.toFixed(0) + 's' : '0';
+  }
+  if (metric === 'distance') {
+    const miles = value / METERS_PER_MILE;
+    if (miles >= 10) return String(Math.round(miles * 10) / 10);
+    if (miles >= 0.1) return miles.toFixed(2);
+    return miles > 0 ? miles.toFixed(3) : '0';
+  }
+  if (metric === 'tonnage') {
+    if (Number.isInteger(value)) return String(value);
+    return value.toFixed(1);
+  }
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(1);
 }
 
-function passesFilters(fact: Fact, filters: InsightsFilters): boolean {
+export function formatMetricDisplay(
+  value: number,
+  metric: InsightsMetric,
+): string {
+  const n = formatMetricValue(value, metric);
+  if (metric === 'time' && n.endsWith('s')) return n;
+  const unit = metricUnit(metric);
+  return unit ? `${n} ${unit}` : n;
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((v): v is string => typeof v === 'string' && Boolean(v));
+}
+
+function asNumber(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function metricContribution(fact: Fact, metric: InsightsMetric): number {
+  switch (metric) {
+    case 'reps':
+      return fact.effectiveReps > 0 ? fact.effectiveReps : 0;
+    case 'time':
+      return fact.timeSeconds > 0 ? fact.timeSeconds : 0;
+    case 'distance':
+      return fact.distanceMeters > 0 ? fact.distanceMeters : 0;
+    case 'tonnage':
+      return fact.tonnage > 0 ? fact.tonnage : 0;
+    case 'sets':
+      return 1;
+  }
+}
+
+/** Phase 1a Auto heuristic — Phase 1b reads PG Counts as instead. */
+export function autoMetricForFacts(facts: readonly FactLike[]): InsightsMetric {
+  if (facts.some((f) => f.distanceMeters > 0)) return 'distance';
+  if (facts.some((f) => f.timeSeconds > 0)) return 'time';
+  if (facts.some((f) => f.effectiveReps > 0)) return 'reps';
+  return 'reps';
+}
+
+type FactLike = {
+  distanceMeters: number;
+  timeSeconds: number;
+  effectiveReps: number;
+};
+
+function passesFilters(
+  fact: Fact,
+  filters: InsightsFilters,
+  setTypes: SetType[],
+): boolean {
   if (
     filters.sessionCategoryIds.length > 0 &&
     !filters.sessionCategoryIds.includes(fact.sessionCategoryId)
@@ -169,7 +301,7 @@ function passesFilters(fact: Fact, filters: InsightsFilters): boolean {
       return false;
     }
   }
-  if (filters.setTypes.length > 0 && !filters.setTypes.includes(fact.setType)) {
+  if (setTypes.length > 0 && !setTypes.includes(fact.setType)) {
     return false;
   }
   if (filters.variationIds.length > 0) {
@@ -217,19 +349,41 @@ async function resolveNames(
   return names;
 }
 
+type FactRow = {
+  set_id: string;
+  session_log_id: string;
+  session_date: string;
+  session_status: string;
+  session_category_id: string;
+  block_label_id: string | null;
+  sequence_label_id: string | null;
+  track_analytics: boolean | null;
+  set_type: string | null;
+  effective_reps: number | null;
+  time_seconds: number | null;
+  distance_meters: number | null;
+  tonnage: number | null;
+  primary_group_ids: string[] | null;
+  muscle_group_ids: string[] | null;
+  variation_ids: string[] | null;
+  tool_ids: string[] | null;
+};
+
 /**
  * Load complete session facts in the date window and aggregate.
- * Requires greenfield schema (tag links, set_type, PG category, log labels).
+ * Reads `v_log_set_facts` (greenfield 007).
  */
 export async function loadInsightsSnapshot(
   filters: InsightsFilters,
 ): Promise<{ data: InsightsSnapshot | null; error: string | null }> {
   const empty = (sessionCount: number): InsightsSnapshot => ({
     lens: filters.lens,
+    metricMode: filters.metric,
     sessionCount,
     sessionsPerWeek: 0,
     workingSetsTotal: 0,
     volumeByLens: [],
+    omittedForMetric: [],
     balanceByCategory: [],
     workingSetsByMuscle: [],
     tonnageByPrimaryGroup: [],
@@ -260,270 +414,57 @@ export async function loadInsightsSnapshot(
   if (sessionRows.length === 0) return { data: empty(0), error: null };
 
   const sessionIds = sessionRows.map((s) => s.id);
-  const categoryBySession = new Map(
-    sessionRows.map((s) => [s.id, s.category_id]),
-  );
+  const setTypes = effectiveSetTypes(filters);
 
-  const { data: blocks, error: blocksError } = await supabase
-    .from('log_blocks')
-    .select('id, session_log_id, label_id')
-    .in('session_log_id', sessionIds);
-  if (blocksError) return { data: null, error: blocksError.message };
+  const { data: factData, error: factError } = await supabase
+    .from('v_log_set_facts')
+    .select(
+      [
+        'set_id',
+        'session_log_id',
+        'session_date',
+        'session_status',
+        'session_category_id',
+        'block_label_id',
+        'sequence_label_id',
+        'track_analytics',
+        'set_type',
+        'effective_reps',
+        'time_seconds',
+        'distance_meters',
+        'tonnage',
+        'primary_group_ids',
+        'muscle_group_ids',
+        'variation_ids',
+        'tool_ids',
+      ].join(', '),
+    )
+    .in('session_log_id', sessionIds)
+    .eq('session_status', 'complete');
 
-  const blockRows = (blocks ?? []) as {
-    id: string;
-    session_log_id: string;
-    label_id: string | null;
-  }[];
-  if (blockRows.length === 0) {
-    return { data: empty(sessionRows.length), error: null };
-  }
-
-  const blockIds = blockRows.map((b) => b.id);
-  // O(1) lookups: block → { sessionId, labelId }
-  const blockMeta = new Map(
-    blockRows.map((b) => [
-      b.id,
-      { sessionId: b.session_log_id, labelId: b.label_id },
-    ]),
-  );
-
-  const { data: items, error: itemsError } = await supabase
-    .from('log_items')
-    .select('id, log_block_id, kind, track_analytics, tool_id, label_id')
-    .in('log_block_id', blockIds);
-  if (itemsError) return { data: null, error: itemsError.message };
-
-  const itemRows = (items ?? []) as {
-    id: string;
-    log_block_id: string;
-    kind: string;
-    track_analytics: boolean | null;
-    tool_id: string | null;
-    label_id: string | null;
-  }[];
-
-  // O(1) lookups: item → its block + (for clusters) sequence label
-  const itemMeta = new Map(
-    itemRows.map((i) => [
-      i.id,
-      { blockId: i.log_block_id, kind: i.kind, labelId: i.label_id },
-    ]),
-  );
-
-  const exerciseItems = itemRows.filter(
-    (i) => i.kind === 'exercise' && i.track_analytics === true,
-  );
-  const clusterItems = itemRows.filter((i) => i.kind === 'cluster');
-  const clusterIds = clusterItems.map((i) => i.id);
-
-  let subRows: {
-    id: string;
-    log_item_id: string;
-    track_analytics: boolean;
-    tool_id: string;
-  }[] = [];
-  if (clusterIds.length) {
-    const { data: subs, error: subsError } = await supabase
-      .from('log_sub_items')
-      .select('id, log_item_id, track_analytics, tool_id')
-      .in('log_item_id', clusterIds)
-      .eq('track_analytics', true);
-    if (subsError) return { data: null, error: subsError.message };
-    subRows = (subs ?? []) as typeof subRows;
-  }
-
-  const exerciseItemIds = exerciseItems.map((i) => i.id);
-  const subIds = subRows.map((s) => s.id);
-  // O(1) lookups: sub-item → its owning cluster item
-  const subMeta = new Map(subRows.map((s) => [s.id, { itemId: s.log_item_id }]));
-
-  /** Resolve a fact's location keys from its parent item / sub-item. */
-  const locationFor = (
-    parentId: string,
-    isSub: boolean,
-  ): {
-    sessionId: string;
-    blockLabelId: string | null;
-    sequenceLabelId: string | null;
-  } | null => {
-    if (isSub) {
-      const sub = subMeta.get(parentId);
-      if (!sub) return null;
-      const cluster = itemMeta.get(sub.itemId);
-      if (!cluster) return null;
-      const block = blockMeta.get(cluster.blockId);
-      if (!block) return null;
-      return {
-        sessionId: block.sessionId,
-        blockLabelId: block.labelId,
-        sequenceLabelId: cluster.labelId,
-      };
-    }
-    const item = itemMeta.get(parentId);
-    if (!item) return null;
-    const block = blockMeta.get(item.blockId);
-    if (!block) return null;
-    return {
-      sessionId: block.sessionId,
-      blockLabelId: block.labelId,
-      sequenceLabelId: null,
-    };
-  };
-
-  async function linkMap(
-    table: string,
-    parentCol: string,
-    parentIds: string[],
-    valueCol: string,
-  ): Promise<Map<string, string[]>> {
-    const map = new Map<string, string[]>();
-    if (parentIds.length === 0) return map;
-    const { data, error } = await supabase
-      .from(table)
-      .select('*')
-      .in(parentCol, parentIds)
-      .order('sort_order', { ascending: true });
-    if (error) throw new Error(error.message);
-    for (const row of data ?? []) {
-      const rec = row as Record<string, unknown>;
-      const id = rec[parentCol] as string;
-      const value = rec[valueCol] as string;
-      const list = map.get(id) ?? [];
-      list.push(value);
-      map.set(id, list);
-    }
-    return map;
-  }
-
-  let pgByItem: Map<string, string[]>;
-  let pgBySub: Map<string, string[]>;
-  let mgByItem: Map<string, string[]>;
-  let mgBySub: Map<string, string[]>;
-  let tagByItem: Map<string, string[]>;
-  let tagBySub: Map<string, string[]>;
-  let toolByItem: Map<string, string[]>;
-  let toolBySub: Map<string, string[]>;
-
-  try {
-    [pgByItem, pgBySub, mgByItem, mgBySub, tagByItem, tagBySub, toolByItem, toolBySub] =
-      await Promise.all([
-        linkMap(
-          'log_item_primary_group_links',
-          'log_item_id',
-          exerciseItemIds,
-          'primary_group_id',
-        ),
-        linkMap(
-          'log_sub_item_primary_group_links',
-          'log_sub_item_id',
-          subIds,
-          'primary_group_id',
-        ),
-        linkMap(
-          'log_item_muscle_group_links',
-          'log_item_id',
-          exerciseItemIds,
-          'muscle_group_id',
-        ),
-        linkMap(
-          'log_sub_item_muscle_group_links',
-          'log_sub_item_id',
-          subIds,
-          'muscle_group_id',
-        ),
-        linkMap('log_item_tag_links', 'log_item_id', exerciseItemIds, 'tag_id'),
-        linkMap('log_sub_item_tag_links', 'log_sub_item_id', subIds, 'tag_id'),
-        linkMap('log_item_tools', 'log_item_id', exerciseItemIds, 'tool_id'),
-        linkMap('log_sub_item_tools', 'log_sub_item_id', subIds, 'tool_id'),
-      ]);
-  } catch (e) {
-    return {
-      data: null,
-      error: e instanceof Error ? e.message : 'Could not load analytics links.',
-    };
-  }
-
-  // Fallback primary tool column when link rows missing
-  for (const item of exerciseItems) {
-    if (!toolByItem.has(item.id) && item.tool_id) {
-      toolByItem.set(item.id, [item.tool_id]);
-    }
-  }
-  for (const sub of subRows) {
-    if (!toolBySub.has(sub.id) && sub.tool_id) {
-      toolBySub.set(sub.id, [sub.tool_id]);
-    }
-  }
-
-  type SetRow = {
-    log_item_id: string | null;
-    log_sub_item_id: string | null;
-    reps: number | null;
-    is_per_side: boolean;
-    load_value: number | null;
-    load_unit: string | null;
-    track_analytics: boolean | null;
-    set_type: string | null;
-  };
-
-  const setRows: SetRow[] = [];
-  if (exerciseItemIds.length) {
-    const { data, error } = await supabase
-      .from('log_sets')
-      .select(
-        'log_item_id, log_sub_item_id, reps, is_per_side, load_value, load_unit, track_analytics, set_type',
-      )
-      .in('log_item_id', exerciseItemIds);
-    if (error) return { data: null, error: error.message };
-    setRows.push(...((data ?? []) as SetRow[]));
-  }
-  if (subIds.length) {
-    const { data, error } = await supabase
-      .from('log_sets')
-      .select(
-        'log_item_id, log_sub_item_id, reps, is_per_side, load_value, load_unit, track_analytics, set_type',
-      )
-      .in('log_sub_item_id', subIds);
-    if (error) return { data: null, error: error.message };
-    setRows.push(...((data ?? []) as SetRow[]));
-  }
+  if (factError) return { data: null, error: factError.message };
 
   const facts: Fact[] = [];
-  for (const set of setRows) {
-    if (set.track_analytics === false) continue;
-    const isSub = Boolean(set.log_sub_item_id);
-    const parentId = (isSub ? set.log_sub_item_id : set.log_item_id) as string;
-    const loc = locationFor(parentId, isSub);
-    if (!loc) continue;
-    const sessionCategoryId = categoryBySession.get(loc.sessionId);
-    if (!sessionCategoryId) continue;
-
+  for (const row of (factData ?? []) as unknown as FactRow[]) {
+    if (row.track_analytics === false) continue;
     facts.push({
-      sessionCategoryId,
-      blockLabelId: loc.blockLabelId,
-      sequenceLabelId: loc.sequenceLabelId,
-      primaryGroupIds: isSub
-        ? (pgBySub.get(parentId) ?? [])
-        : (pgByItem.get(parentId) ?? []),
-      muscleGroupIds: isSub
-        ? (mgBySub.get(parentId) ?? [])
-        : (mgByItem.get(parentId) ?? []),
-      tagIds: isSub
-        ? (tagBySub.get(parentId) ?? [])
-        : (tagByItem.get(parentId) ?? []),
-      toolIds: isSub
-        ? (toolBySub.get(parentId) ?? [])
-        : (toolByItem.get(parentId) ?? []),
-      setType: normalizeSetType(set.set_type),
-      reps: typeof set.reps === 'number' ? set.reps : null,
-      isPerSide: Boolean(set.is_per_side),
-      loadValue: typeof set.load_value === 'number' ? set.load_value : null,
-      loadUnit: typeof set.load_unit === 'string' ? set.load_unit : null,
+      sessionLogId: row.session_log_id,
+      sessionCategoryId: row.session_category_id,
+      blockLabelId: row.block_label_id,
+      sequenceLabelId: row.sequence_label_id,
+      primaryGroupIds: asStringArray(row.primary_group_ids),
+      muscleGroupIds: asStringArray(row.muscle_group_ids),
+      tagIds: asStringArray(row.variation_ids),
+      toolIds: asStringArray(row.tool_ids),
+      setType: normalizeSetType(row.set_type),
+      effectiveReps: asNumber(row.effective_reps),
+      timeSeconds: asNumber(row.time_seconds),
+      distanceMeters: asNumber(row.distance_meters),
+      tonnage: asNumber(row.tonnage),
     });
   }
 
-  const filtered = facts.filter((f) => passesFilters(f, filters));
+  const filtered = facts.filter((f) => passesFilters(f, filters, setTypes));
 
   const allPgIds = [...new Set(filtered.flatMap((f) => f.primaryGroupIds))];
   const allMgIds = [...new Set(filtered.flatMap((f) => f.muscleGroupIds))];
@@ -557,82 +498,65 @@ export async function loadInsightsSnapshot(
 
   // ── Fixed secondary rollups ───────────────────────────────────────────────
   const tonnageByPg = new Map<string, number>();
-  const balanceByCat = new Map<string, number>();
   const workingByMuscle = new Map<string, number>();
   let tonnageTotal = 0;
   let workingSetsTotal = 0;
 
-  // ── Headline volume grouped by the active lens ────────────────────────────
-  const volumeByLens = new Map<string, number>();
+  // Facts per lens key (for Auto + omission captions)
+  const factsByLensKey = new Map<string, Fact[]>();
+
+  const pushLensFact = (key: string, fact: Fact) => {
+    const list = factsByLensKey.get(key);
+    if (list) list.push(fact);
+    else factsByLensKey.set(key, [fact]);
+  };
 
   for (const fact of filtered) {
-    const vol = effectiveReps(fact.reps, fact.isPerSide);
-    const ton = setTonnage(fact.reps, fact.loadValue, fact.loadUnit, fact.isPerSide);
-    if (ton > 0) tonnageTotal += ton;
+    if (fact.tonnage > 0) tonnageTotal += fact.tonnage;
 
-    const isWorking = normalizeSetType(fact.setType) === 'Working';
+    const isWorking = fact.setType === 'Working';
     if (isWorking) workingSetsTotal += 1;
 
-    // Secondary: tonnage + balance credited per PG (credit-each).
     for (const pgId of fact.primaryGroupIds) {
-      if (vol > 0) {
-        const cat = pgMeta.get(pgId)?.category ?? 'Skill';
-        balanceByCat.set(cat, (balanceByCat.get(cat) ?? 0) + vol);
+      if (fact.tonnage > 0) {
+        tonnageByPg.set(pgId, (tonnageByPg.get(pgId) ?? 0) + fact.tonnage);
       }
-      if (ton > 0) tonnageByPg.set(pgId, (tonnageByPg.get(pgId) ?? 0) + ton);
     }
 
-    // Secondary: working sets credited per muscle.
     if (isWorking) {
       for (const mgId of fact.muscleGroupIds) {
         workingByMuscle.set(mgId, (workingByMuscle.get(mgId) ?? 0) + 1);
       }
     }
 
-    // Headline volume by lens.
-    if (vol > 0) {
-      switch (filters.lens) {
-        case 'primaryGroup':
-          for (const pgId of fact.primaryGroupIds) {
-            volumeByLens.set(pgId, (volumeByLens.get(pgId) ?? 0) + vol);
-          }
-          break;
-        case 'category': {
-          // credit-each: same reps credit every credited PG's category
-          for (const pgId of fact.primaryGroupIds) {
-            const cat = pgMeta.get(pgId)?.category ?? 'Skill';
-            volumeByLens.set(cat, (volumeByLens.get(cat) ?? 0) + vol);
-          }
-          break;
+    switch (filters.lens) {
+      case 'primaryGroup':
+        for (const pgId of fact.primaryGroupIds) pushLensFact(pgId, fact);
+        break;
+      case 'category':
+        for (const pgId of fact.primaryGroupIds) {
+          const cat = pgMeta.get(pgId)?.category ?? 'Skill';
+          pushLensFact(cat, fact);
         }
-        case 'muscle':
-          for (const mgId of fact.muscleGroupIds) {
-            volumeByLens.set(mgId, (volumeByLens.get(mgId) ?? 0) + vol);
-          }
-          break;
-        case 'sessionLabel':
-          volumeByLens.set(
-            fact.sessionCategoryId,
-            (volumeByLens.get(fact.sessionCategoryId) ?? 0) + vol,
-          );
-          break;
-        case 'blockLabel': {
-          const key = fact.blockLabelId ?? SEQUENCE_NONE_ID;
-          volumeByLens.set(key, (volumeByLens.get(key) ?? 0) + vol);
-          break;
-        }
-        case 'sequenceLabel': {
-          const key = fact.sequenceLabelId ?? SEQUENCE_NONE_ID;
-          volumeByLens.set(key, (volumeByLens.get(key) ?? 0) + vol);
-          break;
-        }
-      }
+        break;
+      case 'muscle':
+        for (const mgId of fact.muscleGroupIds) pushLensFact(mgId, fact);
+        break;
+      case 'sessionLabel':
+        pushLensFact(fact.sessionCategoryId, fact);
+        break;
+      case 'blockLabel':
+        pushLensFact(fact.blockLabelId ?? SEQUENCE_NONE_ID, fact);
+        break;
+      case 'sequenceLabel':
+        pushLensFact(fact.sequenceLabelId ?? SEQUENCE_NONE_ID, fact);
+        break;
     }
   }
 
   // Resolve names for the active lens dimension.
   let lensNames = new Map<string, string>();
-  const lensKeys = [...volumeByLens.keys()];
+  const lensKeys = [...factsByLensKey.keys()];
   if (filters.lens === 'primaryGroup') {
     lensNames = new Map([...pgMeta].map(([id, m]) => [id, m.name]));
   } else if (filters.lens === 'muscle') {
@@ -644,30 +568,76 @@ export async function loadInsightsSnapshot(
   } else if (filters.lens === 'sequenceLabel') {
     lensNames = await resolveNames('cluster_labels', lensKeys);
   }
-  // 'category' keys are already display names.
 
-  const lensRow = (id: string): NamedTotal => {
-    if (filters.lens === 'category') return { id, name: id, value: 0 };
+  const lensName = (id: string): string => {
+    if (filters.lens === 'category') return id;
     if (id === SEQUENCE_NONE_ID) {
-      return {
-        id,
-        name: filters.lens === 'sequenceLabel' ? 'No sequence' : 'Unlabeled',
-        value: 0,
-      };
+      return filters.lens === 'sequenceLabel' ? 'No sequence' : 'Unlabeled';
     }
-    return { id, name: lensNames.get(id) ?? id, value: 0 };
+    return lensNames.get(id) ?? id;
   };
 
-  const volumeByLensRows = sortNamed(
-    [...volumeByLens.entries()].map(([id, value]) => ({
-      ...lensRow(id),
-      value,
-    })),
-  );
+  const volumeByLens: NamedTotal[] = [];
+  const omittedForMetric: string[] = [];
+  const isAuto = filters.metric === 'auto';
+
+  for (const [id, bucketFacts] of factsByLensKey) {
+    const resolved: InsightsMetric = isAuto
+      ? autoMetricForFacts(bucketFacts)
+      : (filters.metric as InsightsMetric);
+    let value = 0;
+    for (const fact of bucketFacts) {
+      value += metricContribution(fact, resolved);
+    }
+    if (value > 0) {
+      volumeByLens.push({
+        id,
+        name: lensName(id),
+        value,
+        metric: resolved,
+      });
+    } else if (!isAuto) {
+      // Had facts in-window but nothing for the selected metric.
+      omittedForMetric.push(lensName(id));
+    }
+  }
+
+  // Balance by category — same metric mode, credit-each, data-only.
+  const factsByCategory = new Map<string, Fact[]>();
+  for (const fact of filtered) {
+    for (const pgId of fact.primaryGroupIds) {
+      const cat = pgMeta.get(pgId)?.category ?? 'Skill';
+      const list = factsByCategory.get(cat);
+      if (list) list.push(fact);
+      else factsByCategory.set(cat, [fact]);
+    }
+  }
+
+  const balanceByCategory: NamedTotal[] = [];
+  for (const cat of PRIMARY_GROUP_CATEGORIES) {
+    const bucketFacts = factsByCategory.get(cat) ?? [];
+    if (bucketFacts.length === 0) continue;
+    const resolved: InsightsMetric = isAuto
+      ? autoMetricForFacts(bucketFacts)
+      : (filters.metric as InsightsMetric);
+    let value = 0;
+    for (const fact of bucketFacts) {
+      value += metricContribution(fact, resolved);
+    }
+    if (value > 0) {
+      balanceByCategory.push({
+        id: cat,
+        name: cat,
+        value,
+        metric: resolved,
+      });
+    }
+  }
 
   return {
     data: {
       lens: filters.lens,
+      metricMode: filters.metric,
       sessionCount: sessionRows.length,
       sessionsPerWeek:
         Math.round(
@@ -675,17 +645,15 @@ export async function loadInsightsSnapshot(
             10,
         ) / 10,
       workingSetsTotal,
-      volumeByLens: volumeByLensRows,
-      balanceByCategory: PRIMARY_GROUP_CATEGORIES.map((cat) => ({
-        id: cat,
-        name: cat,
-        value: balanceByCat.get(cat) ?? 0,
-      })).filter((r) => r.value > 0),
+      volumeByLens: sortNamed(volumeByLens),
+      omittedForMetric: omittedForMetric.sort((a, b) => a.localeCompare(b)),
+      balanceByCategory: sortNamed(balanceByCategory),
       workingSetsByMuscle: sortNamed(
         [...workingByMuscle.entries()].map(([id, value]) => ({
           id,
           name: mgNames.get(id) ?? id,
           value,
+          metric: 'sets' as const,
         })),
       ),
       tonnageByPrimaryGroup: sortNamed(
@@ -693,6 +661,7 @@ export async function loadInsightsSnapshot(
           id,
           name: pgMeta.get(id)?.name ?? id,
           value,
+          metric: 'tonnage' as const,
         })),
       ),
       tonnageTotal,

@@ -12,6 +12,10 @@ import { colors, radii, spacing, typography } from '../../theme/tokens';
 type Props = {
   value: string;
   onChange: (dateKey: string) => void;
+  /** Sheet eyebrow; defaults to "Session date". */
+  eyebrow?: string;
+  /** Stretch trigger to parent width (Insights date fields). */
+  fill?: boolean;
 };
 
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const;
@@ -21,7 +25,12 @@ const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const;
  * Shows "Monday, May 5, 2026"; tap opens a month grid for back-dating.
  * Future dates are not selectable.
  */
-export function SessionDateControl({ value, onChange }: Props) {
+export function SessionDateControl({
+  value,
+  onChange,
+  eyebrow = 'Session date',
+  fill = false,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [cursorMonth, setCursorMonth] = useState(() =>
     dateKeyToDayjs(value).startOf('month'),
@@ -68,7 +77,11 @@ export function SessionDateControl({ value, onChange }: Props) {
         onPress={openPicker}
         accessibilityRole="button"
         accessibilityLabel={`Session date ${label}. Tap to change.`}
-        style={({ pressed }) => [styles.trigger, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.trigger,
+          fill && styles.triggerFill,
+          pressed && styles.pressed,
+        ]}
       >
         <Text style={styles.triggerLabel} numberOfLines={1}>
           {label}
@@ -84,7 +97,7 @@ export function SessionDateControl({ value, onChange }: Props) {
         <View style={styles.modalRoot}>
           <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />
           <View style={styles.sheet} accessibilityRole="summary">
-            <Text style={styles.sheetEyebrow}>Session date</Text>
+            <Text style={styles.sheetEyebrow}>{eyebrow}</Text>
             <Text style={styles.sheetTitle}>{label}</Text>
 
             <View style={styles.monthNav}>
@@ -235,6 +248,10 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     borderRadius: radii.sm,
     backgroundColor: colors.bgElevated,
+  },
+  triggerFill: {
+    maxWidth: '100%',
+    alignSelf: 'stretch',
   },
   pressed: {
     opacity: 0.8,

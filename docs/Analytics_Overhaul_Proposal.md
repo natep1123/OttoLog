@@ -649,13 +649,80 @@ made from a real, working surface before any migration.
    2, or keep credit-each-only and revisit later?
 5. **Trend defaults:** default bucket (week vs month) and default window — Status
    #4 wants last-7 for the date control, but Insights defaults to 28; pick one
-   reconciled default.
+   reconciled default. **→ Phase 1a locked: last 7 days inclusive.**
 6. **Wellness placement:** with structure as a dimension family, recommend
    **allow both** (session intent *and* block) — confirm, or keep block-only.
 7. **Simple vs current UI:** does Simple mode *replace* the lens/filter screen as
-   default (Power mode behind "Explore"), or sit beside it?
+   default (Power mode behind "Explore"), or sit beside it? **→ Phase 1a: keep
+   lens + metric on screen; filters in a sheet (not full Simple card stack).**
 8. **Set-type inclusion default:** Working-only default with an "include warmups"
-   toggle applied uniformly — confirm.
+   toggle applied uniformly — confirm. **→ Phase 1a locked: Working-only + toggle.**
+
+---
+
+## PG Counts as (Phase 1b)
+
+> **Contract for Nate / Chat 6 / taxonomy UI.** Phase **1a** ships Auto via the
+> distance → time → reps **heuristic** only. This section is the long-term
+> usability path (Status Next: PG analytics settings). **No migration in 1a.**
+
+### Product rule
+
+Complexity lives on the **vocabulary row** (Primary Group), not on every log —
+same pattern as Rest / `is_empty`. The user teaches OttoLog once how a movement
+**counts**; Insights **Auto** (and Simple “Top movements”) read that setting.
+
+### Settings surface (Account → Taxonomy → Primary Group edit)
+
+Per PG, in addition to today’s name + category:
+
+| Field | Values | Job |
+|---|---|---|
+| **Counts as** (`natural_metric`) | `reps` \| `time` \| `distance` \| `sets` | Headline measure when Insights metric = Auto |
+| **Balance group** | today’s category enum → later seeded-editable PG groups | Balance chart membership |
+
+Mock (copy tone):
+
+```
+Primary Group          Pullups
+Category               Pull
+Counts as              ● Reps   ○ Time   ○ Distance   ○ Sets
+```
+
+Seeds teach defaults (no blank Counts as on day one):
+
+| PG examples | Counts as |
+|---|---|
+| Pullups, Pushups, Squats, … | reps |
+| Deadhangs, Meditation, Sauna, Live Sparring, … | time |
+| Gait | distance |
+| (rare) round-based PGs | sets |
+
+Multi-metric PGs (e.g. Gait logged with time *and* distance): **Counts as** is the
+*headline*; the other measure stays queryable via the metric selector. Never sum
+across metrics.
+
+### Schema sketch (Phase 1b / greenfield `008`+)
+
+Additive only — ask before shipping:
+
+```sql
+-- sketch only; not applied in Phase 1a
+alter table public.analytics_primary_groups
+  add column natural_metric text not null default 'reps'
+  check (natural_metric in ('reps', 'time', 'distance', 'sets'));
+```
+
+- App: Account PG create/edit + `createPrimaryGroup` / update helpers.
+- Insights Auto: resolve metric from PG setting when lens is Primary Group;
+  fall back to 1a heuristic when unset / non-PG lens.
+- Chat 6: `ensure_default_primary_groups` writes Counts as (+ balance group) per
+  [`New_User_Seeds.md`](./New_User_Seeds.md).
+
+### Explicitly out of 1b scope
+
+Credit weights, Power cube, full multi-axis PG-groups replacement (can land with
+or after Counts as), override grammar, auth restyle.
 
 ---
 
