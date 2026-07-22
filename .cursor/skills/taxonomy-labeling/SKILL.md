@@ -16,6 +16,7 @@ description: >-
 2. `docs/Label_Library.md` — short seed / example vocabulary
 3. `docs/New_User_Seeds.md` — full new-account catalog (when seeding or picking defaults)
 4. Schema contracts only if needed: `docs/Database_Outline.md` naming glossary
+5. `docs/Status.md` — **identity** (PG + Variations + muscles) is still an open question; do **not** treat Chat 6 seed dumps as approved until that lands. Prefer the three docs above over inventing vocabulary.
 
 ## Decision rule
 

@@ -13,8 +13,9 @@ description: >-
 
 1. Read the migration list and notes in `docs/Setup.md`.
 2. For schema meaning / naming / RLS / sentinels, open `docs/Database_Outline.md` (glossary + RLS sections) — do not invent table or column synonyms.
-3. Canonical path for **new** projects: `sql/greenfield/001`–`007` (log tree + Insights `v_log_set_facts` live in `007`). Historical incremental set: `sql/deprecated/001`–`019` (do not mix with greenfield on one DB).
-4. For additive patches on an already-greenfield project, take the **next** numeric prefix under `sql/greenfield/` (or a follow-on folder agreed in Setup.md) — never revive `sql/deprecated/`.
+3. Canonical path for **new** projects: `sql/greenfield/001`–`007` only (log tree + Insights helpers / `v_log_set_facts` live in `007`; **no `008`**). Historical incremental set: `sql/deprecated/001`–`019` — never mix with greenfield on one DB.
+4. `sql/seeds/` is optional **personal smoke** (e.g. Murph) — not migrations; do not treat seed files as part of greenfield apply order.
+5. For additive patches on an already-greenfield project, take the **next** numeric prefix under `sql/greenfield/` (or a follow-on folder agreed in Setup.md) — never revive or extend `sql/deprecated/`.
 
 ## Authoring a new migration
 

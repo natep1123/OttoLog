@@ -35,6 +35,7 @@
 
 ## Parked
 
+- Agent map: Status close-out habit + Insights rule landed
 - Point Insights at `v_log_set_facts` (app still joins `log_sets` today)
 - Time / distance Insights metrics; lbs/kg tonnage normalize
 - Home week calendar wired to session logs

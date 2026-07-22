@@ -1,0 +1,27 @@
+---
+description: Insights grain model, credit rules, and product-scope guardrails
+globs: src/lib/insights.ts,src/screens/insights/**
+alwaysApply: false
+---
+
+# Insights
+
+## Source of truth
+
+- Grain / credit / fact contract: `docs/Database_Outline.md` (Insights / grain sections)
+- Product priority & open rethink: `docs/Status.md` — do **not** invent a new analytics IA
+- Implementation: `src/lib/insights.ts`, `src/screens/insights/`
+
+## Locked model (day-one MVP)
+
+- **Lens** = group-by grain (PG / category / muscle / session / block / sequence label).
+- **Filters** = narrow the set (session label, block label, set type, Variations, Tools, dates).
+- **Credit-each** for multi-tag grains (PG / category / muscle): a set can contribute to more than one bucket.
+- **Honest partition** for nest-label lenses and once-totals (sessions, working sets, tonnage): count each set once.
+- **Complete logs only** — incomplete sessions stay out of Insights aggregates.
+
+## Do not
+
+- Redesign Insights product surface unless Status / the user asks — rethink is still open.
+- Point the app at `v_log_set_facts` unless that parked item is actively picked up (joins stay on `log_sets` today).
+- Paste or rewrite design docs into rules; open the outline / Status instead.

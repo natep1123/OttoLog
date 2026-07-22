@@ -39,3 +39,4 @@ Expo ~57 · React Native · TypeScript · Supabase (Auth + Postgres + RLS)
 - Legacy internal name **cluster** = product **Sequence** (`ClusterEditor`, `cluster_templates`, …).
 - Templates nest Session → Block → Sequence → Exercise; logs denest/renest via `src/lib/sessionLogs.ts`.
 - Cursor rules under `.cursor/rules/` point at these docs by scope — open matching files so the right rule attaches.
+- When a feature/phase chat closes, update `docs/Status.md` (Shipped / Next / Parked / Open questions) — do not paste that board into always-on rules.
