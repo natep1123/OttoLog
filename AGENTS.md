@@ -23,7 +23,7 @@ Expo ~57 · React Native · TypeScript · Supabase (Auth + Postgres + RLS)
 | Doc | When |
 |-----|------|
 | [`docs/Status.md`](docs/Status.md) | Living ops board: shipped / next / parked / open questions |
-| [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md) | Insights direction: PG-first query builder (1a = interim substrate) |
+| [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md) | Insights direction: PG-first query builder (Phase 2 MVP shipped; Saved = Phase 3) |
 | [`docs/Project_Structure.md`](docs/Project_Structure.md) | Folders, tabs, data flow, lib map |
 | [`docs/Setup.md`](docs/Setup.md) | Env, migration order, smoke test |
 | [`docs/Database_Outline.md`](docs/Database_Outline.md) | Schema, naming glossary, RLS, sentinels |
@@ -41,6 +41,13 @@ Expo ~57 · React Native · TypeScript · Supabase (Auth + Postgres + RLS)
 - Templates nest Session → Block → Sequence → Exercise; logs denest/renest via `src/lib/sessionLogs.ts`.
 - Cursor rules under `.cursor/rules/` point at these docs by scope — open matching files so the right rule attaches.
 - When a feature/phase chat closes, update `docs/Status.md` (Shipped / Next / Parked / Open questions) — do not paste that board into always-on rules.
+
+## Voice / copy (user-facing + agent-written UI strings)
+
+- Write like a clear coach UI, not a landing page or LLM default.
+- Avoid AI-flavored prose: em dashes as decoration, “delightful / seamless / elevate / unlock your potential” marketing talk, fake urgency, stacked hedges.
+- Prefer short labels, concrete verbs, and glossary terms from the docs.
+- Same bar for comments and Status/proposal edits when they become user-facing copy later.
 
 ## Git / commits (Nate owns the gate)
 

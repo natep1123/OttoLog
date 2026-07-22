@@ -33,7 +33,7 @@ When outline, archived docs, and live SQL disagree, use this order:
 **App slice live**
 
 - **Home**: dashboard with quick actions (build session template, browse exercises, manage taxonomy) and local week preview placeholder
-- **Insights**: Phase **1a** interim dashboard on `v_log_set_facts` (metric-aware). **Canonical direction:** PG-first query builder — see [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md). Destination UI replaces lenses/metric-home in Phase 2.
+- **Insights**: Phase **2** PG-first **query builder** on `v_log_set_facts` (draft form; facets per PG). Saved Insights + lock = Phase 3 — see [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md).
 - **Create** → Log a session (from scratch or from a session template) → denest save; Templates hub → Session / Block / Sequence / Exercise builders
 - **Library** → Templates and Logs: browse, search, open in review mode (locked + expanded outline), edit / archive / delete
 - Searchable create-comboboxes for tools, primary groups, and variations in the exercise builder
@@ -536,16 +536,29 @@ Do not create the full graph in one migration. Ship in dependency order:
 ## Insights query contract
 
 **Product direction (canonical):** [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md)
-— PG-first **query builder** (subject → shape-driven facets → nest scope → window).
-Phase **1a** dashboard (metric chips / lenses) is interim UI on the same fact layer.
-Phase **2** replaces that chrome; Saved Insights + lock are Phase **3**.
+— PG-first **query builder** (FOR subject → SHOW facets → WHERE nest/identity → IN window).
+Phase **2** draft query is live in-app (`InsightQuery` in `src/lib/insights.ts`).
+Saved Insights + lock are Phase **3**.
+
+### Query definition (app, Phase 2)
+
+| Field | Role |
+|------|------|
+| `primaryGroupIds` | Required FOR subject (≥1 before results) |
+| Facets (derived) | Per PG from logged presence: reps / time / distance / load / sets — never sum unlike units |
+| Nest labels | Session / block / sequence ids = WHERE scope only |
+| Variations / tools / set types | Identity WHERE; Working-only default + warmups toggle |
+| `fromDate` / `toDate` | Inclusive window (default last 7 days) |
+
+Load facet = average of sets with `load_value > 0` (+ majority unit) — **not** tonnage as default.
+Multi-PG = stacked panels (credit-each under the hood).
 
 Facts Insights must read (prefer greenfield schema):
 
 | Need | Tables / columns |
 |------|------------------|
 | Date window + status | `session_logs.user_id`, `session_date`, `status`, `category_id` |
-| Set metrics (atomic facets) | `log_sets`: reps, time, distance, load, `is_per_side`, **`set_type`**, **`intensity`** |
+| Set metrics (atomic facets) | `log_sets`: reps, time, distance, **`load_value` / `load_unit`**, `is_per_side`, **`set_type`**, **`intensity`** |
 | Exercise identity | `track_analytics`, PG links, muscle links, tool links, **variation (`*_tag_links`)**, **`track_intensity`** |
 | Dims / scope | `analytics_primary_groups.name` + **`category`** (balance metadata), muscles, tags, tools, session/block/sequence labels |
 

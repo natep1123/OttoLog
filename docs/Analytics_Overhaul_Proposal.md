@@ -13,7 +13,8 @@
 >
 > **Ground truth today:** `src/lib/insights.ts`, `src/screens/insights/`,
 > `sql/greenfield/007_session_logs.sql` (`v_log_set_facts`).
-> Phase **1a** (metric-aware dashboard) is **shipped substrate**, not the destination UI.
+> Phase **1a** (metric-aware dashboard) was interim substrate. Phase **2** query
+> builder MVP is the live Insights IA (draft form; Saved Insights = Phase 3).
 
 ---
 
@@ -36,18 +37,20 @@ a `metric × lens × filter` cube.
 3. **Nest scope:** session / block / sequence labels filter **where** the subject
    appeared. Repeating labels across layers is fine — same as logging.
 4. **Window + set policy:** date range, Working-only, warmups — tucked chrome.
-5. **Save as template:** named **Saved Insights** reopen with **live** data for that
-   query definition.
+5. **Save as template:** named **Saved Insights** (name + notes) reopen with
+   **live** data; date config can be rolling or pinned historic.
 6. **Lock for grammar:** optional lock → clean, paginated outline for screenshot /
-   share (reuse Locked Preview *ideas*, not clone builder chrome).
+   share — same family as Locked Preview (*chef’s kiss* contract). Per-PG cards
+   collapse to ask grammar (override-row analogy) while editing.
 
 **Category stays** — as **metadata on the PG** (balance / grouping), not a co-equal
 “lens” fighting PG for attention. Balance views are **saved queries** or a
 secondary strip, not the home screen.
 
-Phase **1a** made numbers honest (multi-metric, `v_log_set_facts`). **Phase 2+**
-replaces the IA with this form. Old “Power cube” and “Simple card stack” are
-**parked** in favor of **saved query templates**.
+Phase **1a** made numbers honest (multi-metric, `v_log_set_facts`). **Phase 2**
+shipped the draft query form. **Phase 3+** adds Saved Insights + lock.
+Old “Power cube” and “Simple card stack” are **parked** in favor of **saved
+query templates**.
 
 ---
 
@@ -178,12 +181,18 @@ Engineers may notice the SQL shape; users see **“what / how / where / when.”
 
 ## 5. Saved Insights (templates)
 
-**Concept:** User builds a query in the form → **Save** with a name → Home / Library
-lists Saved Insights → tap → **live** aggregate for current logs.
+**Concept (Phase 3 — builder parity):** A Saved Insight is a **named query
+template** in the same product family as session logs / templates — not a
+dashboard bookmark.
+
+User builds → **Save** (name + notes) → Insights home / picker lists Saved
+Insights → tap → **autopopulates** the query form (or opens locked) and
+**re-runs** against current facts.
 
 Examples:
 
-- “Murph pull volume — Challenge blocks, last 7 days”
+- “Murph pull volume — Challenge blocks, last 7 days” (**dynamic** window)
+- “Pullups week of June 13” (**static / historic** pinned range)
 - “Hang time — Deadhangs, all blocks”
 - “Gait — distance + time, Main sessions”
 
@@ -191,25 +200,47 @@ Examples:
 
 - Saved Insight = serialized **query definition** (JSON), not a frozen screenshot.
 - Re-run on open (and pull-to-refresh).
-- Optional pin / reorder on Insights home.
+- **Name + notes** (More-panel DNA from builders).
+- **Date mode** in the definition: rolling preset (e.g. last 7) vs fixed
+  `from`/`to` — so “last 7 days” stays live and “week of June 13” stays
+  historic.
+- Optional pin / reorder; elegant **picker / form-card list** to open a saved
+  ask (Library-like), not a secondary analytics mode.
 - Starter pack: 2–3 seeded Saved Insights for new accounts (after Chat 6) — e.g.
   “This week by PG (reps)” as onboarding, still deletable.
 
-**Schema (app, Phase 2):** new table e.g. `insight_views` or `saved_insights`
-(`user_id`, `name`, `definition jsonb`, `sort_order`, `created_at`). No change to
-log facts. Ask before migrating.
+**Per-PG scope (Jul 2026 feel — Phase 3 target):**
+
+Selecting Primary Groups **spawns one card/row per PG** (sequence-**override**
+analogy: open to edit, collapse to grammar). Identity filters (variations,
+tools, …) attach **to that PG**, not as a single global bag. Shared nest labels
++ window + set policy can remain query-level. Collapsed row = readable ask
+grammar (same *idea* as override chips — exact chip syntax TBD / will track
+builder override overhaul).
+
+Mental model: **autoformatter in front of the fact engine** — author a clean
+ask; `v_log_set_facts` answers with shape-driven facets.
+
+**Schema (app, Phase 3):** new table e.g. `saved_insights`
+(`user_id`, `name`, `notes`, `definition jsonb`, `sort_order`, `created_at`).
+No change to log facts. **Ask before migrating.**
 
 ---
 
 ## 6. Lock — clean grammar for share / screenshot
 
-Reuse **Locked Preview** product pattern (`LockedPreviewModal`, outline pagination):
+Reuse **Locked Preview** product pattern (`LockedPreviewModal`, outline
+pagination) — Nate: locked builder UI is *chef’s kiss*; Insights lock should
+feel like the **same family**.
 
-- **Unlock:** full query form editable (like template builder).
-- **Lock:** read-only **result grammar** — compact lines per PG + facet totals,
-  optional per-exercise breakdown, paginated for screenshots.
+- **Unlock:** full query form editable (per-PG cards + global scope/dates).
+- **Lock:** read-only **converted grammar** — compact lines per PG (ask + facet
+  totals), optional per-exercise breakdown, paginated for screenshots.
+- Collapse of a per-PG card while unlocked can preview the same grammar row
+  the lock outline will use.
 
-Not a pixel clone of SessionEditor — same **lock = presentation mode** contract.
+Not a pixel clone of SessionEditor nest trees — same **lock = presentation
+mode** contract and visual language.
 
 ---
 
@@ -244,8 +275,8 @@ facet order**, not for hiding other logged facets.
 | Complete logs only | Summing mixed facets/units |
 | Saved templates pattern from builders | Dashboard-only Insights |
 
-**Phase 1a app:** keep running until query builder ships; may reuse date pickers,
-filter components, and fact loader internals.
+**Phase 1a chrome:** retired. Date pickers / filter patterns / `v_log_set_facts`
+loader live on in Phase 2.
 
 ---
 
@@ -262,25 +293,31 @@ filter components, and fact loader internals.
 - `v_log_set_facts`, multi-metric honesty, last-7, filters sheet, Working default
 - **Treat as throwaway IA** — logic migrates, layout does not
 
-### Phase 2 — Query builder MVP
+### Phase 2 — Query builder MVP — **done**
 
 **Goal:** “Pick Pullups → see reps, time, load if logged” feels right on Murph.
 
-- [ ] Insights screen → **Query form** layout (PG multiselect first)
-- [ ] Per-PG **facet panel** (shape + logged presence)
-- [ ] Scope row: session / block / sequence labels + variations / tools / set type
-- [ ] Date window control (reuse `SessionDateControl`)
-- [ ] Read still from `v_log_set_facts`; facet aggregation in `insights.ts`
-- [ ] **No Saved Insights yet** — single draft query only
-- [ ] Category / balance → remove from default path (or one link “Balance view…”)
+- [x] Insights screen → **Query form** layout (PG multiselect first)
+- [x] Per-PG **facet panel** (shape + logged presence; stacked multi-PG)
+- [x] Scope disclosure: session / block / **sequence** labels + variations / tools / set type
+- [x] Date window control (reuse `SessionDateControl`; last 7; Working + warmups)
+- [x] Read still from `v_log_set_facts`; facet aggregation in `insights.ts` (incl. load avg, not tonnage)
+- [x] **No Saved Insights yet** — single draft query only
+- [x] Category / balance → removed from default path
 
-**Out of scope:** lock mode, saved templates table, trends/time buckets, derived calcs UI
+**Out of scope (still):** lock mode, saved templates table, trends/time buckets, derived calcs UI
 
-### Phase 3 — Saved Insights + lock
+### Phase 3 — Saved Insights + builder-parity lock
 
-- [ ] `saved_insights` (or equivalent) persistence
-- [ ] Save / rename / delete / list on Insights home
-- [ ] Lock → paginated result outline (screenshot grammar)
+**Goal:** Insights feels like the template/log builders — saveable named asks,
+per-PG editable rows that collapse to grammar, lock ≈ Locked Preview.
+
+- [ ] Ideate / wireframe (per-PG cards, dynamic vs static dates, home picker)
+- [ ] `saved_insights` persistence (`name`, `notes`, `definition jsonb`, …) — ask before `008`
+- [ ] Save / rename / delete / list + elegant picker on Insights home
+- [ ] Per-PG scope cards (variations/tools scoped to that PG); collapse → ask grammar
+- [ ] Dynamic (rolling) vs static (pinned) date windows in definition
+- [ ] Lock → paginated result outline matching Locked Preview family
 - [ ] 1–2 default Saved Insights for new users (optional, with Chat 6)
 
 ### Phase 4 — Taxonomy + seeds
@@ -328,30 +365,42 @@ fake combined total.
 
 ---
 
-## 11. Open decisions (Nate) — lean locks for Phase 2
+## 11. Open decisions (Nate)
+
+### Phase 2 lean locks (shipped)
 
 | # | Topic | Decision (Jul 2026) |
 |---|--------|---------------------|
 | 1 | Multi-PG layout | **Stacked panels** first (one panel per PG). Tabs only if stacked gets too tall. |
-| 2 | Load facet | Show facet when any set has load; v1 summary = simple presence / last-or-avg load — **not** tonnage. |
+| 2 | Load facet | Show facet when any set has load; v1 summary = avg load — **not** tonnage. |
 | 3 | Insights home (Phase 2) | **Draft query form** as home. Saved list lands in Phase 3. |
 | 4 | Category enum | **Keep** through Phase 2; PG-groups multi-axis stays Phase 5. |
 | 5 | 1a screen | **Replace in place** when Phase 2 ships (no long dual-UI / feature flag). |
 | 6 | Wellness / nest labels | Does **not** block Phase 2; resolve with Chat 6 / New User Seeds. |
 
-Still open for later: credit-each vs partition on balance saved views; builder lock/pills mirror.
+### Phase 3 ideation locks (Jul 22 feel — not implemented)
+
+| # | Topic | Direction |
+|---|--------|-----------|
+| 7 | Builder parity | Saved Insights + lock should feel like templates/logs + Locked Preview |
+| 8 | Per-PG filters | Selecting a PG spawns a per-PG editable card; variations/tools apply **per PG** (override-row analogy) |
+| 9 | Collapsed grammar | Save/collapse shows compact ask grammar; lock outline uses the same language |
+| 10 | Date saves | Support **dynamic** (rolling) and **static** (pinned range) in the definition |
+| 11 | Name + notes | First-class on Saved Insight (builder More DNA) |
+| 12 | Home chrome | Elegant saved-query picker / form-card list — exact layout TBD in Phase 3 wireframe |
+
+Still open: credit-each vs partition on balance saved views; exact per-PG vs global filter split; builder lock/pills mirror on nest editors.
 
 ---
 
 ## 12. Implications for other docs / code
 
-- **`Status.md`:** Next = Insights query builder MVP (Phase 2); 1a = substrate
+- **`Status.md`:** Next = Phase 3 Saved Insights + builder-parity lock; Phase 2 = shipped
 - **`Analytics_Labeling.md`:** PG-first decision rule unchanged; de-emphasize “lens”
   language in UI copy when touched
-- **`Database_Outline.md`:** Insights contract section should eventually describe
-  query definition + facets — **defer edit** until Phase 2 starts (or add stub pointer)
-- **`.cursor/rules/insights.mdc`:** point at this doc; “dashboard Phase 1a” is interim
-- **Chat 6:** still blocked until Phase 2 feel + Counts as shape accepted (Phase 4)
+- **`Database_Outline.md`:** Insights query contract + Phase 2 `InsightQuery` fields — keep in sync
+- **`.cursor/rules/insights.mdc`:** Phase 2 shipped; Phase 3 direction from Status/proposal
+- **Chat 6:** still blocked until Counts as shape accepted (Phase 4)
 
 ---
 

@@ -46,7 +46,7 @@ No React Navigation yet. **`HomeScreen`** holds five bottom tabs and a nested st
 | Tab | Hub | Live drill-in | Stubs |
 |-----|-----|---------------|-------|
 | **Home** | Dashboard | Quick actions → Create session builder / Library exercises / Account taxonomy | Week → sessions (Soon) |
-| **Insights** | Volume / balance / muscles / tonnage (MVP) | Lens + filters: date, Variations, Tools, session / block label, set type | `src/lib/insights.ts` |
+| **Insights** | PG-first query builder (Phase 2) | FOR Primary Groups → facets → Scope (nest / variations / tools / set type) → dates | `src/lib/insights.ts` |
 | **Create** | Create hub | Log from scratch / from template; Templates → Session / Block / Sequence / Exercise builders | AI-assisted log |
 | **Library** | Library hub | Templates → Sessions / Blocks / Sequences / Exercises; Logs → log editor (review mode) | — |
 | **Account** | Account hub | Taxonomy → lists; Settings → Danger zone | Profile, Preferences |
@@ -73,7 +73,7 @@ Library opens of templates and logs use **`reviewMode`**: `EditorChrome` starts 
 | `blockTemplates.ts` | List, get, save, archive / hard-delete; mixed exercise/sequence items; `blockTemplateToDraft` |
 | `sessionTemplates.ts` | List, get, save, archive / hard-delete; nested blocks; `sessionTemplateToDraft`; default Session label |
 | `sessionLogs.ts` | List, get, save, delete session logs; denest draft tree → log tables (tools / PG / muscle / **variation** links, `track_intensity`, `set_type` / `intensity`); renest rows → editor draft |
-| `insights.ts` | Insights MVP: lens (PG / category / muscle / nest labels) + filters over complete logs |
+| `insights.ts` | Insights Phase 2: `InsightQuery` over `v_log_set_facts` → per-PG shape-driven facets |
 | `lockedPreviewPages.ts` | Paginate a locked outline into screenshot pages for `LockedPreviewModal` (notes/overrides row packing; swipe + chevron sync) |
 | `taxonomy.ts` | Picker lists and Account taxonomy CRUD (tools, analytics + PG **category**, session/block/sequence labels) |
 | `localTime.ts` | Local greeting, week strip, session date keys / labels (`dayjs`) |
@@ -93,7 +93,7 @@ Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `Co
 | `WelcomeScreen`, `SignInScreen`, `SignUpScreen` | Auth flow |
 | `HomeScreen.tsx` | Tab shell and stack routing |
 | `home/HomeDashboardScreen.tsx` | Home tab UI |
-| `insights/InsightsScreen.tsx` | Insights MVP (complete-log rollups) |
+| `insights/InsightsScreen.tsx` | Insights Phase 2 query builder (draft form) |
 | `create/` | Create hub, template hub, session / block / sequence / exercise builders, session log builder, log-from-template picker |
 | `library/` | Library hub, templates hub, session / block / sequence / exercise lists, logs list |
 | `account/` | Account hub, settings, danger zone, taxonomy hub and lists |

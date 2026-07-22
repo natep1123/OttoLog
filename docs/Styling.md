@@ -346,7 +346,7 @@ Users navigate to Welcome by pressing the wordmark. They move directly between L
 
 ### Shell
 
-Home now uses a dashboard layout. Insights shows base volume / balance rollups over complete logs. Create, Library, and Account use hub / list / builder screens with:
+Home now uses a dashboard layout. Insights is a Phase 2 PG-first query builder (draft form; Saved Insights = Phase 3). Create, Library, and Account use hub / list / builder screens with:
 
 - Header-sized wordmark
 - Screen title + muted subtitle via `ScreenHeader`
@@ -366,7 +366,7 @@ The week strip is a placeholder layout, not a session calendar yet.
 
 ### Insights
 
-`InsightsScreen` — lens picker (PG / category / muscle / session / block / sequence label) plus date / Variations / Tools / session-label / block-label / set-type filters; bar lists for volume, balance by category, working sets × muscle, tonnage. Data via `src/lib/insights.ts` (greenfield log tables; fact view in `007` not wired yet).
+`InsightsScreen` — Phase 2 query builder: Primary Group multiselect first, stacked per-PG facet panels (reps / time / distance / load / sets as logged), Scope disclosure (session / block / sequence labels + variations / tools / set type), date window + Working/warmups. Data via `src/lib/insights.ts` on `v_log_set_facts`. Saved Insights + lock = Phase 3.
 
 ### Account
 

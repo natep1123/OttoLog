@@ -1,163 +1,60 @@
 /**
- * Insights aggregates against greenfield `v_log_set_facts`.
+ * Insights Phase 2 — PG-first query aggregates against `v_log_set_facts`.
  *
- * Grain model: every fact (a log set) carries its own dimension keys —
- * session label, block label, sequence label, plus exercise identity
- * (PG / category / muscle / variation / tool). A single "lens" chooses
- * which dimension the headline chart groups by; stacked filters narrow
- * the fact set regardless of lens.
+ * Query madlib: FOR (PGs) → SHOW (facets) → WHERE (nest/identity) → IN (dates).
+ * Facets are atomic (reps / time / distance / load / sets). Never sum unlike
+ * units. Multi-PG = stacked panels (credit-each under the hood).
  *
- * Metric model (Phase 1a):
- *  - User picks Reps | Time | Distance | Tonnage | Sets, or Auto.
- *  - Auto per bucket: distance if any, else time if any, else reps.
- *    (Phase 1b: PG `natural_metric` / "Counts as" replaces the heuristic.)
- *  - Never sum across different metrics into one total.
- *
- * Credit rule (decision: credit-each, documented):
- *  - Per-PG, per-category, and per-muscle rollups deliberately double-count.
- *    NEVER sum those rows into one grand total.
- *  - Session / block / sequence label lenses count each set ONCE.
- *  - Honest totals (sessionCount, workingSetsTotal, tonnageTotal) are
- *    computed once at the set grain, never by summing a credited dimension.
+ * Complete logs only. Working-only default + warmups toggle.
  */
 
-import { PRIMARY_GROUP_CATEGORIES } from '../constants/primaryGroupCategories';
 import { normalizeSetType, SET_TYPES, type SetType } from '../constants/setTypes';
 import { supabase } from './supabase';
 import { todayDateKey } from './localTime';
 
-/** Dimension the headline volume chart groups by. */
-export type InsightsLens =
-  | 'primaryGroup'
-  | 'category'
-  | 'muscle'
-  | 'sessionLabel'
-  | 'blockLabel'
-  | 'sequenceLabel';
+/** Atomic facet shown per Primary Group panel. */
+export type InsightFacetId = 'reps' | 'time' | 'distance' | 'load' | 'sets';
 
-export const INSIGHTS_LENS_OPTIONS: { id: InsightsLens; label: string }[] = [
-  { id: 'primaryGroup', label: 'Primary Group' },
-  { id: 'category', label: 'Category' },
-  { id: 'muscle', label: 'Muscle' },
-  { id: 'sessionLabel', label: 'Session label' },
-  { id: 'blockLabel', label: 'Block label' },
-  { id: 'sequenceLabel', label: 'Sequence label' },
-];
-
-/** User-facing measure for the headline chart. */
-export type InsightsMetric = 'reps' | 'time' | 'distance' | 'tonnage' | 'sets';
-
-/** Metric selector including Auto (per-bucket heuristic until PG Counts as). */
-export type InsightsMetricMode = InsightsMetric | 'auto';
-
-export const INSIGHTS_METRIC_OPTIONS: {
-  id: InsightsMetricMode;
-  label: string;
-}[] = [
-  { id: 'auto', label: 'Auto' },
-  { id: 'reps', label: 'Reps' },
-  { id: 'time', label: 'Time' },
-  { id: 'distance', label: 'Distance' },
-  { id: 'tonnage', label: 'Tonnage' },
-  { id: 'sets', label: 'Sets' },
-];
-
-/** Lenses that credit multiple dimensions per set (never sum their rows). */
-const CREDIT_EACH_LENSES: ReadonlySet<InsightsLens> = new Set<InsightsLens>([
-  'primaryGroup',
-  'category',
-  'muscle',
-]);
-
-export function lensDoubleCounts(lens: InsightsLens): boolean {
-  return CREDIT_EACH_LENSES.has(lens);
-}
-
-export function lensLabel(lens: InsightsLens): string {
-  return (
-    INSIGHTS_LENS_OPTIONS.find((o) => o.id === lens)?.label ?? 'Primary Group'
-  );
-}
-
-export function metricLabel(metric: InsightsMetricMode): string {
-  return (
-    INSIGHTS_METRIC_OPTIONS.find((o) => o.id === metric)?.label ?? 'Auto'
-  );
-}
-
-/** Short unit for a resolved metric (Auto rows carry their own). */
-export function metricUnit(metric: InsightsMetric): string {
-  switch (metric) {
-    case 'reps':
-      return 'reps';
-    case 'time':
-      return 'min';
-    case 'distance':
-      return 'mi';
-    case 'tonnage':
-      return '';
-    case 'sets':
-      return 'sets';
-  }
-}
-
-export type InsightsFilters = {
+/** Draft query definition (Phase 2 — not persisted). */
+export type InsightQuery = {
+  /** Required subject — empty = no results. */
+  primaryGroupIds: string[];
   /** Inclusive YYYY-MM-DD */
   fromDate: string;
   /** Inclusive YYYY-MM-DD */
   toDate: string;
-  /** Which dimension the headline chart groups by */
-  lens: InsightsLens;
-  /** Headline measure; Auto = per-bucket heuristic */
-  metric: InsightsMetricMode;
-  /** Empty = all session labels */
   sessionCategoryIds: string[];
-  /** Empty = all block labels */
   blockLabelIds: string[];
-  /** Empty = all variations; match if exercise has any of these tags */
+  sequenceLabelIds: string[];
   variationIds: string[];
-  /** Empty = all tools; match if exercise has any of these tools */
   toolIds: string[];
-  /**
-   * Set-type allow-list. Default Working-only.
-   * `includeWarmups` adds Warmup when the list is the Working-only default.
-   */
   setTypes: SetType[];
-  /** When true and setTypes is Working-only default, also include Warmup. */
   includeWarmups: boolean;
 };
 
-export type NamedTotal = {
-  id: string;
-  name: string;
+export type PgFacetResult = {
+  id: InsightFacetId;
+  label: string;
+  /** Raw value: reps count, time seconds, distance meters, avg load, or set count. */
   value: number;
-  /** Resolved metric for this row (always set; differs across rows when Auto). */
-  metric: InsightsMetric;
+  /** Display unit for load (lbs/kg/BW/…); unused for other facets. */
+  unit?: string;
+  /** Sets that contributed to the load average. */
+  loadSetCount?: number;
 };
 
-export type InsightsSnapshot = {
-  lens: InsightsLens;
-  metricMode: InsightsMetricMode;
+export type PgPanelResult = {
+  primaryGroupId: string;
+  name: string;
+  facets: PgFacetResult[];
+  setCount: number;
+};
+
+export type InsightQueryResult = {
   sessionCount: number;
-  /** Sessions per week across the selected window (honest, header grain). */
   sessionsPerWeek: number;
-  /** Working sets counted once each (honest total, not per-muscle). */
-  workingSetsTotal: number;
-  /** Volume grouped by the active lens + metric. Never sum Auto rows. */
-  volumeByLens: NamedTotal[];
-  /**
-   * Names that had tracked sets in-window but zero contribution for the
-   * selected fixed metric (omitted from the chart). Empty when Auto.
-   */
-  omittedForMetric: string[];
-  /** Balance rolled up by PG category (credit-each; data-only; do not sum). */
-  balanceByCategory: NamedTotal[];
-  /** Working-set counts credited per muscle (do not sum across muscles). */
-  workingSetsByMuscle: NamedTotal[];
-  /** Tonnage credited per PG (do not sum across PGs). */
-  tonnageByPrimaryGroup: NamedTotal[];
-  /** Total set tonnage counted once — the honest session tonnage. */
-  tonnageTotal: number;
+  /** Ordered by InsightQuery.primaryGroupIds selection order. */
+  panels: PgPanelResult[];
 };
 
 type Fact = {
@@ -166,18 +63,25 @@ type Fact = {
   blockLabelId: string | null;
   sequenceLabelId: string | null;
   primaryGroupIds: string[];
-  muscleGroupIds: string[];
   tagIds: string[];
   toolIds: string[];
   setType: SetType;
   effectiveReps: number;
   timeSeconds: number;
   distanceMeters: number;
-  tonnage: number;
+  loadValue: number;
+  loadUnit: string | null;
 };
 
-const SEQUENCE_NONE_ID = '__no_sequence__';
 const METERS_PER_MILE = 1609.344;
+
+const FACET_LABELS: Record<InsightFacetId, string> = {
+  reps: 'Reps',
+  time: 'Time',
+  distance: 'Distance',
+  load: 'Load',
+  sets: 'Sets',
+};
 
 function daysAgoKey(days: number): string {
   const d = new Date(`${todayDateKey()}T12:00:00`);
@@ -188,14 +92,14 @@ function daysAgoKey(days: number): string {
   return `${y}-${m}-${day}`;
 }
 
-export function defaultInsightsFilters(): InsightsFilters {
+export function defaultInsightQuery(): InsightQuery {
   return {
+    primaryGroupIds: [],
     fromDate: daysAgoKey(6), // last 7 days inclusive
     toDate: todayDateKey(),
-    lens: 'primaryGroup',
-    metric: 'auto',
     sessionCategoryIds: [],
     blockLabelIds: [],
+    sequenceLabelIds: [],
     variationIds: [],
     toolIds: [],
     setTypes: ['Working'],
@@ -204,47 +108,65 @@ export function defaultInsightsFilters(): InsightsFilters {
 }
 
 /** Effective set-type allow-list after the warmups toggle. */
-export function effectiveSetTypes(filters: InsightsFilters): SetType[] {
+export function effectiveSetTypes(query: InsightQuery): SetType[] {
   const base =
-    filters.setTypes.length > 0 ? [...filters.setTypes] : (['Working'] as SetType[]);
-  if (!filters.includeWarmups) return base;
+    query.setTypes.length > 0 ? [...query.setTypes] : (['Working'] as SetType[]);
+  if (!query.includeWarmups) return base;
   if (base.includes('Warmup')) return base;
   return [...base, 'Warmup'];
 }
 
-/** Format a stored metric value for display (time→min, distance→mi). */
-export function formatMetricValue(
-  value: number,
-  metric: InsightsMetric,
-): string {
-  if (metric === 'time') {
-    const minutes = value / 60;
-    if (minutes >= 10) return String(Math.round(minutes));
-    if (minutes >= 1) return minutes.toFixed(1);
-    return value > 0 ? value.toFixed(0) + 's' : '0';
-  }
-  if (metric === 'distance') {
-    const miles = value / METERS_PER_MILE;
-    if (miles >= 10) return String(Math.round(miles * 10) / 10);
-    if (miles >= 0.1) return miles.toFixed(2);
-    return miles > 0 ? miles.toFixed(3) : '0';
-  }
-  if (metric === 'tonnage') {
-    if (Number.isInteger(value)) return String(value);
-    return value.toFixed(1);
-  }
-  if (Number.isInteger(value)) return String(value);
-  return value.toFixed(1);
+export function facetLabel(id: InsightFacetId): string {
+  return FACET_LABELS[id];
 }
 
-export function formatMetricDisplay(
-  value: number,
-  metric: InsightsMetric,
-): string {
-  const n = formatMetricValue(value, metric);
-  if (metric === 'time' && n.endsWith('s')) return n;
-  const unit = metricUnit(metric);
-  return unit ? `${n} ${unit}` : n;
+/** Format time seconds → display string (min or s). */
+export function formatTimeFacet(seconds: number): string {
+  const minutes = seconds / 60;
+  if (minutes >= 10) return `${Math.round(minutes)} min`;
+  if (minutes >= 1) return `${minutes.toFixed(1)} min`;
+  return seconds > 0 ? `${seconds.toFixed(0)}s` : '0';
+}
+
+/** Format distance meters → miles display. */
+export function formatDistanceFacet(meters: number): string {
+  const miles = meters / METERS_PER_MILE;
+  if (miles >= 10) return `${Math.round(miles * 10) / 10} mi`;
+  if (miles >= 0.1) return `${miles.toFixed(2)} mi`;
+  return miles > 0 ? `${miles.toFixed(3)} mi` : '0 mi';
+}
+
+/** Format a facet value for display. */
+export function formatFacetDisplay(facet: PgFacetResult): string {
+  switch (facet.id) {
+    case 'time':
+      return formatTimeFacet(facet.value);
+    case 'distance':
+      return formatDistanceFacet(facet.value);
+    case 'load': {
+      const unit = facet.unit ?? '';
+      const n = Number.isInteger(facet.value)
+        ? String(facet.value)
+        : facet.value.toFixed(1);
+      const avg = unit ? `avg ${n} ${unit}` : `avg ${n}`;
+      if (facet.loadSetCount != null && facet.loadSetCount > 0) {
+        return `${avg} (${facet.loadSetCount} set${facet.loadSetCount === 1 ? '' : 's'})`;
+      }
+      return avg;
+    }
+    case 'reps': {
+      const n = Number.isInteger(facet.value)
+        ? String(facet.value)
+        : facet.value.toFixed(1);
+      return `${n} reps`;
+    }
+    case 'sets': {
+      const n = Number.isInteger(facet.value)
+        ? String(facet.value)
+        : facet.value.toFixed(1);
+      return `${n} set${facet.value === 1 ? '' : 's'}`;
+    }
+  }
 }
 
 function asStringArray(value: unknown): string[] {
@@ -256,69 +178,8 @@ function asNumber(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
-function metricContribution(fact: Fact, metric: InsightsMetric): number {
-  switch (metric) {
-    case 'reps':
-      return fact.effectiveReps > 0 ? fact.effectiveReps : 0;
-    case 'time':
-      return fact.timeSeconds > 0 ? fact.timeSeconds : 0;
-    case 'distance':
-      return fact.distanceMeters > 0 ? fact.distanceMeters : 0;
-    case 'tonnage':
-      return fact.tonnage > 0 ? fact.tonnage : 0;
-    case 'sets':
-      return 1;
-  }
-}
-
-/** Phase 1a Auto heuristic — Phase 1b reads PG Counts as instead. */
-export function autoMetricForFacts(facts: readonly FactLike[]): InsightsMetric {
-  if (facts.some((f) => f.distanceMeters > 0)) return 'distance';
-  if (facts.some((f) => f.timeSeconds > 0)) return 'time';
-  if (facts.some((f) => f.effectiveReps > 0)) return 'reps';
-  return 'reps';
-}
-
-type FactLike = {
-  distanceMeters: number;
-  timeSeconds: number;
-  effectiveReps: number;
-};
-
-function passesFilters(
-  fact: Fact,
-  filters: InsightsFilters,
-  setTypes: SetType[],
-): boolean {
-  if (
-    filters.sessionCategoryIds.length > 0 &&
-    !filters.sessionCategoryIds.includes(fact.sessionCategoryId)
-  ) {
-    return false;
-  }
-  if (filters.blockLabelIds.length > 0) {
-    if (!fact.blockLabelId || !filters.blockLabelIds.includes(fact.blockLabelId)) {
-      return false;
-    }
-  }
-  if (setTypes.length > 0 && !setTypes.includes(fact.setType)) {
-    return false;
-  }
-  if (filters.variationIds.length > 0) {
-    const hit = filters.variationIds.some((id) => fact.tagIds.includes(id));
-    if (!hit) return false;
-  }
-  if (filters.toolIds.length > 0) {
-    const hit = filters.toolIds.some((id) => fact.toolIds.includes(id));
-    if (!hit) return false;
-  }
-  return true;
-}
-
-function sortNamed(rows: NamedTotal[]): NamedTotal[] {
-  return rows
-    .filter((r) => r.value > 0)
-    .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
+function asNullableString(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
 function weeksInWindow(fromDate: string, toDate: string): number {
@@ -330,23 +191,139 @@ function weeksInWindow(fromDate: string, toDate: string): number {
   return Math.max(days / 7, 1 / 7);
 }
 
-/** Resolve id → name for a taxonomy/label table (best-effort). */
-async function resolveNames(
-  table: string,
-  ids: string[],
-): Promise<Map<string, string>> {
-  const names = new Map<string, string>();
-  const unique = [...new Set(ids.filter(Boolean))];
-  if (unique.length === 0) return names;
-  const { data, error } = await supabase
-    .from(table)
-    .select('id, name')
-    .in('id', unique);
-  if (error) return names;
-  for (const row of data ?? []) {
-    names.set(row.id as string, row.name as string);
+function passesScope(
+  fact: Fact,
+  query: InsightQuery,
+  setTypes: SetType[],
+): boolean {
+  if (
+    query.sessionCategoryIds.length > 0 &&
+    !query.sessionCategoryIds.includes(fact.sessionCategoryId)
+  ) {
+    return false;
   }
-  return names;
+  if (query.blockLabelIds.length > 0) {
+    if (!fact.blockLabelId || !query.blockLabelIds.includes(fact.blockLabelId)) {
+      return false;
+    }
+  }
+  if (query.sequenceLabelIds.length > 0) {
+    if (
+      !fact.sequenceLabelId ||
+      !query.sequenceLabelIds.includes(fact.sequenceLabelId)
+    ) {
+      return false;
+    }
+  }
+  if (setTypes.length > 0 && !setTypes.includes(fact.setType)) {
+    return false;
+  }
+  if (query.variationIds.length > 0) {
+    const hit = query.variationIds.some((id) => fact.tagIds.includes(id));
+    if (!hit) return false;
+  }
+  if (query.toolIds.length > 0) {
+    const hit = query.toolIds.some((id) => fact.toolIds.includes(id));
+    if (!hit) return false;
+  }
+  return true;
+}
+
+function majorityUnit(units: string[]): string | undefined {
+  if (units.length === 0) return undefined;
+  const counts = new Map<string, number>();
+  for (const u of units) {
+    counts.set(u, (counts.get(u) ?? 0) + 1);
+  }
+  let best: string | undefined;
+  let bestN = 0;
+  for (const [u, n] of counts) {
+    if (n > bestN || (n === bestN && best != null && u < best)) {
+      best = u;
+      bestN = n;
+    }
+  }
+  return best;
+}
+
+function buildPanel(
+  pgId: string,
+  name: string,
+  facts: Fact[],
+): PgPanelResult {
+  if (facts.length === 0) {
+    return { primaryGroupId: pgId, name, facets: [], setCount: 0 };
+  }
+
+  let reps = 0;
+  let timeSeconds = 0;
+  let distanceMeters = 0;
+  let hasReps = false;
+  let hasTime = false;
+  let hasDistance = false;
+  const loadValues: number[] = [];
+  const loadUnits: string[] = [];
+
+  for (const fact of facts) {
+    if (fact.effectiveReps > 0) {
+      hasReps = true;
+      reps += fact.effectiveReps;
+    }
+    if (fact.timeSeconds > 0) {
+      hasTime = true;
+      timeSeconds += fact.timeSeconds;
+    }
+    if (fact.distanceMeters > 0) {
+      hasDistance = true;
+      distanceMeters += fact.distanceMeters;
+    }
+    if (fact.loadValue > 0) {
+      loadValues.push(fact.loadValue);
+      if (fact.loadUnit) loadUnits.push(fact.loadUnit);
+    }
+  }
+
+  const facets: PgFacetResult[] = [];
+  if (hasReps) {
+    facets.push({ id: 'reps', label: FACET_LABELS.reps, value: reps });
+  }
+  if (hasTime) {
+    facets.push({
+      id: 'time',
+      label: FACET_LABELS.time,
+      value: timeSeconds,
+    });
+  }
+  if (hasDistance) {
+    facets.push({
+      id: 'distance',
+      label: FACET_LABELS.distance,
+      value: distanceMeters,
+    });
+  }
+  if (loadValues.length > 0) {
+    const sum = loadValues.reduce((a, b) => a + b, 0);
+    const avg = sum / loadValues.length;
+    facets.push({
+      id: 'load',
+      label: FACET_LABELS.load,
+      value: Math.round(avg * 10) / 10,
+      unit: majorityUnit(loadUnits),
+      loadSetCount: loadValues.length,
+    });
+  }
+  facets.push({
+    id: 'sets',
+    label: FACET_LABELS.sets,
+    value: facts.length,
+  });
+
+  return {
+    primaryGroupId: pgId,
+    name,
+    facets,
+    setCount: facts.length,
+  };
 }
 
 type FactRow = {
@@ -362,44 +339,52 @@ type FactRow = {
   effective_reps: number | null;
   time_seconds: number | null;
   distance_meters: number | null;
-  tonnage: number | null;
+  load_value: number | null;
+  load_unit: string | null;
   primary_group_ids: string[] | null;
-  muscle_group_ids: string[] | null;
   variation_ids: string[] | null;
   tool_ids: string[] | null;
 };
 
 /**
- * Load complete session facts in the date window and aggregate.
- * Reads `v_log_set_facts` (greenfield 007).
+ * Run a draft Insight query. Returns null panels when no PGs selected
+ * (caller should show empty state without calling, but safe if called).
  */
-export async function loadInsightsSnapshot(
-  filters: InsightsFilters,
-): Promise<{ data: InsightsSnapshot | null; error: string | null }> {
-  const empty = (sessionCount: number): InsightsSnapshot => ({
-    lens: filters.lens,
-    metricMode: filters.metric,
-    sessionCount,
-    sessionsPerWeek: 0,
-    workingSetsTotal: 0,
-    volumeByLens: [],
-    omittedForMetric: [],
-    balanceByCategory: [],
-    workingSetsByMuscle: [],
-    tonnageByPrimaryGroup: [],
-    tonnageTotal: 0,
-  });
+export async function loadInsightQuery(
+  query: InsightQuery,
+): Promise<{ data: InsightQueryResult | null; error: string | null }> {
+  if (query.primaryGroupIds.length === 0) {
+    return { data: { sessionCount: 0, sessionsPerWeek: 0, panels: [] }, error: null };
+  }
+
+  const { data: pgRows, error: pgError } = await supabase
+    .from('analytics_primary_groups')
+    .select('id, name')
+    .in('id', query.primaryGroupIds);
+  if (pgError) return { data: null, error: pgError.message };
+  const nameMap = new Map<string, string>();
+  for (const row of pgRows ?? []) {
+    nameMap.set(row.id as string, row.name as string);
+  }
+
+  const emptyPanels = (): PgPanelResult[] =>
+    query.primaryGroupIds.map((id) => ({
+      primaryGroupId: id,
+      name: nameMap.get(id) ?? id,
+      facets: [],
+      setCount: 0,
+    }));
 
   let sessionQuery = supabase
     .from('session_logs')
     .select('id, category_id, session_date')
     .eq('status', 'complete')
-    .gte('session_date', filters.fromDate)
-    .lte('session_date', filters.toDate)
+    .gte('session_date', query.fromDate)
+    .lte('session_date', query.toDate)
     .order('session_date', { ascending: false });
 
-  if (filters.sessionCategoryIds.length > 0) {
-    sessionQuery = sessionQuery.in('category_id', filters.sessionCategoryIds);
+  if (query.sessionCategoryIds.length > 0) {
+    sessionQuery = sessionQuery.in('category_id', query.sessionCategoryIds);
   }
 
   const { data: sessions, error: sessionError } = await sessionQuery;
@@ -411,10 +396,19 @@ export async function loadInsightsSnapshot(
     session_date: string;
   }[];
 
-  if (sessionRows.length === 0) return { data: empty(0), error: null };
+  if (sessionRows.length === 0) {
+    return {
+      data: {
+        sessionCount: 0,
+        sessionsPerWeek: 0,
+        panels: emptyPanels(),
+      },
+      error: null,
+    };
+  }
 
   const sessionIds = sessionRows.map((s) => s.id);
-  const setTypes = effectiveSetTypes(filters);
+  const setTypes = effectiveSetTypes(query);
 
   const { data: factData, error: factError } = await supabase
     .from('v_log_set_facts')
@@ -432,9 +426,9 @@ export async function loadInsightsSnapshot(
         'effective_reps',
         'time_seconds',
         'distance_meters',
-        'tonnage',
+        'load_value',
+        'load_unit',
         'primary_group_ids',
-        'muscle_group_ids',
         'variation_ids',
         'tool_ids',
       ].join(', '),
@@ -453,218 +447,43 @@ export async function loadInsightsSnapshot(
       blockLabelId: row.block_label_id,
       sequenceLabelId: row.sequence_label_id,
       primaryGroupIds: asStringArray(row.primary_group_ids),
-      muscleGroupIds: asStringArray(row.muscle_group_ids),
       tagIds: asStringArray(row.variation_ids),
       toolIds: asStringArray(row.tool_ids),
       setType: normalizeSetType(row.set_type),
       effectiveReps: asNumber(row.effective_reps),
       timeSeconds: asNumber(row.time_seconds),
       distanceMeters: asNumber(row.distance_meters),
-      tonnage: asNumber(row.tonnage),
+      loadValue: asNumber(row.load_value),
+      loadUnit: asNullableString(row.load_unit),
     });
   }
 
-  const filtered = facts.filter((f) => passesFilters(f, filters, setTypes));
+  const scoped = facts.filter((f) => passesScope(f, query, setTypes));
 
-  const allPgIds = [...new Set(filtered.flatMap((f) => f.primaryGroupIds))];
-  const allMgIds = [...new Set(filtered.flatMap((f) => f.muscleGroupIds))];
-
-  const pgMeta = new Map<string, { name: string; category: string }>();
-  if (allPgIds.length) {
-    const { data, error } = await supabase
-      .from('analytics_primary_groups')
-      .select('id, name, category')
-      .in('id', allPgIds);
-    if (error) return { data: null, error: error.message };
-    for (const row of data ?? []) {
-      pgMeta.set(row.id as string, {
-        name: row.name as string,
-        category: (row.category as string) ?? 'Skill',
-      });
-    }
+  const factsByPg = new Map<string, Fact[]>();
+  for (const pgId of query.primaryGroupIds) {
+    factsByPg.set(pgId, []);
   }
-
-  const mgNames = new Map<string, string>();
-  if (allMgIds.length) {
-    const { data, error } = await supabase
-      .from('analytics_muscle_groups')
-      .select('id, name')
-      .in('id', allMgIds);
-    if (error) return { data: null, error: error.message };
-    for (const row of data ?? []) {
-      mgNames.set(row.id as string, row.name as string);
-    }
-  }
-
-  // ── Fixed secondary rollups ───────────────────────────────────────────────
-  const tonnageByPg = new Map<string, number>();
-  const workingByMuscle = new Map<string, number>();
-  let tonnageTotal = 0;
-  let workingSetsTotal = 0;
-
-  // Facts per lens key (for Auto + omission captions)
-  const factsByLensKey = new Map<string, Fact[]>();
-
-  const pushLensFact = (key: string, fact: Fact) => {
-    const list = factsByLensKey.get(key);
-    if (list) list.push(fact);
-    else factsByLensKey.set(key, [fact]);
-  };
-
-  for (const fact of filtered) {
-    if (fact.tonnage > 0) tonnageTotal += fact.tonnage;
-
-    const isWorking = fact.setType === 'Working';
-    if (isWorking) workingSetsTotal += 1;
-
+  for (const fact of scoped) {
     for (const pgId of fact.primaryGroupIds) {
-      if (fact.tonnage > 0) {
-        tonnageByPg.set(pgId, (tonnageByPg.get(pgId) ?? 0) + fact.tonnage);
-      }
-    }
-
-    if (isWorking) {
-      for (const mgId of fact.muscleGroupIds) {
-        workingByMuscle.set(mgId, (workingByMuscle.get(mgId) ?? 0) + 1);
-      }
-    }
-
-    switch (filters.lens) {
-      case 'primaryGroup':
-        for (const pgId of fact.primaryGroupIds) pushLensFact(pgId, fact);
-        break;
-      case 'category':
-        for (const pgId of fact.primaryGroupIds) {
-          const cat = pgMeta.get(pgId)?.category ?? 'Skill';
-          pushLensFact(cat, fact);
-        }
-        break;
-      case 'muscle':
-        for (const mgId of fact.muscleGroupIds) pushLensFact(mgId, fact);
-        break;
-      case 'sessionLabel':
-        pushLensFact(fact.sessionCategoryId, fact);
-        break;
-      case 'blockLabel':
-        pushLensFact(fact.blockLabelId ?? SEQUENCE_NONE_ID, fact);
-        break;
-      case 'sequenceLabel':
-        pushLensFact(fact.sequenceLabelId ?? SEQUENCE_NONE_ID, fact);
-        break;
-    }
-  }
-
-  // Resolve names for the active lens dimension.
-  let lensNames = new Map<string, string>();
-  const lensKeys = [...factsByLensKey.keys()];
-  if (filters.lens === 'primaryGroup') {
-    lensNames = new Map([...pgMeta].map(([id, m]) => [id, m.name]));
-  } else if (filters.lens === 'muscle') {
-    lensNames = mgNames;
-  } else if (filters.lens === 'sessionLabel') {
-    lensNames = await resolveNames('session_categories', lensKeys);
-  } else if (filters.lens === 'blockLabel') {
-    lensNames = await resolveNames('block_labels', lensKeys);
-  } else if (filters.lens === 'sequenceLabel') {
-    lensNames = await resolveNames('cluster_labels', lensKeys);
-  }
-
-  const lensName = (id: string): string => {
-    if (filters.lens === 'category') return id;
-    if (id === SEQUENCE_NONE_ID) {
-      return filters.lens === 'sequenceLabel' ? 'No sequence' : 'Unlabeled';
-    }
-    return lensNames.get(id) ?? id;
-  };
-
-  const volumeByLens: NamedTotal[] = [];
-  const omittedForMetric: string[] = [];
-  const isAuto = filters.metric === 'auto';
-
-  for (const [id, bucketFacts] of factsByLensKey) {
-    const resolved: InsightsMetric = isAuto
-      ? autoMetricForFacts(bucketFacts)
-      : (filters.metric as InsightsMetric);
-    let value = 0;
-    for (const fact of bucketFacts) {
-      value += metricContribution(fact, resolved);
-    }
-    if (value > 0) {
-      volumeByLens.push({
-        id,
-        name: lensName(id),
-        value,
-        metric: resolved,
-      });
-    } else if (!isAuto) {
-      // Had facts in-window but nothing for the selected metric.
-      omittedForMetric.push(lensName(id));
-    }
-  }
-
-  // Balance by category — same metric mode, credit-each, data-only.
-  const factsByCategory = new Map<string, Fact[]>();
-  for (const fact of filtered) {
-    for (const pgId of fact.primaryGroupIds) {
-      const cat = pgMeta.get(pgId)?.category ?? 'Skill';
-      const list = factsByCategory.get(cat);
+      const list = factsByPg.get(pgId);
       if (list) list.push(fact);
-      else factsByCategory.set(cat, [fact]);
     }
   }
 
-  const balanceByCategory: NamedTotal[] = [];
-  for (const cat of PRIMARY_GROUP_CATEGORIES) {
-    const bucketFacts = factsByCategory.get(cat) ?? [];
-    if (bucketFacts.length === 0) continue;
-    const resolved: InsightsMetric = isAuto
-      ? autoMetricForFacts(bucketFacts)
-      : (filters.metric as InsightsMetric);
-    let value = 0;
-    for (const fact of bucketFacts) {
-      value += metricContribution(fact, resolved);
-    }
-    if (value > 0) {
-      balanceByCategory.push({
-        id: cat,
-        name: cat,
-        value,
-        metric: resolved,
-      });
-    }
-  }
+  const panels: PgPanelResult[] = query.primaryGroupIds.map((pgId) =>
+    buildPanel(pgId, nameMap.get(pgId) ?? pgId, factsByPg.get(pgId) ?? []),
+  );
 
   return {
     data: {
-      lens: filters.lens,
-      metricMode: filters.metric,
       sessionCount: sessionRows.length,
       sessionsPerWeek:
         Math.round(
-          (sessionRows.length / weeksInWindow(filters.fromDate, filters.toDate)) *
+          (sessionRows.length / weeksInWindow(query.fromDate, query.toDate)) *
             10,
         ) / 10,
-      workingSetsTotal,
-      volumeByLens: sortNamed(volumeByLens),
-      omittedForMetric: omittedForMetric.sort((a, b) => a.localeCompare(b)),
-      balanceByCategory: sortNamed(balanceByCategory),
-      workingSetsByMuscle: sortNamed(
-        [...workingByMuscle.entries()].map(([id, value]) => ({
-          id,
-          name: mgNames.get(id) ?? id,
-          value,
-          metric: 'sets' as const,
-        })),
-      ),
-      tonnageByPrimaryGroup: sortNamed(
-        [...tonnageByPg.entries()].map(([id, value]) => ({
-          id,
-          name: pgMeta.get(id)?.name ?? id,
-          value,
-          metric: 'tonnage' as const,
-        })),
-      ),
-      tonnageTotal,
+      panels,
     },
     error: null,
   };

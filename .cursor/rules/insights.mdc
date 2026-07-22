@@ -11,20 +11,25 @@ alwaysApply: false
 - **Product direction (canonical):** `docs/Analytics_Overhaul_Proposal.md` — PG-first query builder, Saved Insights, lock grammar
 - Grain / fact contract: `docs/Database_Outline.md`
 - Living board: `docs/Status.md`
-- Implementation (interim): `src/lib/insights.ts`, `src/screens/insights/`
+- Implementation: `src/lib/insights.ts`, `src/screens/insights/`
 
 ## Direction (locked)
 
 - **Subject first:** Primary Group(s) required
 - **Facets:** shape-driven atomic fields (reps / time / distance / load / set count) — show what was logged; never sum unlike units
 - **Scope:** nest labels + variations / tools / set type = WHERE, not rival lenses
-- **Saved Insights:** query templates with live re-run (Phase 3)
+- **Multi-PG:** stacked panels (one per selected PG)
+- **Saved Insights:** query templates with live re-run (**Phase 3**)
 - **Category:** PG metadata for balance **saved views**, not home-screen lens
 - **Read source:** `v_log_set_facts`; credit-each under the hood; complete logs only
 
-## Interim shipped (Phase 1a — replace UI in Phase 2)
+## Shipped (Phase 2 MVP)
 
-Dashboard IA (metric chips, lenses, balance card) is **throwaway chrome**. Reuse fact loading / date pickers / filter components where possible.
+Draft query form on Insights tab: FOR → SHOW facets → WHERE (Scope disclosure) → IN dates. Load facet = avg when present (not tonnage). No persistence / lock yet.
+
+## Phase 3 direction (Nate feel, Jul 22 — ideate before implement)
+
+Builder parity: saved named queries (+ notes), dynamic vs static dates, per-PG scope cards (override analogy), lock ≈ Locked Preview grammar. Details in proposal §5–6 / §9 Phase 3 / §11 and `docs/Status.md` “Phase 2 feel → Phase 3 ideation”.
 
 ## Do not
 
