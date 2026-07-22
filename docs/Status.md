@@ -10,12 +10,14 @@
 ## Current baseline
 
 - Stack / greenfield path: `sql/greenfield/001`–`007` (facts view in `007`; no `008`)
+- Live smoke DB: **OttoLog** Supabase (greenfield; email/password; confirm-email OFF for smoke)
 - App: Insights lenses + credit rule; denest variation / intensity / category
-- Seeds: `sql/seeds/murph_personal_seed.sql` (personal smoke only; not Chat 6)
+- Seeds: `sql/seeds/murph_personal_seed.sql` applied on `n8.perry` (personal smoke only; not Chat 6)
 - Living board: this file (linked from AGENTS / README / Project_Structure)
 
 ## Shipped recently (newest first)
 
+- **Greenfield smoke on OttoLog** — `001`–`007`, sentinels, signup/`n8.perry`, nest+muscle defaults, Murph seed, Insights has PG-category volume; patched missing `public.users` GRANTs in `001` (needed when auto-expose is OFF)
 - Living `Status.md` ops board + docs sync after greenfield Insights
 - Fold Insights helpers + `v_log_set_facts` into greenfield `007`; drop standalone `008`
 - Murph personal smoke seed (`sql/seeds/`) — one-account library + completed log
@@ -26,12 +28,16 @@
 
 ## Next (priority order)
 
-1. **Greenfield smoke** — fresh Supabase, apply `001`–`007`, optional Murph seed; Library + Insights check per [`Setup.md`](./Setup.md)
-2. **Insights product rethink** — discuss what questions analytics should answer; current Lens + filters MVP may not match intended use (discussion before more schema)
-3. **Identity conviction** — confirm whether **Primary Group + Variations + muscle groups** (+ tools + nest-label grains) is the long-term model before Chat 6 locks vocabulary
-4. **Override chip grammar** — revisit sequence override notation (e.g. `R16-20 → BW` is opaque/cluttered); clearer rounds/range + “what changed” for templates and logs
-5. **Insights date UX** — replace raw `YYYY-MM-DD` text fields with the same date-selector pattern used elsewhere (e.g. session date); fold into a broader Insights UI pass after (2)
-6. **Chat 6** — dump New User Seeds PG / variation / tool content into `ensure_*` stubs (`sql/greenfield/005`) once (3) feels solid
+1. **Insights product rethink** — *in progress: see [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md) (audit + 4 approaches + recommendation D).* Direction lean: keep PG + Variations + muscles; metric-aware Insights; **PG taxonomy analytics settings** (“Counts as” natural metric, like Rest/`is_empty`) taught by quality seeds — complexity on vocabulary, not every log. Phase **1a** = feel pass on current schema (heuristic metric); Phase **1b/2** = persist settings on PGs + Chat 6 seeds wire them.
+2. **Identity conviction** — *in progress: see [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md).* confirm PG + Variations + muscles (+ tools + nest-label grains); nest-label placement (e.g. **Wellness** block vs session); natural-metric / balance-group settings as the user-facing control surface
+3. **Insights Phase 1a (feel)** — metric-aware Insights via `v_log_set_facts`; metric selector or Auto; date pickers (default last **7** days); filters in sheet; Working-only default; data-only balance. Heuristic natural metric until PG settings ship
+4. **PG analytics settings (1b / Phase 2)** — Account taxonomy: per-PG **Counts as** (reps/time/distance/sets) + balance group; seeds teach defaults; Insights Auto respects settings. More important for long-term usability than Power cube
+5. **Insights filters chrome / date UX** — folded into Phase 1a above (sheet + real pickers)
+6. **Exercise lock ↔ pills scroll** — exercise form correctly hides the pills scroller when lock=ON and dropdown=OPEN, and shows it when lock=OFF or lock=ON + dropdown=COLLAPSED. Explore whether the same behavior should mirror on Sequence / Block / Session builders
+7. **Override chip grammar** — revisit sequence override notation (e.g. `R16-20 → BW` is opaque/cluttered); clearer rounds/range + “what changed” for templates and logs
+8. **Auth / landing UI** — restyle landing, sign-in, and create-account screens to match current [`Styling.md`](./Styling.md) / app chrome
+9. **Chat 6** — dump New User Seeds into `ensure_*` stubs **with natural metric (+ balance group) per PG**; nest-label tweaks; blocked until 1a feel + settings shape (4) accepted
+10. **Prod hardening (when keeping OttoLog)** — turn on Auth email confirm (or custom SMTP); rotate/migrate to publishable keys intentionally; enable backups / PITR on paid plan; never ship `service_role` / secret keys in the app
 
 ## Parked
 
@@ -47,9 +53,14 @@
 
 ## Open questions
 
-- Is PG + Variations + muscles the right analytics identity, or do we simplify / reshape before seeding?
-- What should day-one Insights *feel* like (lenses vs fewer fixed views vs something else)?
+- Is PG + Variations + muscles the right analytics identity? *(Lean yes — with per-PG analytics settings + seeds teaching “Counts as.”)*
+- What should day-one Insights *feel* like? *(Lean: Auto metric from PG settings / heuristic; Simple list; filters tucked away; Power later.)*
 - Category-partition vs credit-each for balance charts (credit-each ships today; revisit?)
+- Balance empty buckets — data-only for Phase 1a; later PG-groups may replace hard enum
+- Partial / multi-metric logging — track what exists; PG **Counts as** picks the headline measure; never sum across metrics
+- PG analytics settings UX — mirror Rest/`is_empty` pattern: config on taxonomy row, not on every set
 - Override grammar: preferred compact notation for round ranges + changed fields?
+- Nest labels: should **Wellness** stay a **block** label, move to **session**, or both? Part of default-seed / best-practice design before Chat 6 locks vocabulary ([`New_User_Seeds.md`](./New_User_Seeds.md) nest section)
+- Builder chrome: mirror exercise lock/dropdown pills-scroll behavior on Sequence / Block / Session?
 - When to retire live deprecated `001`–`019` project in favor of greenfield-only
 - Whether Chat 6 seeds ship as SQL-only or also touch Account first-run UX
