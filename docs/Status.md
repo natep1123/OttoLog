@@ -34,7 +34,7 @@
 
 ## Next (priority order)
 
-1. **Insights Query builder — nested, savable, lockable** — build out the Query builder card (currently a placeholder). Mirror the log/template builder family: a **nested query form** with collapsing dropdowns per layer, each layer **lockable** to a grammar-condensed line (expand to edit), a **preview modal** for the expanded locked outline, and **save/list/rename/delete** reusable asks (`saved_insights` — **ask before migrating**). Reopening a saved ask shows dropdown=OPEN + lock=TRUE clean view; each exercise query subdivides into modifiers / loads / variations across the data, then a totals line. Capability first, then polish. Dashboard stays as the fast unsaved look. See proposal §5–6 + §9 Phase 3 + §11.
+1. **Insights Query builder — nested, savable, lockable** — build out the Query builder card (currently a placeholder). **Nesting design contract:** [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) (bottom-up layer model + DNA reuse + slices) — read before any UI work. Mirror the log/template builder *DNA* (collapse / lock → grammar / preview / save-reopen) but **not** the 4-level tree: Insights nests by **subject** (PG) with facet leaves, nest labels as filters, and one optional Group level. Save/list/rename/delete reusable asks (`saved_insights` — **ask before migrating**); reopen → dropdown=OPEN + lock=TRUE clean view; per-subject split (variations / tools / loads) + totals line. Capability first (slices in the contract §9), then polish. Dashboard stays the fast unsaved look. See proposal §5–6 + §9 Phase 3b.
 2. **Identity conviction** — PG + Variations + muscles (+ tools + nest labels); category stays PG metadata for balance **saved views**; Counts as = default facet (Phase 4)
 3. **PG Counts as + Chat 6 (Phase 4)** — `natural_metric` on PGs; Account edit; New User Seeds dump
 4. **Exercise lock ↔ pills scroll** — exercise form correctly hides the pills scroller when lock=ON and dropdown=OPEN, and shows it when lock=OFF or lock=ON + dropdown=COLLAPSED. Explore mirror on Sequence / Block / Session builders
@@ -45,7 +45,10 @@
 ## Query builder direction (Jul 22 reframe — pick up here next session)
 
 Insights is a **card hub**. Per-PG cards + soft suggestions shipped as the
-**Dashboard** (fast, unsaved). Next work is the **Query builder** screen:
+**Dashboard** (fast, unsaved). Next work is the **Query builder** screen.
+**Design contract now written:** [`Insights_Query_Builder.md`](./Insights_Query_Builder.md)
+(layer model facet → subject → body/groups → query-global → ask; DNA reuse map;
+`SavedInsightDefinition` shape; slices 0–5). Summary:
 
 - **Builder family:** nested collapsing dropdowns per layer — same product family as Session/Block/Sequence/Exercise builders, not a one-off analytics form.
 - **Save ≈ templates/logs:** nameable + notes; reopen → OPEN + locked clean view; re-run live (or historic if dates pinned).
@@ -95,9 +98,8 @@ Rough priority bands only; not sequenced against Phase 3. Ideas stay ideas until
 
 ## Open questions
 
-- Query builder: nest depth / layer list (subject → facets → scope → window? exercise sub-rows?) and madlib operation vocabulary
-- Query builder: reopen chrome — blank draft vs saved-list first vs picker-above-draft
-- Query builder: dynamic date presets (last 7 / last 28 / this week / custom fixed range)
+- Query builder: nesting design **signed off** ([`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §8, Jul 22) — flat subjects + one Group level; split-by = variation/tool; global-only nest scope + set policy; ops = sum / load avg / count; saved-list home → OPEN+locked, blank via "New ask"; group rollup credit-each (partition later); full-tree lock; `saved_insights` at slice 4 (ask before migrating). No open sub-questions blocking slice 1.
+- Query builder: dynamic date presets (last 7 / last 28 / this week / custom fixed range) — rolling vs pinned lives in the saved definition (slice 4)
 - Dashboard lock/collapse grammar — still open if Dashboard ever grows lock; today it stays unlocked/fast
 - Grouped taxonomy (Group → Movement → Modifier): Option A vs B; enforced vs soft modifier scoping? See [`Analytics_Labeling.md`](./Analytics_Labeling.md) proposal
 - Credit-each vs partition for balance **saved views** (credit-each default under the hood today)
@@ -109,5 +111,5 @@ Rough priority bands only; not sequenced against Phase 3. Ideas stay ideas until
 - Pull-to-refresh: global rule vs per-tab
 - Brand: logo / slogan / icon timing vs Auth landing restyle
 
-Dashboard (Phases 2–3a) lean locks applied; next session = Query builder design (proposal §9 Phase 3b).
+Dashboard (Phases 2–3a) lean locks applied; Query builder **design signed off** ([`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §8, Jul 22) — **cleared for slice 1** (builder shell, no persistence) in a fresh chat. Build order 1→2→3 before any save; groups + `saved_insights` are slice 4–5 (ask before that migration).
 

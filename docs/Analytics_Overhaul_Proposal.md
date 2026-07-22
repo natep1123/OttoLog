@@ -336,6 +336,13 @@ PG, soft suggestions), shape-driven facets. Lives behind the Dashboard card.
 
 **3b — Query builder (in progress):**
 
+> **Nesting design contract:** [`Insights_Query_Builder.md`](./Insights_Query_Builder.md)
+> — the bottom-up layer model (facet → subject → body/groups → query-global → ask),
+> builder DNA reuse map, and phased slices. Read it before any Query builder UI work.
+> Key departure: keep builder *DNA* (collapse / lock → grammar / preview / save),
+> drop the 4-level structural tree — Insights nests by **subject**, with nest labels
+> as filters and one optional Group level.
+
 - [x] Insights card hub (`InsightsHubScreen`) → Dashboard + Query builder; routing in `HomeScreen`
 - [ ] Query builder screen: **nested collapsing dropdowns** per layer (subject → facets → scope → window), madlib-style operation selectors
 - [ ] **Lock per layer** → grammar-condensed line; expand to edit (mirror builder lock/dropdown grammar)
@@ -423,6 +430,7 @@ Still open: credit-each vs partition on balance saved views; Query builder nest 
 
 ## 12. Implications for other docs / code
 
+- **`Insights_Query_Builder.md`:** the Query builder **nesting design contract** (layer model, DNA reuse, `SavedInsightDefinition` shape, slices). §5–6 + §9 Phase 3b defer to it.
 - **`Status.md`:** Next = nested Query builder (3b); Dashboard (2–3a) = shipped; Insights = hub
 - **`Analytics_Labeling.md`:** PG-first decision rule unchanged; de-emphasize “lens”
   language in UI copy when touched
