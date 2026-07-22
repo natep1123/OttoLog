@@ -95,6 +95,7 @@ Scan the QR code in Expo Go.
 | Issue | Check |
 |-------|--------|
 | Auth errors | URL and anon key in `.env.local`; restart Metro after env changes |
+| `permission denied for table users` | `001` must grant `users` to `authenticated` (+ `anon` SELECT for signup username check). Re-run the grants at the end of `sql/greenfield/001_users.sql`, or apply them once in SQL Editor |
 | RLS / empty lists | Greenfield migrations applied in order; user is signed in |
 | Delete account fails | `sql/greenfield/002_delete_own_account.sql` applied |
 | Duplicate template name | By design. Active names are unique per user per layer |

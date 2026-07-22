@@ -37,6 +37,11 @@ create policy "users_update_own"
   using (auth.uid() = id)
   with check (auth.uid() = id);
 
+-- Required when "Automatically expose new tables" is OFF (PostgREST needs table grants;
+-- RLS still restricts rows). anon SELECT covers pre-auth username availability checks.
+grant select, insert, update on public.users to authenticated;
+grant select on public.users to anon;
+
 -- Create profile even when email confirmation leaves the client without a session
 create or replace function public.handle_new_user()
 returns trigger
