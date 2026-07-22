@@ -1,0 +1,24 @@
+---
+description: UI, navigation, and form-builder conventions for OttoLog screens
+globs: src/**/*.{ts,tsx},App.tsx
+alwaysApply: false
+---
+
+# React Native / UI
+
+## Source of truth
+
+- Structure & tabs: `docs/Project_Structure.md`
+- Builders, nesting, lock/review: `docs/Template_Builders.md`
+- Tokens & chrome: `docs/Styling.md`
+
+## Conventions (from those docs)
+
+- Tabs live in `HomeScreen` (`useState` stacks) — no React Navigation yet.
+- Shared chrome first: `Screen`, `ScreenHeader`, `Button`, `TextField`, forms under `src/components/forms/`.
+- Style with RN `StyleSheet` + `src/theme/tokens.ts` / `formTokens.ts` — no Tailwind/NativeWind; no arbitrary colors when a token exists.
+- Nest: Session → Block → Sequence → Exercise. Internal **cluster** = Sequence.
+- Library opens use `reviewMode` (root locked until unlock). Bottom nav hides on builders.
+- Session/Block/Sequence: label-first; Name/Brief in More panel. Exercise: inline name search.
+- Test layout in Expo Go; respect safe areas, keyboard, and touch targets.
+- Fonts: Fraunces (wordmark), DM Sans (UI). Warm dusk palette; cool accents only for Block/Sequence rails/pills.

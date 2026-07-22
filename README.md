@@ -28,16 +28,18 @@ cp .env.example .env.local   # Supabase URL + anon key
 npx expo start               # Expo Go on your phone
 ```
 
-Run `sql/001` through `sql/014` in order in the Supabase SQL Editor. See [`docs/Setup.md`](docs/Setup.md).
+Run SQL migrations in order in the Supabase SQL Editor (currently `001`–`019`). See [`docs/Setup.md`](docs/Setup.md).
 
 ## Documentation
 
 | Doc | Contents |
 |-----|----------|
+| [`AGENTS.md`](AGENTS.md) | Short project map for AI agents; Cursor rules/skills under `.cursor/` |
 | [`docs/Setup.md`](docs/Setup.md) | Env, migrations, run, verify |
 | [`docs/Project_Structure.md`](docs/Project_Structure.md) | Folders, navigation, key files |
 | [`docs/Database_Outline.md`](docs/Database_Outline.md) | Schema, RLS, live vs planned |
 | [`docs/Template_Builders.md`](docs/Template_Builders.md) | Shipped builder + session log behavior |
+| [`docs/Label_Library.md`](docs/Label_Library.md) | Seed / label vocabulary |
 | [`docs/Analytics_Labeling.md`](docs/Analytics_Labeling.md) | Primary Group vs tags vs nest labels (best practices) |
 | [`docs/Styling.md`](docs/Styling.md) | Visual system and screen patterns |
 
@@ -46,12 +48,13 @@ Older prototypes live in [`docs/deprecated/original-concept/`](docs/deprecated/o
 ## Project layout (short)
 
 ```text
+AGENTS.md          Agent project map (.cursor/rules + .cursor/skills)
 src/auth/          Session and profile
 src/components/    Shared UI and forms/ (Session → Block → Sequence → Exercise)
 src/lib/           Supabase, templates, session logs, taxonomy, localTime
 src/screens/       Auth, Home shell, home/, insights/, create/, library/, account/
 src/theme/         tokens.ts
-sql/               Migrations 001 through 014
+sql/               Migrations 001 through 019 (see Setup.md)
 ```
 
 Full map: [`docs/Project_Structure.md`](docs/Project_Structure.md).

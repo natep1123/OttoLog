@@ -1,0 +1,41 @@
+# Dependencies & Expo / build caches
+node_modules/
+.expo/
+dist/
+web-build/
+ios/
+android/
+.kotlin/
+*.tsbuildinfo
+.metro-health-check*
+
+# Secrets & credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*credentials*
+*secret*
+*.pat
+
+# Historical design docs (not the contract)
+docs/deprecated/
+
+# OS / editor junk
+.DS_Store
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Large media / binaries (app icons stay in git; skip from index noise)
+*.map
+*.log
+*.mp4
+*.mov
+*.psd
+*.sketch

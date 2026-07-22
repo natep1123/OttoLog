@@ -1,0 +1,22 @@
+---
+description: Supabase SQL migrations, RLS, and src/lib persistence helpers
+globs: sql/**/*.sql,src/lib/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Database & lib helpers
+
+## Source of truth
+
+- Schema, glossary, RLS, sentinels: `docs/Database_Outline.md`
+- Migration order & smoke checks: `docs/Setup.md`
+
+## Conventions
+
+- New SQL goes in `sql/` with the next numeric prefix; never reorder past files casually.
+- Run migrations **in order** in the Supabase SQL editor (list in `docs/Setup.md`).
+- Use locked glossary names (`tools`, `session_categories`, `target_shapes`, `analytics_primary_groups`, …) — no synonym invention.
+- Global sentinels use fixed UUIDs + `user_id IS NULL` (see outline + `src/constants/sentinelIds.ts`).
+- Templates: jsonb content on session/block/cluster (+ relational exercise). Logs: relational denest/renest in `sessionLogs.ts` (`sql/014`+).
+- RLS: users own their rows; global sentinel rows are readable, not user-writable copies.
+- Domain writes go through `src/lib/*Templates.ts`, `sessionLogs.ts`, `taxonomy.ts` — mirror existing list/get/save/delete patterns.

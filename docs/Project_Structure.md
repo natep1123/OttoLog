@@ -8,14 +8,21 @@ Where code lives and how the signed-in app is organized.
 ottolog-app/
 ├── App.tsx                 Entry: fonts, splash, auth gate, then HomeScreen or auth stack
 ├── index.ts                Expo registerRootComponent
-├── sql/                    Supabase migrations (001 through 015), run in order
+├── AGENTS.md               Short map for AI agents (Expo v57 note + canonical docs)
+├── .cursorignore           Index exclusions (deps, caches, secrets, docs/deprecated/)
+├── .cursor/
+│   ├── rules/              Scoped Cursor rules (point at docs; do not paste them)
+│   └── skills/             Repeatable workflows (SQL migrations, taxonomy labeling)
+├── sql/                    Supabase migrations (001 through 019), run in order — see Setup.md
 ├── docs/                   Official project docs (this folder)
 │   ├── Database_Outline.md
 │   ├── Project_Structure.md
 │   ├── Setup.md
 │   ├── Styling.md
 │   ├── Template_Builders.md
+│   ├── Label_Library.md
 │   ├── Analytics_Labeling.md
+│   ├── default-user-taxonomy/  Optional seed dumps (Official vs personal Current)
 │   └── deprecated/         Archived design set (historical, not the contract)
 │       └── original-concept/
 └── src/

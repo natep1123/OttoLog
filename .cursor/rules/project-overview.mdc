@@ -1,0 +1,35 @@
+---
+description: OttoLog stack, folder map, and canonical docs for every chat
+alwaysApply: true
+---
+
+# OttoLog project overview
+
+## Stack
+
+Expo ~57 / React Native / TypeScript / Supabase. Before Expo APIs: https://docs.expo.dev/versions/v57.0.0/
+
+## Layout
+
+- App code: `src/` (+ `App.tsx`)
+- SQL migrations: `sql/` — apply in order per `docs/Setup.md`
+- Canonical docs: `docs/*.md`
+- **Ignore** `docs/deprecated/` (historical only; not the contract)
+
+## Canonical docs (open on demand — do not paste wholesale)
+
+| Need | Doc |
+|------|-----|
+| Folders / nav / data flow | `docs/Project_Structure.md` |
+| Local run / migration order | `docs/Setup.md` |
+| Schema / RLS / naming | `docs/Database_Outline.md` |
+| Builders / nesting / lock | `docs/Template_Builders.md` |
+| Tokens / UI chrome | `docs/Styling.md` |
+| Label seeds | `docs/Label_Library.md` |
+| Analytics slot choice | `docs/Analytics_Labeling.md` |
+
+## Agent habits
+
+- Derive conventions from those docs and existing code — do not invent synonyms or schema.
+- Prefer small, scoped changes; match neighboring patterns.
+- Full project map: `AGENTS.md`. Scoped rules: `.cursor/rules/*.mdc`.

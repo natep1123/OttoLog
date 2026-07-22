@@ -1,0 +1,30 @@
+---
+description: Taxonomy, layer labels, and analytics slot conventions
+globs: src/lib/taxonomy.ts,src/screens/account/**,src/constants/**,sql/*taxonomy*,sql/*label*,sql/*analytics*,sql/*muscle*,sql/*primary_group*,docs/Label_Library.md,docs/Analytics_Labeling.md
+alwaysApply: false
+---
+
+# Taxonomy & analytics labels
+
+## Source of truth
+
+- How to choose slots: `docs/Analytics_Labeling.md`
+- Seed / example vocabulary: `docs/Label_Library.md`
+- Schema & glossary: `docs/Database_Outline.md` (do not collapse slots)
+- Account CRUD / pickers: `src/lib/taxonomy.ts`
+
+## Do not collapse
+
+| Slot | Job |
+|------|-----|
+| Exercise name | Display / library identity |
+| Primary group(s) | Chart noun(s) when tracking (1–N for complexes) |
+| Muscle groups | Anatomy rollups |
+| Tags | Facets / filters |
+| Tool(s) | Equipment (+ global **No Tool**) |
+| Session / Block / Sequence labels | Day or nest structure (+ system nulls) |
+| Target shape | Which set fields appear (locked atoms) |
+
+Decision rule: the noun for “one Insights number this month” → **Primary Group**. Session intent, nest structure, equipment, and anatomy are **not** PGs.
+
+Optional seed dumps: `docs/default-user-taxonomy/` (Official vs personal Current) — secondary to Label_Library.
