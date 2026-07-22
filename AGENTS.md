@@ -23,6 +23,7 @@ Expo ~57 · React Native · TypeScript · Supabase (Auth + Postgres + RLS)
 | Doc | When |
 |-----|------|
 | [`docs/Status.md`](docs/Status.md) | Living ops board: shipped / next / parked / open questions |
+| [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md) | Insights direction: PG-first query builder (1a = interim substrate) |
 | [`docs/Project_Structure.md`](docs/Project_Structure.md) | Folders, tabs, data flow, lib map |
 | [`docs/Setup.md`](docs/Setup.md) | Env, migration order, smoke test |
 | [`docs/Database_Outline.md`](docs/Database_Outline.md) | Schema, naming glossary, RLS, sentinels |
@@ -40,3 +41,11 @@ Expo ~57 · React Native · TypeScript · Supabase (Auth + Postgres + RLS)
 - Templates nest Session → Block → Sequence → Exercise; logs denest/renest via `src/lib/sessionLogs.ts`.
 - Cursor rules under `.cursor/rules/` point at these docs by scope — open matching files so the right rule attaches.
 - When a feature/phase chat closes, update `docs/Status.md` (Shipped / Next / Parked / Open questions) — do not paste that board into always-on rules.
+
+## Git / commits (Nate owns the gate)
+
+- **Never create a git commit** unless Nate explicitly asks in **this** chat (e.g. “commit”, “commit this”, “go ahead and commit”).
+- Do **not** treat “ship”, “done”, “landed”, “Phase X complete”, or Status updates as permission to commit.
+- Do **not** push, amend, or force-push unless he explicitly asks.
+- Leave changes in the working tree for him to inspect; summarize what changed and wait.
+- Kickoff prompts for other agents should include this gate unless Nate grants commit permission in that prompt.

@@ -8,26 +8,26 @@ alwaysApply: false
 
 ## Source of truth
 
-- Grain / credit / fact contract: `docs/Database_Outline.md` (Insights / grain sections)
-- Product priority & phases: `docs/Status.md`, `docs/Analytics_Overhaul_Proposal.md`
-- Implementation: `src/lib/insights.ts`, `src/screens/insights/`
+- **Product direction (canonical):** `docs/Analytics_Overhaul_Proposal.md` — PG-first query builder, Saved Insights, lock grammar
+- Grain / fact contract: `docs/Database_Outline.md`
+- Living board: `docs/Status.md`
+- Implementation (interim): `src/lib/insights.ts`, `src/screens/insights/`
 
-## Locked model (Phase 1a)
+## Direction (locked)
 
-- **Source:** `v_log_set_facts` (canonical `time_seconds` / `distance_meters` / `tonnage` / `effective_reps`).
-- **Lens** = group-by grain (PG / category / muscle / session / block / sequence label).
-- **Metric** = Reps | Time | Distance | Tonnage | Sets | **Auto** (per-bucket heuristic: distance → time → reps). Never sum mixed metrics.
-- **Filters** = sheet (session / block label, set type, Variations, Tools); dates use real pickers (default last **7** days inclusive).
-- **Set type:** Working-only default + include-warmups toggle.
-- **Credit-each** for multi-tag grains (PG / category / muscle). Honest partition for nest labels + once-totals.
-- **Balance:** category enum, **data-only** (hide zeros).
-- **Complete logs only.**
+- **Subject first:** Primary Group(s) required
+- **Facets:** shape-driven atomic fields (reps / time / distance / load / set count) — show what was logged; never sum unlike units
+- **Scope:** nest labels + variations / tools / set type = WHERE, not rival lenses
+- **Saved Insights:** query templates with live re-run (Phase 3)
+- **Category:** PG metadata for balance **saved views**, not home-screen lens
+- **Read source:** `v_log_set_facts`; credit-each under the hood; complete logs only
 
-## Phase 1b (not yet)
+## Interim shipped (Phase 1a — replace UI in Phase 2)
 
-- Persist PG **Counts as** (`natural_metric`) + balance group; Insights Auto reads settings. See proposal § "PG Counts as (Phase 1b)".
+Dashboard IA (metric chips, lenses, balance card) is **throwaway chrome**. Reuse fact loading / date pickers / filter components where possible.
 
 ## Do not
 
-- Ship Power cube, credit weights, full PG-groups enum replacement, or Chat 6 seed dump from Insights polish chats.
-- Paste or rewrite design docs into rules; open the outline / Status / proposal instead.
+- Implement v1 Hybrid Simple+Power cube or lens×metric home from `docs/deprecated/Analytics_Overhaul_Proposal_v1_hybrid_cube.md`
+- Ship Chat 6 seed dump from Insights UI chats
+- Paste design docs into rules; open proposal / Status instead

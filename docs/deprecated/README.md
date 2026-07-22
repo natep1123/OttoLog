@@ -38,3 +38,5 @@ treat the archived log sketches as history only and prefer the live outline.
   in the app against `sql/014` tables.
 - `Overview.md` links to `Frontend/Styling.md`, which never existed here. The
   styling doc is `docs/Styling.md`.
+
+- **`Analytics_Overhaul_Proposal_v1_hybrid_cube.md`** — Jul 2026. Hybrid Approach D (Simple cards + Power cube, lens×metric). Superseded by canonical [`../Analytics_Overhaul_Proposal.md`](../Analytics_Overhaul_Proposal.md) (PG-first query builder).

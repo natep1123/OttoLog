@@ -17,6 +17,7 @@ ottolog-app/
 │   └── seeds/              Optional personal smoke scripts (not migrations)
 ├── docs/                   Official project docs (this folder)
 │   ├── Status.md           Living ops board (shipped / next / parked)
+│   ├── Analytics_Overhaul_Proposal.md  Insights direction (PG-first query builder)
 │   ├── Database_Outline.md
 │   ├── Project_Structure.md
 │   ├── Setup.md

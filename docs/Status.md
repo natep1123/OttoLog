@@ -11,15 +11,16 @@
 
 - Stack / greenfield path: `sql/greenfield/001`–`007` (facts view in `007`; no `008`)
 - Live smoke DB: **OttoLog** Supabase (greenfield; email/password; confirm-email OFF for smoke)
-- App: Insights Phase **1a** — metric-aware via `v_log_set_facts`; Auto heuristic; last-7 + Working-only defaults
+- App: Insights **Phase 1a** shipped (metric-aware dashboard — **interim IA**, not destination)
+- **Analytics direction (locked):** PG-first **query builder** + Saved Insight templates + lock grammar — see [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md). v1 Hybrid/cube doc archived under `docs/deprecated/`
 - Seeds: `sql/seeds/murph_personal_seed.sql` applied on `n8.perry` (personal smoke only; not Chat 6)
 - Living board: this file (linked from AGENTS / README / Project_Structure)
-- Design contract: [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md) (incl. **PG Counts as (Phase 1b)**)
 
 ## Shipped recently (newest first)
 
-- **Insights Phase 1a (feel)** — load from `v_log_set_facts`; metric selector + Auto (distance→time→reps heuristic); date pickers (last **7** days); filters sheet; Working-only + warmups toggle; data-only balance; never sum mixed metrics. PG Counts as settings deferred to 1b (documented in proposal)
-- **Greenfield smoke on OttoLog** — `001`–`007`, sentinels, signup/`n8.perry`, nest+muscle defaults, Murph seed, Insights has PG-category volume; patched missing `public.users` GRANTs in `001` (needed when auto-expose is OFF)
+- **Insights Phase 1a (substrate)** — `v_log_set_facts`; metric selector + Auto; date pickers (last 7); filters sheet; Working-only + warmups; data-only balance. **UI to be replaced** by query builder (Phase 2)
+- **Analytics direction locked** — PG-first query builder + Saved Insights + lock; v1 Hybrid proposal → `docs/deprecated/Analytics_Overhaul_Proposal_v1_hybrid_cube.md`
+- **Greenfield smoke on OttoLog** — `001`–`007`, sentinels, signup/`n8.perry`, nest+muscle defaults, Murph seed; patched missing `public.users` GRANTs in `001`
 - Living `Status.md` ops board + docs sync after greenfield Insights
 - Fold Insights helpers + `v_log_set_facts` into greenfield `007`; drop standalone `008`
 - Murph personal smoke seed (`sql/seeds/`) — one-account library + completed log
@@ -30,37 +31,33 @@
 
 ## Next (priority order)
 
-1. **Insights product rethink** — *direction locked lean:* keep PG + Variations + muscles; metric-aware Insights; **PG taxonomy analytics settings** (“Counts as”) taught by seeds. See [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md). Phase **1a shipped**; **1b** = persist settings
-2. **Identity conviction** — *lean yes:* PG + Variations + muscles (+ tools + nest labels); nest-label placement (e.g. **Wellness**); natural-metric / balance-group as the user-facing control surface
-3. **PG analytics settings (1b / Phase 2)** — Account taxonomy: per-PG **Counts as** (reps/time/distance/sets) + balance group; seeds teach defaults; Insights Auto respects settings. More important for long-term usability than Power cube. Schema sketch in proposal § “PG Counts as (Phase 1b)” — ask before migrating
-4. **Exercise lock ↔ pills scroll** — exercise form correctly hides the pills scroller when lock=ON and dropdown=OPEN, and shows it when lock=OFF or lock=ON + dropdown=COLLAPSED. Explore whether the same behavior should mirror on Sequence / Block / Session builders
-5. **Override chip grammar** — revisit sequence override notation (e.g. `R16-20 → BW` is opaque/cluttered); clearer rounds/range + “what changed” for templates and logs
-6. **Auth / landing UI** — restyle landing, sign-in, and create-account screens to match current [`Styling.md`](./Styling.md) / app chrome
-7. **Chat 6** — dump New User Seeds into `ensure_*` stubs **with natural metric (+ balance group) per PG**; nest-label tweaks; blocked until 1b settings shape accepted
-8. **Prod hardening (when keeping OttoLog)** — turn on Auth email confirm (or custom SMTP); rotate/migrate to publishable keys intentionally; enable backups / PITR on paid plan; never ship `service_role` / secret keys in the app
+1. **Insights query builder MVP (Phase 2)** — PG multiselect first; per-PG **shape-driven facets** (reps / time / distance / load as logged); nest scope filters; date window. Murph feel-test. See [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md) §9
+2. **Saved Insights + lock (Phase 3)** — persist query templates; live re-run; lock → paginated result grammar (screenshot/share)
+3. **Identity conviction** — PG + Variations + muscles (+ tools + nest labels); category stays PG metadata for balance **saved views**; Counts as = default facet (Phase 4)
+4. **PG Counts as + Chat 6 (Phase 4)** — `natural_metric` on PGs; Account edit; New User Seeds dump — blocked until Phase 2 feel accepted
+5. **Exercise lock ↔ pills scroll** — exercise form correctly hides the pills scroller when lock=ON and dropdown=OPEN, and shows it when lock=OFF or lock=ON + dropdown=COLLAPSED. Explore mirror on Sequence / Block / Session builders
+6. **Override chip grammar** — revisit sequence override notation (e.g. `R16-20 → BW` is opaque/cluttered)
+7. **Auth / landing UI** — restyle landing, sign-in, and create-account screens to match current [`Styling.md`](./Styling.md) / app chrome
+8. **Prod hardening (when keeping OttoLog)** — Auth email confirm / SMTP; key rotation; backups / PITR; never ship `service_role` in app
 
 ## Parked
 
-- Agent map: Status close-out habit + Insights rule landed
-- Simple mode answer-card stack / Power cube (`measure × dimension × time`)
-- Time / distance Insights metrics *(1a shipped selector; lbs/kg tonnage normalize still open)*
+- v1 **Simple card stack / Power cube** (`measure × dimension × time`) — superseded by Saved Insight templates
+- Dashboard **lens × metric** IA (Phase 1a layout — keep fact loader, replace chrome)
 - Home week calendar wired to session logs
 - Starter exercise templates; in-app taxonomy / intensity user guide
 - Optional Postgres `fn_denest_session_log` / `fn_renest_session_log`
-- e1RM / ACWR / session-load / Challenge PRs; saved Insights views
+- e1RM / ACWR / session-load / Challenge PRs; **derived facets** as advanced toggles
+- PG-groups multi-axis (replace hard category enum)
 - Rename DB `analytics_tags` → Variations (product term already Variations)
 - EAS / prod Supabase / Play / privacy policy
 
 ## Open questions
 
-- Is PG + Variations + muscles the right analytics identity? *(Lean yes — with per-PG analytics settings + seeds teaching “Counts as.”)*
-- What should day-one Insights *feel* like? *(1a shipped: Auto heuristic; metric chips; filters in sheet; Power later.)*
-- Category-partition vs credit-each for balance charts (credit-each ships today; revisit?)
-- Balance empty buckets — data-only for Phase 1a; later PG-groups may replace hard enum
-- Partial / multi-metric logging — track what exists; PG **Counts as** picks the headline measure; never sum across metrics
-- PG analytics settings UX — mirror Rest/`is_empty` pattern: config on taxonomy row, not on every set *(1b)*
-- Override grammar: preferred compact notation for round ranges + changed fields?
-- Nest labels: should **Wellness** stay a **block** label, move to **session**, or both? Part of default-seed / best-practice design before Chat 6 locks vocabulary ([`New_User_Seeds.md`](./New_User_Seeds.md) nest section)
-- Builder chrome: mirror exercise lock/dropdown pills-scroll behavior on Sequence / Block / Session?
+- Credit-each vs partition for balance **saved views** (credit-each default under the hood today)
+- Nest labels: **Wellness** block vs session vs both? ([`New_User_Seeds.md`](./New_User_Seeds.md)) — not a Phase 2 blocker
+- Builder chrome: mirror exercise lock/dropdown pills-scroll on Sequence / Block / Session?
 - When to retire live deprecated `001`–`019` project in favor of greenfield-only
-- Whether Chat 6 seeds ship as SQL-only or also touch Account first-run UX
+- Chat 6: SQL-only seeds vs Account first-run UX
+
+Phase 2 lean locks (also in proposal §11): stacked multi-PG panels; load facet without tonnage; draft form as home; keep category enum; replace 1a in place.

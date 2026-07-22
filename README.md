@@ -18,7 +18,7 @@ Five tabs when signed in: **Home**, **Insights**, **Create**, **Library**, **Acc
 
 Also in place: auth, global **No Tool**, and kind-named system null labels (**Session**, **Block**, **Sequence**), searchable taxonomy pickers in the exercise editor, unique active template names per user (per layer). Composition is Session → Block → Sequence → Exercise (JSON copy, no cross-template FKs). Sequences use rounds × per-round exercises with sparse overrides; soft archive preferred. Session logs denest into relational tables (`sql/greenfield/007`) via app-side save/load.
 
-**Next:** see living board [`docs/Status.md`](docs/Status.md) (Chat 6 seeds, greenfield cutover, Insights fact-view wiring, …).
+**Next:** see living board [`docs/Status.md`](docs/Status.md) (Insights query builder Phase 2, PG Counts as, Chat 6, …). Direction: [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md).
 
 ## Quick start
 
@@ -36,6 +36,7 @@ For a **fresh** Supabase project, run `sql/greenfield/001`–`007` in order (fac
 |-----|----------|
 | [`AGENTS.md`](AGENTS.md) | Short project map for AI agents; Cursor rules/skills under `.cursor/` |
 | [`docs/Status.md`](docs/Status.md) | Living ops board: shipped / next / parked / open questions |
+| [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md) | Insights: PG-first query builder (canonical); 1a = interim |
 | [`docs/Setup.md`](docs/Setup.md) | Env, migrations, run, verify |
 | [`docs/Project_Structure.md`](docs/Project_Structure.md) | Folders, navigation, key files |
 | [`docs/Database_Outline.md`](docs/Database_Outline.md) | Schema, RLS, live vs planned |
