@@ -33,7 +33,7 @@ When outline, archived docs, and live SQL disagree, use this order:
 **App slice live**
 
 - **Home**: dashboard with quick actions (build session template, browse exercises, manage taxonomy) and local week preview placeholder
-- **Insights**: base MVP — volume by PG, balance by category, working sets × muscle, tonnage; filters for Variations / Tools / session label (`src/lib/insights.ts`)
+- **Insights**: grain model — pick a **lens** (Primary Group / category / muscle / session / block / sequence label) for the headline volume chart; secondary balance-by-category, working-sets × muscle, tonnage; filters for session label / **block label** / **set type** / Variations / Tools; honest once-totals (sessions, sessions/week, working sets, session tonnage) (`src/lib/insights.ts`)
 - **Create** → Log a session (from scratch or from a session template) → denest save; Templates hub → Session / Block / Sequence / Exercise builders
 - **Library** → Templates and Logs: browse, search, open in review mode (locked + expanded outline), edit / archive / delete
 - Searchable create-comboboxes for tools, primary groups, and variations in the exercise builder
@@ -57,7 +57,7 @@ When outline, archived docs, and live SQL disagree, use this order:
 | Incomplete nest-label seed (`Workout` vs `Main`, missing Wellness / …) | New User Seeds labels |
 | No New User Seeds PG / variation / tool seed RPCs (stubs only in greenfield) | First-run vocabulary (chat 6) |
 
-**Greenfield (authored, not applied to production)** — `sql/greenfield/001`–`007`
+**Greenfield (authored, not applied to production)** — `sql/greenfield/001`–`008`
 
 Condensed schema for a **fresh** Supabase project. Do **not** run over live `001`–`019`. Closes the Insights gaps above; keeps identifiers stable (`analytics_tags`, `cluster_*`, sentinel UUIDs).
 
@@ -70,6 +70,7 @@ Condensed schema for a **fresh** Supabase project. Do **not** run over live `001
 | `005_analytics.sql` | PGs **+ `category`**, tags, muscles, suggestions; muscle seed; **stubs** for PG/variation/tool ensure |
 | `006_templates.sql` | All template layers + template link tables + `track_intensity` |
 | `007_session_logs.sql` | Log tree + tool/PG/muscle/**tag** links + `set_type` / `intensity` + `track_intensity` |
+| `008_analytics_facts.sql` | **Additive.** IMMUTABLE `ol_hms_to_seconds` / `ol_distance_to_meters` + read-only `v_log_set_facts` (one row per set, flattened to session/block/sequence labels + PG/category/muscle/variation/tool). Insights grain source. No table changes. |
 
 **Not live yet**
 
@@ -82,7 +83,7 @@ Applied migrations *(current project — historical path)*:
 
 - `sql/deprecated/001_users.sql` … `sql/deprecated/019_primary_group_tag_suggestions.sql`
 
-Canonical path for **new** projects: `sql/greenfield/001`–`007` (see `docs/Setup.md`).
+Canonical path for **new** projects: `sql/greenfield/001`–`008` (see `docs/Setup.md`).
 
 ---
 
@@ -544,7 +545,32 @@ Facts Insights must read (prefer greenfield schema; live project missing starred
 | Exercise identity | `track_analytics`, PG links, muscle links, tool links, **variation (`*_tag_links`)**, **`track_intensity`** |
 | Dims | `analytics_primary_groups.name` + **`category`**, muscles, tags, tools, session labels |
 
-**Deferred:** New User Seeds content dump (chat 6), starter templates, Insights UI polish, e1RM / ACWR, Postgres denest RPCs, rename `analytics_tags`.
+### Grain model (chat 5.5 → 5.6/5.7)
+
+Every log set is one fact carrying its own **grain keys**: session label
+(`session_logs.category_id`), block label (`log_blocks.label_id`), sequence label
+(`log_items.label_id` on cluster kind), and the exercise identity (PG / category /
+muscle / variation / tool). Insights picks one **lens** (group-by) and applies
+stacked filters. Session / block / sequence labels are valid **grains** (filter +
+group-by), never exercise identity.
+
+- **Credit rule (credit-each, documented):** per-PG / per-category / per-muscle
+  rollups deliberately double-count (a multi-PG complex credits each PG; a
+  multi-muscle exercise credits each muscle). **Never sum** those rows into one
+  total. Session / block / sequence label lenses count each set **once** (honest
+  partition). Honest totals (session count, working sets, session tonnage) come
+  from the set grain once.
+- **App layer:** `src/lib/insights.ts` (single set-anchored fetch, O(1) Map
+  joins, lens + block-label + set-type filters).
+- **Additive fact layer (greenfield `008`):** `v_log_set_facts` flattens the log
+  tree per set; `ol_hms_to_seconds` / `ol_distance_to_meters` give canonical
+  numeric time (seconds) and distance (**meters** canonical; UI presents mi/km by
+  preference). Structural node durations power "minutes"; set `time_duration`
+  stays a target-shape metric (do not mix unlabeled).
+
+**Deferred:** New User Seeds content dump (chat 6), starter templates, saved views,
+Insights UI polish, e1RM / ACWR, Postgres denest RPCs, rename `analytics_tags`.
+Category-partition (vs credit-each) revisit is open.
 
 ## Out of Scope for v1
 

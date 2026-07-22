@@ -19,8 +19,8 @@ volume rolls up**, not **permission to log**.
 | **Muscle groups** | Anatomy rollups (multiselect) | Seeded defaults + user edits |
 | **Variations** | Modifiers / filters (not anatomy; DB: `analytics_tags`) | User vocabulary |
 | **Tool(s)** | Equipment | User + global **No Tool** |
-| **Session label** | Day-level kind / intent | User + system null **Session**; **Rest** is a normal seeded empty label (`is_empty`) |
-| **Block / Sequence labels** | Nest structure (Warmup, Main, Circuit, …) | User + system nulls |
+| **Session label** | Day-level kind / intent; also an Insights **grain** (filter + lens) | User + system null **Session**; **Rest** is a normal seeded empty label (`is_empty`) |
+| **Block / Sequence labels** | Nest structure **and** an Insights **grain** (filter + lens) — never exercise identity | User + system nulls |
 | **Target shape** | Which set input fields appear | Locked atoms |
 | **`track_analytics`** | Opt in/out of analytics identity | Boolean |
 
@@ -55,7 +55,7 @@ name — not crammed into a single PG string.
 | **Variations** | `Wide-Grip`, `Standard`, `BJJ`, `Running` (under Gait), `Complex` |
 | **Tool** | `Kettlebell`, `Mace`, `None` |
 | **Session label** | `Hybrid`, `Cardio`, `Recovery`, `Martial Arts`, `Recreation`, `Rest` (empty; `is_empty`) |
-| **Block / Sequence labels** | `Warmup`, `Main`, `Circuit` — structural, not analytics (for now) |
+| **Block / Sequence labels** | `Warmup`, `Main`, `Circuit` — structural; also a valid Insights grain (filter + lens), never exercise identity |
 | **Exercise name** | `Weighted Wide-Grip Pullups`, `BJJ Live Rounds`, `Mace 360-to-Squat` |
 
 ### What not to put in Primary Group

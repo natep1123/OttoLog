@@ -95,7 +95,11 @@ Insights MVP.
 
 **System null:** `Sequence` — unlabeled sequence; structural placeholder only.
 
-Nest structure only — not analytics identity.
+Nest structure — and a valid Insights **grain** (filter + lens). Never an
+exercise analytics *identity* (that stays PG + category + Variations + muscles +
+tools). Block and sequence labels are stored on the logged facts
+(`log_blocks.label_id`, `log_items.label_id`), so "all Challenge blocks" or
+"Circuit vs Superset" are queryable directly.
 
 ---
 
@@ -310,7 +314,8 @@ Tool(s):         Mace
 3. **Cardio family = PG**; Walking/Running/Sprinting/Hiking = variations under
    `Gait` (same idea for Swimming/Cycling/Rowing).
 4. **Combat mode = PG**; BJJ / Muay Thai / MMA = variations.
-5. **Session label = day intent.** Block/sequence = structure only.
+5. **Session label = day intent.** Block/sequence = structure. All three are
+   also Insights grains (filter + lens) — but never exercise identity.
 6. **Spell once** — one `BJJ`, one `Standard`, etc.
 7. **Users may customize everything**; defaults should still teach this shape.
 8. **Suggested variations per PG** (soft) keep the exercise picker focused; they

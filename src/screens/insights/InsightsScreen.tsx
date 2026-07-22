@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -13,13 +13,20 @@ import { StatusText } from '../../components/StatusText';
 import { TextField } from '../../components/TextField';
 import {
   defaultInsightsFilters,
+  INSIGHTS_LENS_OPTIONS,
+  lensDoubleCounts,
+  lensLabel,
   loadInsightsSnapshot,
   type InsightsFilters,
+  type InsightsLens,
   type InsightsSnapshot,
   type NamedTotal,
+  type SetType,
 } from '../../lib/insights';
+import { SET_TYPE_OPTIONS } from '../../constants/setTypes';
 import {
   listAnalyticsTags,
+  listBlockLabels,
   listSessionLabels,
   listTools,
   type TaxonomyOption,
@@ -30,6 +37,11 @@ import { colors, radii, spacing, typography } from '../../theme/tokens';
 type Props = {
   onBrandPress?: () => void;
 };
+
+const SET_TYPE_FILTER_OPTIONS: TaxonomyOption[] = SET_TYPE_OPTIONS.map((o) => ({
+  id: o.id,
+  label: o.label,
+}));
 
 function formatNumber(n: number): string {
   if (Number.isInteger(n)) return String(n);
@@ -87,16 +99,19 @@ export function InsightsScreen({ onBrandPress }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const [sessionLabels, setSessionLabels] = useState<TaxonomyOption[]>([]);
+  const [blockLabels, setBlockLabels] = useState<TaxonomyOption[]>([]);
   const [variations, setVariations] = useState<TaxonomyOption[]>([]);
   const [tools, setTools] = useState<TaxonomyOption[]>([]);
 
   const loadMeta = useCallback(async () => {
-    const [labels, tags, toolRows] = await Promise.all([
+    const [labels, blocks, tags, toolRows] = await Promise.all([
       listSessionLabels(),
+      listBlockLabels(),
       listAnalyticsTags(),
       listTools(),
     ]);
     setSessionLabels(labels.data);
+    setBlockLabels(blocks.data);
     setVariations(tags.data);
     setTools(toolRows.data);
   }, []);
@@ -131,6 +146,11 @@ export function InsightsScreen({ onBrandPress }: Props) {
     setFilters((prev) => ({ ...prev, ...patch }));
   };
 
+  const activeLensLabel = useMemo(() => lensLabel(filters.lens), [filters.lens]);
+  const volumeHint = lensDoubleCounts(filters.lens)
+    ? 'Effective reps (×2 if per-side). Credits each — do not sum these into one total.'
+    : 'Effective reps (×2 if per-side). Each set counted once (honest partition).';
+
   return (
     <ScrollView
       style={styles.scroll}
@@ -146,12 +166,35 @@ export function InsightsScreen({ onBrandPress }: Props) {
     >
       <ScreenHeader
         title="Insights"
-        subtitle="Volume, balance, and working sets from complete logs."
+        subtitle="Pick a lens, then narrow with filters. Complete logs only."
         onBrandPress={onBrandPress}
       />
 
       <View style={styles.filters}>
-        <Text style={styles.sectionTitle}>Filters</Text>
+        <Text style={styles.sectionTitle}>Lens</Text>
+        <Text style={styles.hint}>What each bar in the headline chart means.</Text>
+        <View style={styles.lensRow}>
+          {INSIGHTS_LENS_OPTIONS.map((opt) => {
+            const active = filters.lens === opt.id;
+            return (
+              <Pressable
+                key={opt.id}
+                onPress={() => patchFilters({ lens: opt.id as InsightsLens })}
+                style={[styles.lensChip, active && styles.lensChipOn]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+              >
+                <Text
+                  style={[styles.lensChipText, active && styles.lensChipTextOn]}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Text style={[styles.sectionTitle, styles.filterHeading]}>Filters</Text>
         <View style={styles.dateRow}>
           <View style={styles.dateField}>
             <TextField
@@ -193,6 +236,45 @@ export function InsightsScreen({ onBrandPress }: Props) {
             emptyLabel="All labels"
             fill
             accessibilityLabel="Filter by session label"
+          />
+        </View>
+
+        <View style={styles.filterField}>
+          <Text style={styles.fieldLabel}>Block label</Text>
+          <SearchableSelect
+            mode="multi"
+            options={blockLabels}
+            onOptionsChange={setBlockLabels}
+            value={filters.blockLabelIds}
+            onChange={(blockLabelIds) => patchFilters({ blockLabelIds })}
+            onCreate={async () => ({
+              data: null,
+              error: 'Create block labels under Account → Taxonomy.',
+            })}
+            placeholder="All block labels…"
+            emptyLabel="All blocks"
+            fill
+            accessibilityLabel="Filter by block label"
+          />
+        </View>
+
+        <View style={styles.filterField}>
+          <Text style={styles.fieldLabel}>Set type</Text>
+          <SearchableSelect
+            mode="multi"
+            options={SET_TYPE_FILTER_OPTIONS}
+            value={filters.setTypes}
+            onChange={(setTypes) =>
+              patchFilters({ setTypes: setTypes as SetType[] })
+            }
+            onCreate={async () => ({
+              data: null,
+              error: 'Set types are fixed.',
+            })}
+            placeholder="All set types…"
+            emptyLabel="All set types"
+            fill
+            accessibilityLabel="Filter by set type"
           />
         </View>
 
@@ -253,17 +335,17 @@ export function InsightsScreen({ onBrandPress }: Props) {
         <View style={styles.sections}>
           <Text style={styles.meta}>
             {snapshot.sessionCount} complete session
-            {snapshot.sessionCount === 1 ? '' : 's'} in range
+            {snapshot.sessionCount === 1 ? '' : 's'} ·{' '}
+            {formatNumber(snapshot.sessionsPerWeek)}/week ·{' '}
+            {snapshot.workingSetsTotal} working set
+            {snapshot.workingSetsTotal === 1 ? '' : 's'}
           </Text>
 
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Volume by Primary Group</Text>
-            <Text style={styles.hint}>
-              Effective reps (×2 if per-side). Multi-PG exercises credit each
-              group — do not sum these into one total.
-            </Text>
+            <Text style={styles.sectionTitle}>Volume by {activeLensLabel}</Text>
+            <Text style={styles.hint}>{volumeHint}</Text>
             <TotalsList
-              rows={snapshot.volumeByPrimaryGroup}
+              rows={snapshot.volumeByLens}
               empty="No tracked reps in this window."
               unit="reps"
             />
@@ -272,11 +354,12 @@ export function InsightsScreen({ onBrandPress }: Props) {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Balance by category</Text>
             <Text style={styles.hint}>
-              Same volume rolled up by Primary Group category.
+              Volume rolled up by Primary Group category. Credits each — do not
+              sum.
             </Text>
             <TotalsList
               rows={snapshot.balanceByCategory}
-              empty="No category volume yet."
+              empty="No category volume yet — appears once you log tracked Primary Groups (each PG carries a category)."
               unit="reps"
             />
           </View>
@@ -285,7 +368,8 @@ export function InsightsScreen({ onBrandPress }: Props) {
             <Text style={styles.sectionTitle}>Working sets × muscle</Text>
             <Text style={styles.hint}>
               Counts sets with type Working only. Multi-muscle exercises credit
-              each muscle.
+              each muscle — do not sum. Total working sets (once):{' '}
+              {snapshot.workingSetsTotal}.
             </Text>
             <TotalsList
               rows={snapshot.workingSetsByMuscle}
@@ -322,6 +406,34 @@ const styles = StyleSheet.create({
   },
   filters: {
     gap: spacing.sm,
+  },
+  filterHeading: {
+    marginTop: spacing.sm,
+  },
+  lensRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  lensChip: {
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bgInset,
+  },
+  lensChipOn: {
+    borderColor: colors.sunrise,
+    backgroundColor: colors.amberGlow,
+  },
+  lensChipText: {
+    fontFamily: typography.fontMedium,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  lensChipTextOn: {
+    color: colors.text,
   },
   dateRow: {
     flexDirection: 'row',

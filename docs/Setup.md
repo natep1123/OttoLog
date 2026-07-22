@@ -42,7 +42,11 @@ sql/greenfield/004_taxonomy.sql
 sql/greenfield/005_analytics.sql
 sql/greenfield/006_templates.sql
 sql/greenfield/007_session_logs.sql
+sql/greenfield/008_analytics_facts.sql
 ```
+
+`008` is additive (two IMMUTABLE parse helpers + the read-only `v_log_set_facts`
+view for Insights grains). It changes no tables; safe to re-run.
 
 Do **not** mix greenfield with the old incremental set. Historical `sql/001`–`019` live under `sql/deprecated/` (already-applied projects only; do not re-run on a greenfield DB).
 
@@ -55,7 +59,7 @@ Schema notes (category, log variation links, `set_type` / `intensity`, `track_in
 Do **not** run this over a project that already has `sql/deprecated/001`–`019`.
 
 1. New Supabase project → enable email/password Auth
-2. SQL Editor → run `sql/greenfield/001` … `007` **in order** (one file per query)
+2. SQL Editor → run `sql/greenfield/001` … `008` **in order** (one file per query)
 3. Confirm sentinels: No Tool + Session / Block / Sequence null labels exist
 4. Point `.env.local` at the new project URL + anon key; restart Metro
 5. Smoke: create account → create PG **with category** → save exercise with Intensity on + set type → log a complete session → reopen log (variations / intensity round-trip) → Insights shows volume
