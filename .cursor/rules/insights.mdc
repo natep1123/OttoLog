@@ -13,23 +13,32 @@ alwaysApply: false
 - Living board: `docs/Status.md`
 - Implementation: `src/lib/insights.ts`, `src/screens/insights/`
 
+## Insights is a hub (Jul 22 reframe)
+
+Insights tab = a **card hub** (like Library / Create) with two tools:
+
+- **Dashboard** (`InsightsDashboardScreen`) — the PG-first per-PG facet readout. A **fast, unsaved** look. **No saving here.**
+- **Query builder** (`InsightsQueryBuilderScreen`, placeholder) — the real bet: a **nested, savable, lockable** query form (see below).
+
+Routing: `InsightsStack` in `HomeScreen.tsx` (hub / dashboard / queryBuilder).
+
 ## Direction (locked)
 
 - **Subject first:** Primary Group(s) required
 - **Facets:** shape-driven atomic fields (reps / time / distance / load / set count) — show what was logged; never sum unlike units
-- **Scope:** nest labels + variations / tools / set type = WHERE, not rival lenses
-- **Multi-PG:** stacked panels (one per selected PG)
-- **Saved Insights:** query templates with live re-run (**Phase 3**)
+- **Scope:** nest labels + set type = query-global WHERE; **variations / tools = per-PG** (soft, never enforced). Not rival lenses
+- **Multi-PG:** one editable card per selected PG (Dashboard)
 - **Category:** PG metadata for balance **saved views**, not home-screen lens
 - **Read source:** `v_log_set_facts`; credit-each under the hood; complete logs only
 
-## Shipped (Phase 2 MVP)
+## Shipped
 
-Draft query form on Insights tab: FOR → SHOW facets → WHERE (Scope disclosure) → IN dates. Load facet = avg when present (not tonnage). No persistence / lock yet.
+- **Dashboard** = Phase 2 draft form + Phase 3a per-PG scope cards (variations/tools scoped per PG, soft `suggestedIds`). Load facet = avg when present (not tonnage). No persistence / lock.
+- **Insights hub** (card select) + Dashboard / Query builder placeholder.
 
-## Phase 3 direction (Nate feel, Jul 22 — ideate before implement)
+## Query builder direction (in progress — capability first)
 
-Builder parity: saved named queries (+ notes), dynamic vs static dates, per-PG scope cards (override analogy), lock ≈ Locked Preview grammar. Details in proposal §5–6 / §9 Phase 3 / §11 and `docs/Status.md` “Phase 2 feel → Phase 3 ideation”.
+Mirror the log/template builder family: **nested collapsing dropdowns** per layer; **lock per layer** → grammar-condensed line (expand to edit); **preview modal** for the expanded locked outline; **save/list/rename/delete** reusable asks (`saved_insights` — **ask before migrating**); reopen → dropdown=OPEN + lock=TRUE clean view, re-run live; per-exercise-query breakdown (modifiers / loads / variations) + totals line. Details in proposal §5–6 / §9 Phase 3.
 
 ## Do not
 

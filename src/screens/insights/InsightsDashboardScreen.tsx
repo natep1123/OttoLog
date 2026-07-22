@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -18,17 +18,24 @@ import {
   defaultInsightQuery,
   formatFacetDisplay,
   loadInsightQuery,
+  pgToolIds,
+  pgVariationIds,
   type InsightQuery,
   type InsightQueryResult,
   type PgPanelResult,
   type SetType,
 } from '../../lib/insights';
+import {
+  PRIMARY_GROUP_CATEGORIES,
+  type PrimaryGroupCategory,
+} from '../../constants/primaryGroupCategories';
 import { SET_TYPE_OPTIONS } from '../../constants/setTypes';
 import {
   listAnalyticsTags,
   listBlockLabels,
   listClusterLabels,
   listPrimaryGroups,
+  listPrimaryGroupSuggestedTagIds,
   listSessionLabels,
   listTools,
   type TaxonomyOption,
@@ -37,6 +44,7 @@ import { colors, radii, spacing, typography } from '../../theme/tokens';
 
 type Props = {
   onBrandPress?: () => void;
+  onBack?: () => void;
 };
 
 const SET_TYPE_FILTER_OPTIONS: TaxonomyOption[] = SET_TYPE_OPTIONS.map((o) => ({
@@ -44,13 +52,12 @@ const SET_TYPE_FILTER_OPTIONS: TaxonomyOption[] = SET_TYPE_OPTIONS.map((o) => ({
   label: o.label,
 }));
 
+/** Global Scope count: nest labels + set type only. Identity filters live per PG. */
 function activeScopeCount(query: InsightQuery): number {
   let n = 0;
   if (query.sessionCategoryIds.length) n += 1;
   if (query.blockLabelIds.length) n += 1;
   if (query.sequenceLabelIds.length) n += 1;
-  if (query.variationIds.length) n += 1;
-  if (query.toolIds.length) n += 1;
   const nonDefaultSetTypes =
     query.setTypes.length !== 1 ||
     query.setTypes[0] !== 'Working' ||
@@ -59,35 +66,127 @@ function activeScopeCount(query: InsightQuery): number {
   return n;
 }
 
-function PgFacetPanel({ panel }: { panel: PgPanelResult }) {
-  if (panel.setCount === 0) {
-    return (
-      <View style={styles.panel}>
-        <Text style={styles.panelTitle}>{panel.name}</Text>
-        <Text style={styles.emptyRow}>
-          No tracked sets for this Primary Group in this window.
-        </Text>
-      </View>
-    );
-  }
+type PgScopeCardProps = {
+  pgId: string;
+  name: string;
+  panel: PgPanelResult | null;
+  loading: boolean;
+  variations: TaxonomyOption[];
+  tools: TaxonomyOption[];
+  variationIds: string[];
+  toolIds: string[];
+  suggestedIds: string[];
+  onVariationsChange: (ids: string[]) => void;
+  onToolsChange: (ids: string[]) => void;
+  onVariationsOptionsChange: (next: TaxonomyOption[]) => void;
+  onToolsOptionsChange: (next: TaxonomyOption[]) => void;
+};
+
+/**
+ * One editable card per selected Primary Group (Phase 3 shape).
+ * Identity filters (Variations / Tools) are scoped to this PG only — soft
+ * suggestions, never enforced. Facets follow what was logged for this PG.
+ */
+function PgScopeCard({
+  pgId,
+  name,
+  panel,
+  loading,
+  variations,
+  tools,
+  variationIds,
+  toolIds,
+  suggestedIds,
+  onVariationsChange,
+  onToolsChange,
+  onVariationsOptionsChange,
+  onToolsOptionsChange,
+}: PgScopeCardProps) {
+  const filterCount =
+    (variationIds.length ? 1 : 0) + (toolIds.length ? 1 : 0);
 
   return (
     <View style={styles.panel}>
-      <Text style={styles.panelTitle}>{panel.name}</Text>
-      <View style={styles.facetList}>
-        {panel.facets.map((facet) => (
-          <View key={facet.id} style={styles.facetRow}>
-            <Text style={styles.facetLabel}>{facet.label}</Text>
-            <Text style={styles.facetValue}>{formatFacetDisplay(facet)}</Text>
-          </View>
-        ))}
+      <View style={styles.cardHeader}>
+        <Text style={styles.panelTitle}>{name}</Text>
+        {filterCount > 0 ? (
+          <Text style={styles.cardScopeBadge}>Scoped · {filterCount}</Text>
+        ) : null}
       </View>
+
+      <View style={styles.cardFilters}>
+        <View style={styles.filterField}>
+          <Text style={styles.fieldLabel}>Variations</Text>
+          <SearchableSelect
+            mode="multi"
+            options={variations}
+            onOptionsChange={onVariationsOptionsChange}
+            value={variationIds}
+            onChange={onVariationsChange}
+            suggestedIds={suggestedIds}
+            onCreate={async () => ({
+              data: null,
+              error: 'Create variations under Account → Taxonomy.',
+            })}
+            placeholder="All variations…"
+            emptyLabel="All variations"
+            fill
+            accessibilityLabel={`Variations for ${name}`}
+          />
+        </View>
+
+        <View style={styles.filterField}>
+          <Text style={styles.fieldLabel}>Tools</Text>
+          <SearchableSelect
+            mode="multi"
+            options={tools}
+            onOptionsChange={onToolsOptionsChange}
+            value={toolIds}
+            onChange={onToolsChange}
+            onCreate={async () => ({
+              data: null,
+              error: 'Create tools under Account → Taxonomy.',
+            })}
+            placeholder="All tools…"
+            emptyLabel="All tools"
+            fill
+            accessibilityLabel={`Tools for ${name}`}
+          />
+        </View>
+      </View>
+
+      {loading && !panel ? (
+        <View style={styles.cardLoading}>
+          <ActivityIndicator color={colors.sunrise} size="small" />
+        </View>
+      ) : panel && panel.setCount > 0 ? (
+        <View style={styles.facetList}>
+          {panel.facets.map((facet) => (
+            <View key={facet.id} style={styles.facetRow}>
+              <Text style={styles.facetLabel}>{facet.label}</Text>
+              <Text style={styles.facetValue}>
+                {formatFacetDisplay(facet)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <Text style={styles.emptyRow}>
+          {filterCount > 0
+            ? 'No tracked sets match this scope in this window.'
+            : 'No tracked sets for this Primary Group in this window.'}
+        </Text>
+      )}
     </View>
   );
 }
 
-/** Phase 2 — PG-first Insights query builder over complete session logs. */
-export function InsightsScreen({ onBrandPress }: Props) {
+/**
+ * Insights Dashboard — quick PG-first facet readout over complete session logs.
+ * Draft only (not saved). Reusable named/lockable analytics live in the Query
+ * builder (see `docs/Analytics_Overhaul_Proposal.md`).
+ */
+export function InsightsDashboardScreen({ onBrandPress, onBack }: Props) {
   const [query, setQuery] = useState<InsightQuery>(() => defaultInsightQuery());
   const [result, setResult] = useState<InsightQueryResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -101,6 +200,13 @@ export function InsightsScreen({ onBrandPress }: Props) {
   const [sequenceLabels, setSequenceLabels] = useState<TaxonomyOption[]>([]);
   const [variations, setVariations] = useState<TaxonomyOption[]>([]);
   const [tools, setTools] = useState<TaxonomyOption[]>([]);
+  /** Soft suggested variation ids per PG (for each card's Variations picker). */
+  const [suggestedByPg, setSuggestedByPg] = useState<Record<string, string[]>>(
+    {},
+  );
+  /** Insights half-step: browse PGs by category (null = All). Survives Phase 3. */
+  const [pgCategoryFilter, setPgCategoryFilter] =
+    useState<PrimaryGroupCategory | null>(null);
 
   const loadMeta = useCallback(async () => {
     const [pgs, labels, blocks, sequences, tags, toolRows] = await Promise.all([
@@ -152,8 +258,62 @@ export function InsightsScreen({ onBrandPress }: Props) {
     void load();
   }, [load]);
 
+  // Load soft suggested variations for each selected PG (per-card hints).
+  useEffect(() => {
+    const ids = query.primaryGroupIds;
+    if (ids.length === 0) {
+      setSuggestedByPg({});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const entries = await Promise.all(
+        ids.map(async (id) => {
+          const { data } = await listPrimaryGroupSuggestedTagIds(id);
+          return [id, data] as const;
+        }),
+      );
+      if (cancelled) return;
+      setSuggestedByPg(Object.fromEntries(entries));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [query.primaryGroupIds]);
+
   const patchQuery = (patch: Partial<InsightQuery>) => {
     setQuery((prev) => ({ ...prev, ...patch }));
+  };
+
+  /** Update PG selection; drop per-PG identity filters for removed PGs. */
+  const setPrimaryGroupIds = (primaryGroupIds: string[]) => {
+    setQuery((prev) => {
+      const keep = new Set(primaryGroupIds);
+      const pruneMap = (map: Record<string, string[]>) =>
+        Object.fromEntries(
+          Object.entries(map).filter(([pgId]) => keep.has(pgId)),
+        );
+      return {
+        ...prev,
+        primaryGroupIds,
+        variationIdsByPg: pruneMap(prev.variationIdsByPg),
+        toolIdsByPg: pruneMap(prev.toolIdsByPg),
+      };
+    });
+  };
+
+  const setPgVariations = (pgId: string, ids: string[]) => {
+    setQuery((prev) => ({
+      ...prev,
+      variationIdsByPg: { ...prev.variationIdsByPg, [pgId]: ids },
+    }));
+  };
+
+  const setPgTools = (pgId: string, ids: string[]) => {
+    setQuery((prev) => ({
+      ...prev,
+      toolIdsByPg: { ...prev.toolIdsByPg, [pgId]: ids },
+    }));
   };
 
   const scopeCount = activeScopeCount(query);
@@ -174,6 +334,27 @@ export function InsightsScreen({ onBrandPress }: Props) {
 
   const hasSubject = query.primaryGroupIds.length > 0;
 
+  const pgCategoriesPresent = useMemo(() => {
+    const present = new Set(
+      primaryGroups
+        .map((pg) => pg.category)
+        .filter((c): c is PrimaryGroupCategory =>
+          Boolean(c && PRIMARY_GROUP_CATEGORIES.includes(c as PrimaryGroupCategory)),
+        ),
+    );
+    return PRIMARY_GROUP_CATEGORIES.filter((c) => present.has(c));
+  }, [primaryGroups]);
+
+  /** Filter picker pool by category; keep selected PGs visible so they can clear. */
+  const pgPickerOptions = useMemo(() => {
+    if (!pgCategoryFilter) return primaryGroups;
+    return primaryGroups.filter(
+      (pg) =>
+        pg.category === pgCategoryFilter ||
+        query.primaryGroupIds.includes(pg.id),
+    );
+  }, [pgCategoryFilter, primaryGroups, query.primaryGroupIds]);
+
   return (
     <ScrollView
       style={styles.scroll}
@@ -188,20 +369,57 @@ export function InsightsScreen({ onBrandPress }: Props) {
       }
     >
       <ScreenHeader
-        title="Insights"
-        subtitle="Pick Primary Groups. Facets follow what you logged."
+        title="Dashboard"
+        subtitle="Quick per-Primary-Group facets for a window. Not saved."
+        onBack={onBack}
         onBrandPress={onBrandPress}
       />
 
       <View style={styles.form}>
         <Text style={styles.sectionTitle}>Primary Groups</Text>
         <Text style={styles.hint}>Required. Results stack one panel per group.</Text>
+        {pgCategoriesPresent.length > 1 ? (
+          <ScrollView
+            horizontal
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryChips}
+            style={styles.categoryChipScroll}
+          >
+            <ToggleChip
+              label="All"
+              active={pgCategoryFilter === null}
+              onPress={() => setPgCategoryFilter(null)}
+              size="compact"
+            />
+            {pgCategoriesPresent.map((cat) => (
+              <ToggleChip
+                key={cat}
+                label={cat}
+                active={pgCategoryFilter === cat}
+                onPress={() =>
+                  setPgCategoryFilter((prev) => (prev === cat ? null : cat))
+                }
+                size="compact"
+              />
+            ))}
+          </ScrollView>
+        ) : null}
         <SearchableSelect
           mode="multi"
-          options={primaryGroups}
-          onOptionsChange={setPrimaryGroups}
+          options={pgPickerOptions}
+          onOptionsChange={(next) => {
+            // Picker may be category-filtered — merge, don't replace the full pool.
+            setPrimaryGroups((prev) => {
+              const byId = new Map(prev.map((pg) => [pg.id, pg]));
+              for (const opt of next) byId.set(opt.id, opt);
+              return [...byId.values()].sort((a, b) =>
+                a.label.localeCompare(b.label),
+              );
+            });
+          }}
           value={query.primaryGroupIds}
-          onChange={(primaryGroupIds) => patchQuery({ primaryGroupIds })}
+          onChange={setPrimaryGroupIds}
           onCreate={async () => ({
             data: null,
             error: 'Create Primary Groups under Account → Taxonomy.',
@@ -216,7 +434,7 @@ export function InsightsScreen({ onBrandPress }: Props) {
           label={scopeLabel}
           open={scopeOpen}
           onToggle={() => setScopeOpen((o) => !o)}
-          hint="Narrow where the work happened — nest labels and identity filters."
+          hint="Narrow where the work happened: nest labels and set type. Variations and tools scope per Primary Group below."
           style={styles.scopeDisclosure}
         >
           <View style={styles.filterField}>
@@ -301,44 +519,6 @@ export function InsightsScreen({ onBrandPress }: Props) {
               accessibilityLabel="Filter by set type"
             />
           </View>
-
-          <View style={styles.filterField}>
-            <Text style={styles.fieldLabel}>Variations</Text>
-            <SearchableSelect
-              mode="multi"
-              options={variations}
-              onOptionsChange={setVariations}
-              value={query.variationIds}
-              onChange={(variationIds) => patchQuery({ variationIds })}
-              onCreate={async () => ({
-                data: null,
-                error: 'Create variations under Account → Taxonomy.',
-              })}
-              placeholder="All variations…"
-              emptyLabel="All variations"
-              fill
-              accessibilityLabel="Filter by variations"
-            />
-          </View>
-
-          <View style={styles.filterField}>
-            <Text style={styles.fieldLabel}>Tools</Text>
-            <SearchableSelect
-              mode="multi"
-              options={tools}
-              onOptionsChange={setTools}
-              value={query.toolIds}
-              onChange={(toolIds) => patchQuery({ toolIds })}
-              onCreate={async () => ({
-                data: null,
-                error: 'Create tools under Account → Taxonomy.',
-              })}
-              placeholder="All tools…"
-              emptyLabel="All tools"
-              fill
-              accessibilityLabel="Filter by tools"
-            />
-          </View>
         </Disclosure>
 
         <Text style={[styles.sectionTitle, styles.sectionGap]}>Dates</Text>
@@ -386,28 +566,50 @@ export function InsightsScreen({ onBrandPress }: Props) {
             Select at least one Primary Group to see results.
           </Text>
         </View>
-      ) : loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.sunrise} />
-        </View>
       ) : error ? (
         <StatusText tone="error">{error}</StatusText>
-      ) : result ? (
+      ) : (
         <View style={styles.results}>
-          <Text style={styles.meta}>
-            {result.sessionCount} complete session
-            {result.sessionCount === 1 ? '' : 's'} · {result.sessionsPerWeek}
-            /week
-          </Text>
+          {result ? (
+            <Text style={styles.meta}>
+              {result.sessionCount} complete session
+              {result.sessionCount === 1 ? '' : 's'} · {result.sessionsPerWeek}
+              /week
+            </Text>
+          ) : null}
           <Text style={styles.hint}>
-            One panel per Primary Group. Facets are separate — do not sum across
-            panels or unlike units.
+            One card per Primary Group. Variations and tools scope that card
+            only. Facets stay separate; don&apos;t sum across cards or unlike
+            units.
           </Text>
-          {result.panels.map((panel) => (
-            <PgFacetPanel key={panel.primaryGroupId} panel={panel} />
-          ))}
+          {query.primaryGroupIds.map((pgId) => {
+            const panel =
+              result?.panels.find((p) => p.primaryGroupId === pgId) ?? null;
+            const name =
+              panel?.name ??
+              primaryGroups.find((pg) => pg.id === pgId)?.label ??
+              pgId;
+            return (
+              <PgScopeCard
+                key={pgId}
+                pgId={pgId}
+                name={name}
+                panel={panel}
+                loading={loading}
+                variations={variations}
+                tools={tools}
+                variationIds={pgVariationIds(query, pgId)}
+                toolIds={pgToolIds(query, pgId)}
+                suggestedIds={suggestedByPg[pgId] ?? []}
+                onVariationsChange={(ids) => setPgVariations(pgId, ids)}
+                onToolsChange={(ids) => setPgTools(pgId, ids)}
+                onVariationsOptionsChange={setVariations}
+                onToolsOptionsChange={setTools}
+              />
+            );
+          })}
         </View>
-      ) : null}
+      )}
     </ScrollView>
   );
 }
@@ -436,6 +638,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     color: colors.textMuted,
+  },
+  categoryChipScroll: {
+    flexGrow: 0,
+  },
+  categoryChips: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: 2,
   },
   dateRow: {
     flexDirection: 'row',
@@ -474,10 +686,6 @@ const styles = StyleSheet.create({
   scopeDisclosure: {
     marginTop: spacing.xs,
   },
-  center: {
-    paddingVertical: spacing.xl,
-    alignItems: 'center',
-  },
   emptyState: {
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.sm,
@@ -509,6 +717,25 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontSemiBold,
     fontSize: 15,
     color: colors.text,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  cardScopeBadge: {
+    fontFamily: typography.fontMedium,
+    fontSize: 11,
+    letterSpacing: 0.3,
+    color: colors.sunrise,
+  },
+  cardFilters: {
+    gap: spacing.sm,
+  },
+  cardLoading: {
+    paddingVertical: spacing.sm,
+    alignItems: 'flex-start',
   },
   facetList: {
     gap: 8,

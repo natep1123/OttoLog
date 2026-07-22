@@ -11,13 +11,15 @@
 
 - Stack / greenfield path: `sql/greenfield/001`–`007` (facts view in `007`; no `008`)
 - Live smoke DB: **OttoLog** Supabase (greenfield; email/password; confirm-email OFF for smoke)
-- App: Insights **Phase 2** query builder MVP shipped (PG-first draft form; 1a dashboard chrome retired)
-- **Analytics direction (locked):** PG-first **query builder** + Saved Insight templates + lock grammar — see [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md). v1 Hybrid/cube doc archived under `docs/deprecated/`
+- App: Insights is now a **card hub** (like Library / Create) → **Dashboard** (the shipped PG-first facet readout; fast, not saved) + **Query builder** (placeholder for the nested, savable, lockable builder now in progress)
+- **Analytics direction (locked, Jul 22 reframe):** Insights = **two tools**. **Dashboard** = quick unsaved PG/facet look. **Query builder** = the real product bet: a **nested query form** that mirrors the log/template builders — collapsing dropdowns per layer, lockability + grammar-condensed locked view + preview modal, and **savable/reusable** asks (save like a template, reopen to the OPEN + locked clean view). See [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md). v1 Hybrid/cube doc archived under `docs/deprecated/`
 - Seeds: `sql/seeds/murph_personal_seed.sql` applied on `n8.perry` (personal smoke only; not Chat 6)
 - Living board: this file (linked from AGENTS / README / Project_Structure)
 
 ## Shipped recently (newest first)
 
+- **Insights reframed to a card hub (Jul 22)** — Insights tab is now a hub (`InsightsHubScreen`) like Library / Create, with two cards: **Query builder** (placeholder screen, "Building" badge) and **Dashboard** (the per-PG facet UI we've built so far). Routing added via `InsightsStack` in `HomeScreen.tsx` (hub / dashboard / queryBuilder; resets on tab-leave + brand tap). Old `InsightsScreen.tsx` → `InsightsDashboardScreen.tsx` (header now "Dashboard", `onBack`). **Saving is not on the Dashboard** — it's a fast look. The nested savable/lockable builder lives behind the Query builder card (placeholder for now). Direction shift: the earlier "per-PG cards = Phase 3" plan is now the **Dashboard**; the real Phase 3 is the nested query builder.
+- **Insights Phase 3 slice A (per-PG scope cards)** — *(now the Dashboard)* selecting Primary Groups spawns one editable card per PG. Each card holds its own Variations + Tools pickers (scoped to that PG only, soft — never enforced) above that PG's facet results. Variations picker wires `suggestedIds` from `listPrimaryGroupSuggestedTagIds(pgId)` (Show all still reaches the full pool). `InsightQuery` identity filters are now per-PG maps (`variationIdsByPg` / `toolIdsByPg`); aggregation applies each PG's filters to its own panel (credit-each unchanged). Nest labels + set type + dates + Working/warmups stay query-global in the Scope disclosure. Single global Variations/Tools filters removed (no rival UI). Category browse chips unchanged. No `008`. **Saved Insights + lock = slice B (not started; ask before `saved_insights` migration).**
 - **Insights Phase 2 (query builder MVP)** — draft form home: FOR Primary Groups → stacked per-PG facet panels (reps/time/distance/load/sets as logged) → Scope disclosure (session/block/sequence + variations/tools/set type) → dates (last 7) + Working/warmups; `v_log_set_facts` + load facet (no tonnage default); 1a lens/metric/balance chrome removed
 - **Insights Phase 1a (substrate)** — `v_log_set_facts`; metric-aware dashboard (interim IA — **replaced** by Phase 2)
 - **Analytics direction locked** — PG-first query builder + Saved Insights + lock; v1 Hybrid proposal → `docs/deprecated/Analytics_Overhaul_Proposal_v1_hybrid_cube.md`
@@ -32,7 +34,7 @@
 
 ## Next (priority order)
 
-1. **Insights Phase 3 — Saved Insights + builder-parity lock** — ideate then implement. Nate Phase 2 feel: “ton better”; lean harder into template/log builder DNA. See proposal §5–6 + §9 Phase 3 + §11 (Jul 22 notes).
+1. **Insights Query builder — nested, savable, lockable** — build out the Query builder card (currently a placeholder). Mirror the log/template builder family: a **nested query form** with collapsing dropdowns per layer, each layer **lockable** to a grammar-condensed line (expand to edit), a **preview modal** for the expanded locked outline, and **save/list/rename/delete** reusable asks (`saved_insights` — **ask before migrating**). Reopening a saved ask shows dropdown=OPEN + lock=TRUE clean view; each exercise query subdivides into modifiers / loads / variations across the data, then a totals line. Capability first, then polish. Dashboard stays as the fast unsaved look. See proposal §5–6 + §9 Phase 3 + §11.
 2. **Identity conviction** — PG + Variations + muscles (+ tools + nest labels); category stays PG metadata for balance **saved views**; Counts as = default facet (Phase 4)
 3. **PG Counts as + Chat 6 (Phase 4)** — `natural_metric` on PGs; Account edit; New User Seeds dump
 4. **Exercise lock ↔ pills scroll** — exercise form correctly hides the pills scroller when lock=ON and dropdown=OPEN, and shows it when lock=OFF or lock=ON + dropdown=COLLAPSED. Explore mirror on Sequence / Block / Session builders
@@ -40,16 +42,18 @@
 6. **Auth / landing UI** — restyle landing, sign-in, and create-account screens to match current [`Styling.md`](./Styling.md) / app chrome
 7. **Prod hardening (when keeping OttoLog)** — Auth email confirm / SMTP; key rotation; backups / PITR; never ship `service_role` in app
 
-## Phase 2 feel → Phase 3 ideation (Nate, Jul 22 — pick up here)
+## Query builder direction (Jul 22 reframe — pick up here next session)
 
-Directionally locked for tomorrow’s design pass (not implemented yet):
+Insights is a **card hub**. Per-PG cards + soft suggestions shipped as the
+**Dashboard** (fast, unsaved). Next work is the **Query builder** screen:
 
-- **Builder family:** Insights should feel like Session/Block/Sequence/Exercise builders — same product family, not a one-off analytics form.
-- **Saved queries ≈ templates/logs:** nameable + notes; reopen autopopulates form state; re-run live against current facts (or historic if dates are fixed). Elegant picker / “form card” list to open a saved query (Library-like).
-- **Dynamic vs static windows:** e.g. “Pullups last 7 days” (rolling) vs “Pullups week of June 13” (pinned range) — date config is part of the saved definition.
-- **Lock = chef’s-kiss grammar:** locked UI should mirror Locked Preview as closely as possible — clean converted outline of what the query asked for + results; unlock → editable form.
-- **Per-PG scope rows (override analogy):** selecting a Primary Group spawns a **per-PG card** (open/editable). Identity filters (variations / tools / …) apply **to that PG only**. On save/collapse → compact grammar row of the ask (same *concept* as sequence override rows like `R16-20`, even though that chip notation will be overhauled later). Shared nest/date scope can stay query-level.
-- **Mental model:** query form as an autoformatter in front of the fact/`v_log_set_facts` engine — users author readable asks; engine returns facets.
+- **Builder family:** nested collapsing dropdowns per layer — same product family as Session/Block/Sequence/Exercise builders, not a one-off analytics form.
+- **Save ≈ templates/logs:** nameable + notes; reopen → OPEN + locked clean view; re-run live (or historic if dates pinned).
+- **Dynamic vs static windows:** e.g. “Pullups last 7 days” (rolling) vs “Pullups week of June 13” (pinned) — part of the saved definition.
+- **Lock per layer:** grammar-condensed line when locked; expand to edit; preview modal = Locked Preview family.
+- **Per-exercise breakdown:** modifiers / loads / variations across the data, then a totals line.
+- **Capability first**, friendliness after.
+- Dashboard keeps category browse + per-PG soft suggestions as the quick path.
 
 ## Parked
 
@@ -75,6 +79,7 @@ Rough priority bands only; not sequenced against Phase 3. Ideas stay ideas until
 
 ### Product structure (medium)
 
+- **Grouped taxonomy proposal (under review)** — three-tier drill-down **Group → Movement → Modifier**; second-agent review in [`Analytics_Labeling.md`](./Analytics_Labeling.md). **No `008` yet.** Half-step on Dashboard: category browse + Murph suggestion thicken. Full adopt only after Query builder feel / before Chat 6.
 - **Taxonomy screens** — reorganize Account taxonomy for clarity
 - **Library + Create IA** — revisit structure so both tabs read clearly
 - **Account / profiles / preferences** — general Account + settings overhaul eventually
@@ -90,10 +95,11 @@ Rough priority bands only; not sequenced against Phase 3. Ideas stay ideas until
 
 ## Open questions
 
-- Phase 3: exact chrome for per-PG cards (NestedLayer-lite vs flat Disclosure vs override-row pattern) — reuse Locked Preview *feel*, not full nest tree
-- Phase 3: which filters are **per-PG** vs **query-global** (nest labels / dates / warmups likely global; variations/tools likely per-PG)
-- Phase 3: dynamic date presets vocabulary (last 7 / last 28 / this week / custom fixed range)
-- Phase 3: Insights home = blank draft vs saved-list first vs picker-above-draft
+- Query builder: nest depth / layer list (subject → facets → scope → window? exercise sub-rows?) and madlib operation vocabulary
+- Query builder: reopen chrome — blank draft vs saved-list first vs picker-above-draft
+- Query builder: dynamic date presets (last 7 / last 28 / this week / custom fixed range)
+- Dashboard lock/collapse grammar — still open if Dashboard ever grows lock; today it stays unlocked/fast
+- Grouped taxonomy (Group → Movement → Modifier): Option A vs B; enforced vs soft modifier scoping? See [`Analytics_Labeling.md`](./Analytics_Labeling.md) proposal
 - Credit-each vs partition for balance **saved views** (credit-each default under the hood today)
 - Nest labels: **Wellness** block vs session vs both? ([`New_User_Seeds.md`](./New_User_Seeds.md))
 - Builder chrome: mirror exercise lock/dropdown pills-scroll on Sequence / Block / Session?
@@ -103,4 +109,5 @@ Rough priority bands only; not sequenced against Phase 3. Ideas stay ideas until
 - Pull-to-refresh: global rule vs per-tab
 - Brand: logo / slogan / icon timing vs Auth landing restyle
 
-Phase 2 lean locks (proposal §11) applied in MVP; Phase 3 expands builder parity per Jul 22 feel notes.
+Dashboard (Phases 2–3a) lean locks applied; next session = Query builder design (proposal §9 Phase 3b).
+

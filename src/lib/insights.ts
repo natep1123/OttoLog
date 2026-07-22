@@ -15,7 +15,7 @@ import { todayDateKey } from './localTime';
 /** Atomic facet shown per Primary Group panel. */
 export type InsightFacetId = 'reps' | 'time' | 'distance' | 'load' | 'sets';
 
-/** Draft query definition (Phase 2 — not persisted). */
+/** Draft query definition (Phase 3 — not persisted yet). */
 export type InsightQuery = {
   /** Required subject — empty = no results. */
   primaryGroupIds: string[];
@@ -26,11 +26,26 @@ export type InsightQuery = {
   sessionCategoryIds: string[];
   blockLabelIds: string[];
   sequenceLabelIds: string[];
-  variationIds: string[];
-  toolIds: string[];
+  /**
+   * Per-PG identity filters (soft scope): pgId → any-of variation ids.
+   * Applied only to that PG's panel. Missing / empty = no variation filter.
+   */
+  variationIdsByPg: Record<string, string[]>;
+  /** Per-PG identity filters (soft scope): pgId → any-of tool ids. */
+  toolIdsByPg: Record<string, string[]>;
   setTypes: SetType[];
   includeWarmups: boolean;
 };
+
+/** Variation ids scoped to one PG (safe accessor). */
+export function pgVariationIds(query: InsightQuery, pgId: string): string[] {
+  return query.variationIdsByPg[pgId] ?? [];
+}
+
+/** Tool ids scoped to one PG (safe accessor). */
+export function pgToolIds(query: InsightQuery, pgId: string): string[] {
+  return query.toolIdsByPg[pgId] ?? [];
+}
 
 export type PgFacetResult = {
   id: InsightFacetId;
@@ -100,8 +115,8 @@ export function defaultInsightQuery(): InsightQuery {
     sessionCategoryIds: [],
     blockLabelIds: [],
     sequenceLabelIds: [],
-    variationIds: [],
-    toolIds: [],
+    variationIdsByPg: {},
+    toolIdsByPg: {},
     setTypes: ['Working'],
     includeWarmups: false,
   };
@@ -218,13 +233,23 @@ function passesScope(
   if (setTypes.length > 0 && !setTypes.includes(fact.setType)) {
     return false;
   }
-  if (query.variationIds.length > 0) {
-    const hit = query.variationIds.some((id) => fact.tagIds.includes(id));
-    if (!hit) return false;
+  return true;
+}
+
+/**
+ * Per-PG identity gate (soft scope): a fact counts toward a PG's panel only if it
+ * matches that PG's variation/tool any-of filters. Empty filters = pass.
+ */
+function passesPgIdentity(
+  fact: Fact,
+  variationIds: string[],
+  toolIds: string[],
+): boolean {
+  if (variationIds.length > 0) {
+    if (!variationIds.some((id) => fact.tagIds.includes(id))) return false;
   }
-  if (query.toolIds.length > 0) {
-    const hit = query.toolIds.some((id) => fact.toolIds.includes(id));
-    if (!hit) return false;
+  if (toolIds.length > 0) {
+    if (!toolIds.some((id) => fact.toolIds.includes(id))) return false;
   }
   return true;
 }
@@ -467,7 +492,12 @@ export async function loadInsightQuery(
   for (const fact of scoped) {
     for (const pgId of fact.primaryGroupIds) {
       const list = factsByPg.get(pgId);
-      if (list) list.push(fact);
+      if (!list) continue;
+      // Identity filters are per-PG (soft scope): each panel applies its own.
+      if (!passesPgIdentity(fact, pgVariationIds(query, pgId), pgToolIds(query, pgId))) {
+        continue;
+      }
+      list.push(fact);
     }
   }
 

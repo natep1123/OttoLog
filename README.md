@@ -11,14 +11,14 @@ Five tabs when signed in: **Home**, **Insights**, **Create**, **Library**, **Acc
 | Area | Today |
 |------|--------|
 | **Home** | Dashboard with quick actions and a week preview placeholder |
-| **Insights** | Phase 2 PG-first query builder (draft form → shape-driven facets; nest/identity scope; date window) |
+| **Insights** | Card hub → **Dashboard** (PG facets, fast/unsaved) + **Query builder** (nested savable/lockable — building) |
 | **Create** | Log a session (from scratch or from a session template); Session / Block / Sequence / Exercise template builders |
 | **Library** | Browse templates and session logs; open in review mode (locked + expanded outline) |
 | **Account** | Taxonomy (tools, primary groups, Variations, labels); Settings with account delete |
 
 Also in place: auth, global **No Tool**, and kind-named system null labels (**Session**, **Block**, **Sequence**), searchable taxonomy pickers in the exercise editor, unique active template names per user (per layer). Composition is Session → Block → Sequence → Exercise (JSON copy, no cross-template FKs). Sequences use rounds × per-round exercises with sparse overrides; soft archive preferred. Session logs denest into relational tables (`sql/greenfield/007`) via app-side save/load.
 
-**Next:** see living board [`docs/Status.md`](docs/Status.md) (Insights Phase 3 Saved Insights + lock, PG Counts as, Chat 6, …). Direction: [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md).
+**Next:** see living board [`docs/Status.md`](docs/Status.md) (Insights Query builder design, PG Counts as, Chat 6, …). Direction: [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md).
 
 ## Quick start
 
@@ -36,7 +36,7 @@ For a **fresh** Supabase project, run `sql/greenfield/001`–`007` in order (fac
 |-----|----------|
 | [`AGENTS.md`](AGENTS.md) | Short project map for AI agents; Cursor rules/skills under `.cursor/` |
 | [`docs/Status.md`](docs/Status.md) | Living ops board: shipped / next / parked / open questions |
-| [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md) | Insights: PG-first query builder (Phase 2 shipped; Saved = Phase 3) |
+| [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md) | Insights: hub = Dashboard + Query builder (Dashboard shipped; QB in progress) |
 | [`docs/Setup.md`](docs/Setup.md) | Env, migrations, run, verify |
 | [`docs/Project_Structure.md`](docs/Project_Structure.md) | Folders, navigation, key files |
 | [`docs/Database_Outline.md`](docs/Database_Outline.md) | Schema, RLS, live vs planned |

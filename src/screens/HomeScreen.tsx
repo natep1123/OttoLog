@@ -20,7 +20,9 @@ import { SessionBuilderScreen } from './create/SessionBuilderScreen';
 import { SessionLogBuilderScreen } from './create/SessionLogBuilderScreen';
 import { LogFromTemplateScreen } from './create/LogFromTemplateScreen';
 import { HomeDashboardScreen } from './home/HomeDashboardScreen';
-import { InsightsScreen } from './insights/InsightsScreen';
+import { InsightsHubScreen } from './insights/InsightsHubScreen';
+import { InsightsDashboardScreen } from './insights/InsightsDashboardScreen';
+import { InsightsQueryBuilderScreen } from './insights/InsightsQueryBuilderScreen';
 import { LibraryHubScreen } from './library/LibraryHubScreen';
 import { LibraryTemplatesHubScreen } from './library/LibraryTemplatesHubScreen';
 import { LibraryScreen } from './library/LibraryScreen';
@@ -36,6 +38,11 @@ type Props = {
   activeTab: MainTab;
   onChangeTab: (tab: MainTab) => void;
 };
+
+type InsightsStack =
+  | { screen: 'hub' }
+  | { screen: 'dashboard' }
+  | { screen: 'queryBuilder' };
 
 type CreateStack =
   | { screen: 'hub' }
@@ -77,6 +84,9 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
   const { profile, user, signOut } = useAuth();
   const name = profile?.username ?? user?.email ?? 'there';
 
+  const [insightsStack, setInsightsStack] = useState<InsightsStack>({
+    screen: 'hub',
+  });
   const [createStack, setCreateStack] = useState<CreateStack>({ screen: 'hub' });
   const [libraryStack, setLibraryStack] = useState<LibraryStack>({
     screen: 'hub',
@@ -88,6 +98,9 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
 
   // Reset nested stacks when leaving those tabs
   useEffect(() => {
+    if (activeTab !== 'insights') {
+      setInsightsStack({ screen: 'hub' });
+    }
     if (activeTab !== 'create') {
       setCreateStack({ screen: 'hub' });
     }
@@ -100,6 +113,7 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
   }, [activeTab]);
 
   const goHomeBrand = () => {
+    setInsightsStack({ screen: 'hub' });
     setCreateStack({ screen: 'hub' });
     setLibraryStack({ screen: 'hub' });
     setAccountStack({ screen: 'hub' });
@@ -505,9 +519,31 @@ export function HomeScreen({ onBrandPress, activeTab, onChangeTab }: Props) {
   const showAccountActions =
     activeTab === 'account' && accountStack.screen === 'hub';
 
-  const renderInsights = () => (
-    <InsightsScreen onBrandPress={goHomeBrand} />
-  );
+  const renderInsights = () => {
+    if (insightsStack.screen === 'dashboard') {
+      return (
+        <InsightsDashboardScreen
+          onBrandPress={goHomeBrand}
+          onBack={() => setInsightsStack({ screen: 'hub' })}
+        />
+      );
+    }
+    if (insightsStack.screen === 'queryBuilder') {
+      return (
+        <InsightsQueryBuilderScreen
+          onBrandPress={goHomeBrand}
+          onBack={() => setInsightsStack({ screen: 'hub' })}
+        />
+      );
+    }
+    return (
+      <InsightsHubScreen
+        onBrandPress={goHomeBrand}
+        onDashboard={() => setInsightsStack({ screen: 'dashboard' })}
+        onQueryBuilder={() => setInsightsStack({ screen: 'queryBuilder' })}
+      />
+    );
+  };
 
   return (
     <Screen contentStyle={styles.content}>

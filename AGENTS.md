@@ -23,7 +23,7 @@ Expo ~57 · React Native · TypeScript · Supabase (Auth + Postgres + RLS)
 | Doc | When |
 |-----|------|
 | [`docs/Status.md`](docs/Status.md) | Living ops board: shipped / next / parked / open questions |
-| [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md) | Insights direction: PG-first query builder (Phase 2 MVP shipped; Saved = Phase 3) |
+| [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md) | Insights: hub = Dashboard + Query builder (QB = nested savable/lockable) |
 | [`docs/Project_Structure.md`](docs/Project_Structure.md) | Folders, tabs, data flow, lib map |
 | [`docs/Setup.md`](docs/Setup.md) | Env, migration order, smoke test |
 | [`docs/Database_Outline.md`](docs/Database_Outline.md) | Schema, naming glossary, RLS, sentinels |

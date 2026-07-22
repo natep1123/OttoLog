@@ -33,7 +33,7 @@ When outline, archived docs, and live SQL disagree, use this order:
 **App slice live**
 
 - **Home**: dashboard with quick actions (build session template, browse exercises, manage taxonomy) and local week preview placeholder
-- **Insights**: Phase **2** PG-first **query builder** on `v_log_set_facts` (draft form; facets per PG). Saved Insights + lock = Phase 3 — see [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md).
+- **Insights**: card hub → **Dashboard** (PG-first facets + per-PG scope on `v_log_set_facts`; unsaved) + **Query builder** (nested savable/lockable — in progress). See [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md).
 - **Create** → Log a session (from scratch or from a session template) → denest save; Templates hub → Session / Block / Sequence / Exercise builders
 - **Library** → Templates and Logs: browse, search, open in review mode (locked + expanded outline), edit / archive / delete
 - Searchable create-comboboxes for tools, primary groups, and variations in the exercise builder
@@ -536,19 +536,22 @@ Do not create the full graph in one migration. Ship in dependency order:
 ## Insights query contract
 
 **Product direction (canonical):** [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md)
-— PG-first **query builder** (FOR subject → SHOW facets → WHERE nest/identity → IN window).
-Phase **2** draft query is live in-app (`InsightQuery` in `src/lib/insights.ts`).
-Saved Insights + lock are Phase **3**.
+— Insights hub: **Dashboard** (fast unsaved PG facets) + **Query builder** (nested
+savable/lockable — in progress). Madlib: FOR subject → SHOW facets → WHERE
+nest/identity → IN window. `InsightQuery` in `src/lib/insights.ts` powers the
+**Dashboard** today (Phases 2–3a). Persistence (`saved_insights`) is Query builder
+work — **ask before migrating**.
 
-### Query definition (app, Phase 2)
+### Query definition (app, Dashboard — Phases 2–3a)
 
 | Field | Role |
 |------|------|
-| `primaryGroupIds` | Required FOR subject (≥1 before results) |
+| `primaryGroupIds` | Required FOR subject (≥1 before results); each spawns an editable per-PG card |
 | Facets (derived) | Per PG from logged presence: reps / time / distance / load / sets — never sum unlike units |
-| Nest labels | Session / block / sequence ids = WHERE scope only |
-| Variations / tools / set types | Identity WHERE; Working-only default + warmups toggle |
-| `fromDate` / `toDate` | Inclusive window (default last 7 days) |
+| Nest labels | Session / block / sequence ids = query-global WHERE scope |
+| `variationIdsByPg` / `toolIdsByPg` | **Per-PG** identity WHERE (pgId → any-of ids); soft suggestions per card, never enforced. Applied to that PG's panel only |
+| `setTypes` / `includeWarmups` | Query-global set policy; Working-only default + warmups toggle |
+| `fromDate` / `toDate` | Query-global inclusive window (default last 7 days) |
 
 Load facet = average of sets with `load_value > 0` (+ majority unit) — **not** tonnage as default.
 Multi-PG = stacked panels (credit-each under the hood).

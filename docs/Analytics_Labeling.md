@@ -223,6 +223,115 @@ variations.
 Structural only: `Warmup` / `Main` / `Cooldown` / `Challenge` / `Wellness` /
 … ; `Circuit` / `Superset` / `Sequence`.
 
+## Proposed (under review): grouped taxonomy — Group → Movement → Modifier
+
+> **Status: PROPOSAL, not current contract.** Everything above this section is the
+> shipped model. This block is Nate's Jul 22 idea, captured for a second agent to
+> review. Do **not** implement or reseed from this yet. If adopted it is a real
+> `008`+ migration + seed rewrite, not a doc tweak.
+
+### The idea in one line
+
+Make the taxonomy an explicit three-tier drill-down —
+**Group → Movement → Modifier** — where modifiers are **scoped to their movement**
+instead of living in one global pool.
+
+```text
+[Group]        →  [Movement]        →  [Modifier(s)] (scoped to the movement)
+Pull              Pullups              Wide-Grip · Archer · Chest-to-Bar
+Push              Pushups              Wide-Grip · Archer · Standard
+Gait              Running              LSD · Intervals · Trail
+Combat/BJJ        Guard Passing        (discipline-specific modifiers)
+```
+
+### Why (the pain it targets)
+
+- **Overlap across labels.** Today `PG: Pullups` + `Name: Weighted Pullups` +
+  `Variation: Weighted` encode nearly the same thing in three places.
+- **Global variation pool is muddy.** `Wide-Grip` is not structurally tied to
+  `Pullups`; the only link today is the *soft* "suggested variations per PG."
+- **Selecting a group should narrow the world.** Pick `Pull` → only pull movements
+  appear; pick `Pullups` → only its modifiers appear.
+
+### Key realization
+
+OttoLog **already has these three tiers** — this is mostly a promotion + a tightening,
+not a from-scratch redesign:
+
+| Tier | Today | Proposed name | Change |
+|------|-------|---------------|--------|
+| 1 broad bucket | `category` (passive metadata) | **Group** (Family/Discipline) | Promote to first-class, navigable; drives suggestions + balance |
+| 2 chart noun | `Primary Group` (`Pullups`, `Gait`) | **Movement** | Mostly rename |
+| 3 modifier | `Variations` (flat global `analytics_tags`) | **Modifier** | **Scope to the movement** (biggest real change) |
+| (display) | Exercise name (`Weighted Pullups`) | derived display | Compose from Movement + Modifiers; stop being a third parallel identity |
+
+### Open decisions for the reviewer
+
+1. **Top-tier axis consistency.** Nate's examples mix axes: movement pattern
+   (`Pull/Push/Legs/Full-body`), modality (`Gait`), and discipline (`BJJ/Muay Thai`).
+   That is the "two axes in one slot" trap this doc warns against, and today's
+   `category` list already lives with the same compromise (`Push/Pull/Lower` beside
+   `Cardio/Combat/Wellness`). Two ways to keep it clean:
+   - **Option A (lean):** Group = **domain/family** (Strength, Gait, Combat,
+     Wellness). Movement pattern (pull/push/legs) becomes a **secondary tag** on the
+     movement for balance. Less to build; probably enough.
+   - **Option B (powerful):** **two group axes** — a `pattern` axis
+     (pull/push/legs/full-body) *and* a `domain` axis
+     (strength/cardio/combat/wellness). This is the "PG-groups multi-axis" idea
+     already parked in `Status.md`. More capable, more to build.
+2. **Modifier scoping strength.**
+   - **Enforced:** a modifier belongs to one movement (clean, rigid).
+   - **Soft-suggested:** scoped picker, but any modifier can still attach if you dig
+     (keeps the open-ended "log anything" promise). Today's model is soft.
+3. **Complexes / full-body.** Under scoping, a complex = pick multiple movements,
+   each with its own modifier selectors, crediting each — the existing multi-PG
+   credit-each model, just per-movement scoped.
+
+### Fit with Insights Phase 3
+
+This dovetails with the Phase 3 per-PG card idea: select a Group → its movements
+appear → each selected movement spawns its own card exposing **only its modifiers**
+(the override-row analogy). See `Analytics_Overhaul_Proposal.md` §5.
+
+### Ripple / cost if adopted
+
+Touches the **exercise data model** (exercise → PG links), the **Murph seed**,
+`New_User_Seeds.md`, `Label_Library.md`, `Database_Outline.md`, and this doc — plus
+an `008`+ migration. Not analytics-only. Sequence it deliberately.
+
+### Second-agent review (Jul 22 — ideation only)
+
+> Verdict snapshot. Full argument lives in the chat that wrote this; do not treat
+> as adopted.
+
+**1. Better vs rename:** ~60% rename/promotion, ~40% real change. Promoting
+`category` → navigable Group and tightening modifier pickers is real UX. The
+**only hard schema win** is scoped modifiers. The “Weighted Pullups in three
+places” pain is mostly **name discipline**, not hierarchy — Group→Movement alone
+does not fix name ↔ modifier overlap. The example tree also **quietly changes
+chart nouns** (see cardio / combat below) — that is not a rename.
+
+**2. Open decisions:** Prefer **Option A** (domain/family Group + pattern as
+secondary tag / keep today’s Push–Pull–Lower on the Movement). Prefer **soft
+scoping** (scoped picker + Show all), not enforced ownership. Enforced breaks
+shared modifiers (`Wide-Grip` on Pullups *and* Pushups) unless you duplicate
+rows or invent M2M — which is today’s suggestion table with harder UX.
+
+**3. Edge cases:** Complexes/credit-each survive. Martial arts example
+`Combat/BJJ → Guard Passing` **inverts** today’s mode-as-PG / discipline-as-
+variation. Cardio example `Gait → Running → LSD` **demotes Gait** from chart
+noun to Group — Insights “one number” flips from family to flavor. Wellness
+maps cleanly. Don’t mix pattern / modality / discipline in one Group slot.
+
+**4. Cost / sequence:** Real `008`+ + seed rewrite + Account + Insights subject
+wording. **Do not block Insights Phase 3** — Phase 3 per-movement cards work on
+today’s PG + soft suggestions. Half-step without migration: browse-by-category
+in pickers + stronger suggested-variations UX. Full adoption only **after**
+Phase 3 feel, **before** Chat 6 (so seeds hit the winning model). Option B =
+parked Phase 5 multi-axis, not this proposal’s MVP.
+
+---
+
 ## Related docs
 
 | Doc | Role |

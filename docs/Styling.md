@@ -346,7 +346,7 @@ Users navigate to Welcome by pressing the wordmark. They move directly between L
 
 ### Shell
 
-Home now uses a dashboard layout. Insights is a Phase 2 PG-first query builder (draft form; Saved Insights = Phase 3). Create, Library, and Account use hub / list / builder screens with:
+Home now uses a dashboard layout. Insights is a **card hub** → Dashboard (fast unsaved facets) + Query builder (nested savable/lockable, in progress). Create, Library, and Account use hub / list / builder screens with:
 
 - Header-sized wordmark
 - Screen title + muted subtitle via `ScreenHeader`
@@ -366,7 +366,11 @@ The week strip is a placeholder layout, not a session calendar yet.
 
 ### Insights
 
-`InsightsScreen` — Phase 2 query builder: Primary Group multiselect first, stacked per-PG facet panels (reps / time / distance / load / sets as logged), Scope disclosure (session / block / sequence labels + variations / tools / set type), date window + Working/warmups. Data via `src/lib/insights.ts` on `v_log_set_facts`. Saved Insights + lock = Phase 3.
+Insights is a **card hub** (`InsightsHubScreen`, `HubAction` rows like Library / Create) → **Dashboard** + **Query builder**.
+
+`InsightsDashboardScreen` — PG-first facet readout (fast, unsaved): Primary Group multiselect first (with category browse chips), one editable card per PG (per-PG Variations / Tools with soft `suggestedIds` + facet results), global Scope disclosure (session / block / sequence labels + set type), date window + Working/warmups. Data via `src/lib/insights.ts` on `v_log_set_facts`.
+
+`InsightsQueryBuilderScreen` — placeholder for the nested, savable, lockable query builder (Phase 3). Uses `ScreenHeader` + card list of planned pieces.
 
 ### Account
 

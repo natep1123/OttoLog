@@ -11,10 +11,27 @@
 > [`Database_Outline.md`](./Database_Outline.md),
 > [`New_User_Seeds.md`](./New_User_Seeds.md).
 >
-> **Ground truth today:** `src/lib/insights.ts`, `src/screens/insights/`,
+> **Ground truth today:** `src/lib/insights.ts`, `src/screens/insights/`
+> (`InsightsHubScreen`, `InsightsDashboardScreen`, `InsightsQueryBuilderScreen`),
 > `sql/greenfield/007_session_logs.sql` (`v_log_set_facts`).
-> Phase **1a** (metric-aware dashboard) was interim substrate. Phase **2** query
-> builder MVP is the live Insights IA (draft form; Saved Insights = Phase 3).
+> Phase **1a** was interim substrate. Phases **2–3a** shipped the **Dashboard**
+> (PG-first facets + per-PG scope cards). **Query builder** (nested, savable,
+> lockable) is the live product bet — placeholder in app, design next.
+>
+> **Jul 22 reframe (supersedes framing below where they conflict):** Insights is a
+> **card hub** (like Library / Create) with **two tools**:
+> 1. **Dashboard** — the PG-first facet readout built in Phases 2–3a (per-PG scope
+>    cards, shape-driven facets). A **fast, unsaved** look. **No saving here.**
+> 2. **Query builder** — the real product bet: a **nested query form** that mirrors
+>    the log/template builders. Collapsing dropdowns per layer, **lock per layer**
+>    to a grammar-condensed line (expand to edit), a **preview modal** for the
+>    expanded locked outline, and **savable/reusable** asks (save like a template;
+>    reopen to the OPEN + locked clean view; re-run live). Each exercise query
+>    subdivides into modifiers / loads / variations across the data, then a totals
+>    line. **Capability first**, then friendliness.
+>
+> So "Saved Insights + lock" is **not** a light add-on to the draft form — it is a
+> separate, builder-grade nested screen. The per-PG card work is the Dashboard.
 
 ---
 
@@ -47,10 +64,10 @@ a `metric × lens × filter` cube.
 “lens” fighting PG for attention. Balance views are **saved queries** or a
 secondary strip, not the home screen.
 
-Phase **1a** made numbers honest (multi-metric, `v_log_set_facts`). **Phase 2**
-shipped the draft query form. **Phase 3+** adds Saved Insights + lock.
-Old “Power cube” and “Simple card stack” are **parked** in favor of **saved
-query templates**.
+Phase **1a** made numbers honest (multi-metric, `v_log_set_facts`). **Phases 2–3a**
+shipped the **Dashboard** (draft form → per-PG scope cards). **Phase 3b+** is the
+**nested Query builder** (save + lock) — a separate builder-grade screen, not an
+add-on to the Dashboard. Old “Power cube” and “Simple card stack” are **parked**.
 
 ---
 
@@ -307,18 +324,29 @@ loader live on in Phase 2.
 
 **Out of scope (still):** lock mode, saved templates table, trends/time buckets, derived calcs UI
 
-### Phase 3 — Saved Insights + builder-parity lock
+### Phase 3 — Insights hub + nested Query builder (Jul 22 reframe)
 
-**Goal:** Insights feels like the template/log builders — saveable named asks,
-per-PG editable rows that collapse to grammar, lock ≈ Locked Preview.
+**Goal:** Insights is a card hub. **Dashboard** is the fast unsaved look
+(Phases 2–3a, done). The **Query builder** is a builder-grade **nested query
+form** — the same product family as the log/template builders — with save + lock.
 
-- [ ] Ideate / wireframe (per-PG cards, dynamic vs static dates, home picker)
-- [ ] `saved_insights` persistence (`name`, `notes`, `definition jsonb`, …) — ask before `008`
-- [ ] Save / rename / delete / list + elegant picker on Insights home
-- [ ] Per-PG scope cards (variations/tools scoped to that PG); collapse → ask grammar
+**3a — Dashboard (done):** hub + per-PG scope cards (variations/tools scoped per
+PG, soft suggestions), shape-driven facets. Lives behind the Dashboard card.
+**No saving on the Dashboard.**
+
+**3b — Query builder (in progress):**
+
+- [x] Insights card hub (`InsightsHubScreen`) → Dashboard + Query builder; routing in `HomeScreen`
+- [ ] Query builder screen: **nested collapsing dropdowns** per layer (subject → facets → scope → window), madlib-style operation selectors
+- [ ] **Lock per layer** → grammar-condensed line; expand to edit (mirror builder lock/dropdown grammar)
+- [ ] **Preview modal** for the expanded locked outline (Locked Preview family)
+- [ ] `saved_insights` persistence (`name`, `notes`, `definition jsonb`, …) — **ask before migrating**
+- [ ] Save / rename / delete / list + elegant picker (Library-like); reopen → dropdown=OPEN + lock=TRUE clean view, re-run live
+- [ ] Per-exercise-query breakdown: modifiers / loads / variations across the data, then a totals line
 - [ ] Dynamic (rolling) vs static (pinned) date windows in definition
-- [ ] Lock → paginated result outline matching Locked Preview family
-- [ ] 1–2 default Saved Insights for new users (optional, with Chat 6)
+- [ ] 1–2 default saved asks for new users (optional, with Chat 6)
+
+Capability first; friendliness (madlib polish) once the nested form + save/lock hold.
 
 ### Phase 4 — Taxonomy + seeds
 
@@ -373,33 +401,33 @@ fake combined total.
 |---|--------|---------------------|
 | 1 | Multi-PG layout | **Stacked panels** first (one panel per PG). Tabs only if stacked gets too tall. |
 | 2 | Load facet | Show facet when any set has load; v1 summary = avg load — **not** tonnage. |
-| 3 | Insights home (Phase 2) | **Draft query form** as home. Saved list lands in Phase 3. |
+| 3 | Insights home (Phase 2) | **Draft query form** as home (pre-hub). **Superseded Jul 22:** Insights home = **card hub**; draft form lives under **Dashboard**. |
 | 4 | Category enum | **Keep** through Phase 2; PG-groups multi-axis stays Phase 5. |
 | 5 | 1a screen | **Replace in place** when Phase 2 ships (no long dual-UI / feature flag). |
 | 6 | Wellness / nest labels | Does **not** block Phase 2; resolve with Chat 6 / New User Seeds. |
 
-### Phase 3 ideation locks (Jul 22 feel — not implemented)
+### Phase 3 ideation locks (Jul 22 — Dashboard vs Query builder)
 
 | # | Topic | Direction |
 |---|--------|-----------|
-| 7 | Builder parity | Saved Insights + lock should feel like templates/logs + Locked Preview |
-| 8 | Per-PG filters | Selecting a PG spawns a per-PG editable card; variations/tools apply **per PG** (override-row analogy) |
-| 9 | Collapsed grammar | Save/collapse shows compact ask grammar; lock outline uses the same language |
-| 10 | Date saves | Support **dynamic** (rolling) and **static** (pinned range) in the definition |
-| 11 | Name + notes | First-class on Saved Insight (builder More DNA) |
-| 12 | Home chrome | Elegant saved-query picker / form-card list — exact layout TBD in Phase 3 wireframe |
+| 7 | Insights = two tools | **Dashboard** = fast unsaved look (done). **Query builder** = nested savable/lockable builder (in progress). |
+| 8 | Per-PG filters (Dashboard) | **Shipped on Dashboard:** one card per PG; variations/tools per PG (soft suggestions). |
+| 9 | Query builder lock | Lock **per layer** → grammar-condensed line; preview modal = Locked Preview family |
+| 10 | Date saves | Support **dynamic** (rolling) and **static** (pinned range) in saved definitions |
+| 11 | Name + notes | First-class on saved asks (builder More DNA) |
+| 12 | Query builder home | Saved-list / picker / blank draft — TBD in Query builder design pass |
 
-Still open: credit-each vs partition on balance saved views; exact per-PG vs global filter split; builder lock/pills mirror on nest editors.
+Still open: credit-each vs partition on balance saved views; Query builder nest depth / madlib ops; builder lock/pills mirror on nest editors.
 
 ---
 
 ## 12. Implications for other docs / code
 
-- **`Status.md`:** Next = Phase 3 Saved Insights + builder-parity lock; Phase 2 = shipped
+- **`Status.md`:** Next = nested Query builder (3b); Dashboard (2–3a) = shipped; Insights = hub
 - **`Analytics_Labeling.md`:** PG-first decision rule unchanged; de-emphasize “lens”
   language in UI copy when touched
-- **`Database_Outline.md`:** Insights query contract + Phase 2 `InsightQuery` fields — keep in sync
-- **`.cursor/rules/insights.mdc`:** Phase 2 shipped; Phase 3 direction from Status/proposal
+- **`Database_Outline.md`:** Insights query contract + `InsightQuery` (incl. per-PG maps) — keep in sync
+- **`.cursor/rules/insights.mdc`:** hub + Dashboard shipped; Query builder direction
 - **Chat 6:** still blocked until Counts as shape accepted (Phase 4)
 
 ---
