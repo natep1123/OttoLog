@@ -1,6 +1,6 @@
 /**
  * Which target/set columns each target_shape shows in the editor.
- * No SQL — UI map only. IDs must match sql/003_locked_atoms.sql / lockedAtoms.ts.
+ * No SQL — UI map only. IDs must match sql/greenfield/003_locked_atoms.sql / lockedAtoms.ts.
  *
  * Load is always available; volume columns vary by shape.
  */

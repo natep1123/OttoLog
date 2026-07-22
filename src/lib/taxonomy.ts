@@ -82,7 +82,9 @@ function uniqueViolationMessage(kind: TaxonomyKind): string {
   if (kind === 'primary_group') {
     return 'A primary group with that name already exists.';
   }
-  if (kind === 'analytics_tag') return 'A tag with that name already exists.';
+  if (kind === 'analytics_tag') {
+    return 'A variation with that name already exists.';
+  }
   if (kind === 'muscle_group') {
     return 'A muscle group with that name already exists.';
   }
@@ -462,8 +464,8 @@ export async function createPrimaryGroup(
 }
 
 /**
- * Ordered suggested tag ids for one or more primary groups (union, first-seen order).
- * Soft picker hints only — does not constrain stored tag links.
+ * Ordered suggested variation ids for one or more primary groups (union, first-seen order).
+ * Soft picker hints only — does not constrain stored variation links.
  */
 export async function listSuggestedTagIdsForPrimaryGroups(
   primaryGroupIds: string[],
@@ -505,7 +507,7 @@ export async function listPrimaryGroupSuggestedTagIds(
   return listSuggestedTagIdsForPrimaryGroups([primaryGroupId]);
 }
 
-/** Replace-write suggested tags for a primary group (ordered). */
+/** Replace-write suggested variations for a primary group (ordered). */
 export async function setPrimaryGroupSuggestedTags(
   primaryGroupId: string,
   tagIds: string[],
@@ -566,7 +568,7 @@ export async function createAnalyticsTag(
   name: string,
 ): Promise<{ data: TaxonomyOption | null; error: string | null }> {
   const trimmed = name.trim();
-  if (!trimmed) return { data: null, error: 'Tag name is required.' };
+  if (!trimmed) return { data: null, error: 'Variation name is required.' };
 
   const { data: existing } = await supabase
     .from('analytics_tags')
@@ -924,7 +926,7 @@ export async function deleteTaxonomy(
 export function taxonomyKindLabel(kind: TaxonomyKind): string {
   if (kind === 'tool') return 'Tools';
   if (kind === 'primary_group') return 'Primary groups';
-  if (kind === 'analytics_tag') return 'Analytics tags';
+  if (kind === 'analytics_tag') return 'Variations';
   if (kind === 'muscle_group') return 'Muscle groups';
   if (kind === 'session_label') return 'Session labels';
   if (kind === 'block_label') return 'Block labels';
@@ -934,7 +936,7 @@ export function taxonomyKindLabel(kind: TaxonomyKind): string {
 export function taxonomyKindSingular(kind: TaxonomyKind): string {
   if (kind === 'tool') return 'tool';
   if (kind === 'primary_group') return 'primary group';
-  if (kind === 'analytics_tag') return 'tag';
+  if (kind === 'analytics_tag') return 'variation';
   if (kind === 'muscle_group') return 'muscle group';
   if (kind === 'session_label') return 'session label';
   if (kind === 'block_label') return 'block label';

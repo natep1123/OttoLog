@@ -189,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return {
         error: missingRpc
-          ? 'Account deletion is not set up yet. Run sql/002_delete_own_account.sql in Supabase, then try again.'
+          ? 'Account deletion is not set up yet. Run sql/greenfield/002_delete_own_account.sql in Supabase, then try again.'
           : error.message,
       };
     }

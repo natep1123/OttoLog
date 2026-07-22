@@ -48,7 +48,7 @@ type Props = {
 
 type ConfirmKind = 'archive' | 'unarchive' | 'delete' | null;
 
-/** Shared CRUD list for tools, primary groups, and analytics tags. */
+/** Shared CRUD list for tools, primary groups, and variations. */
 export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
   const { user } = useAuth();
   const userId = user?.id;
@@ -424,9 +424,10 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
 
             {kind === 'primary_group' && selected ? (
               <View style={styles.suggestBlock}>
-                <Text style={styles.fieldLabel}>Suggested tags</Text>
+                <Text style={styles.fieldLabel}>Suggested variations</Text>
                 <Text style={styles.hint}>
-                  Soft filter in the exercise form. Empty = full A–Z tag pool.
+                  Soft filter in the exercise form. Empty = full A–Z variation
+                  pool.
                 </Text>
                 <SearchableSelect
                   mode="multi"
@@ -439,10 +440,10 @@ export function TaxonomyListScreen({ kind, onBrandPress, onBack }: Props) {
                       return { data: null, error: 'Not signed in.' };
                     return createAnalyticsTag(userId, name);
                   }}
-                  placeholder="Search or create tags…"
-                  emptyLabel="No suggested tags"
+                  placeholder="Search or create variations…"
+                  emptyLabel="No suggested variations"
                   fill
-                  accessibilityLabel="Suggested tags for this primary group"
+                  accessibilityLabel="Suggested variations for this primary group"
                 />
               </View>
             ) : null}

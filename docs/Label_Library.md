@@ -8,8 +8,9 @@ real field).
 **Ordering:** alphabetical within each list. System nulls are called out
 separately.
 
-**Doc-only folders:** tag *types* organize thinking. Tags stay flat rows in
-`analytics_tags`. Muscle groups are a first-class multiselect (see below).
+**Canonical dump:** full PG catalog, seeded variations, and tools live in
+[`New_User_Seeds.md`](./New_User_Seeds.md) (rev. 3 locked). This file is the
+shorter seed map + rules.
 
 Related: [`Analytics_Labeling.md`](./Analytics_Labeling.md) (decision rules),
 [`Database_Outline.md`](./Database_Outline.md) (schema).
@@ -20,10 +21,13 @@ Related: [`Analytics_Labeling.md`](./Analytics_Labeling.md) (decision rules),
 
 | Slot | UI (More panel) | Cardinality | Job |
 |------|-----------------|-------------|-----|
-| **Primary group(s)** | Required when tracking on | **1–N** (multi via links) | Chart noun(s) volume accrues to |
+| **Primary group(s)** | Required when tracking on | **1–N** (multi via links) | Chart noun(s) volume accrues to; each PG has a **category** |
 | **Muscle groups** | Multiselect when tracking on | 0–N | Anatomy rollups |
-| **Tags** | Multiselect today | 0–N | Facets (pattern, plane, grip, discipline, region, …) |
+| **Variations** | Multiselect today | 0–N | Modifiers (grip, angle, named variant, discipline, cardio flavor, …) |
 | **Tools** | Multiselect today | ≥1 | Equipment (**None** = No Tool) |
+
+DB table for Variations remains `analytics_tags` until a later SQL rewrite.
+Equipment is **never** also a variation.
 
 **Complexes:** one prescription can credit **multiple PGs** (e.g. 360-to-Squat
 → `360s` + `Squats`). Per-PG charts intentionally double-count; never sum PG
@@ -38,7 +42,12 @@ Shipped:
 1. **Rest** session label + `is_empty` on session taxonomy (no blocks; notes only).
 2. **Multi-select primary groups** + in-product warning about complex double-counting.
 3. **Muscle groups** multiselect with the defaults below.
-4. **Suggested tags per primary group** (soft picker filter; Show all for full pool).
+4. **Suggested variations per primary group** (soft picker filter; Show all for full pool).
+
+Docs synced (rev. 3): Variations product term, block `Main` / `Wellness`,
+`Competition Fights` plural, category + lean variation model. Still parked:
+New User Seeds SQL content dump, starter templates. Greenfield schema has
+`category` + set-row fields; live app/denest catch-up is chat 5.
 
 ---
 
@@ -67,9 +76,10 @@ Shipped:
 | **Class** | Coached / class-style block. |
 | **Competition** | Match / tournament block inside a longer day. |
 | **Cooldown** | Post-work cool-down structure. |
+| **Main** | Main work block (was `Workout`). |
 | **Testing** | Performance testing (e.g. 1RM, time trial). |
 | **Warmup** | Pre-work warm-up structure. |
-| **Workout** | Main work block. |
+| **Wellness** | Sauna / breath / recovery-style block inside a longer day. |
 
 **System null:** `Block` — unlabeled block; structural placeholder only.
 
@@ -91,6 +101,9 @@ Nest structure only — not analytics identity.
 ## Primary groups
 
 Long-lived **chart nouns**. Exercise name stays specific; PG stays reusable.
+Each PG carries a **category** (Push / Pull / Lower / Core / Power / Skill /
+Cardio / Combat / Mobility / Wellness) for balance analytics — see
+[`New_User_Seeds.md`](./New_User_Seeds.md) for the full 43.
 
 ### Strength / skill (examples)
 
@@ -109,24 +122,22 @@ Long-lived **chart nouns**. Exercise name stays specific; PG stays reusable.
 Add a PG when you want a **years-long chart** for that movement. Prefer
 `Lunges` + name `KB Halo Rev. Lunges` over a one-off PG string.
 
-### Cardio families (modality = PG; flavor = tag)
+### Cardio families (modality = PG; flavor = variation)
 
-Same pattern for every loco family:
+| Primary group | Flavor variations (examples) |
+|---------------|------------------------------|
+| **Gait** | Walking, Running, Sprinting, Hiking, Rucking, Trail, … |
+| **Swimming** | Freestyle, Drill, Intervals, … |
+| **Cycling** | Road, Mountain, Steady, … |
+| **Rowing** | Steady, Intervals, Easy, … |
 
-| Primary group | Flavor tags (examples) |
-|---------------|------------------------|
-| **Gait** | Walk, Run, Sprint, Hike, … |
-| **Swim** | *(as needed)* freestyle, drill, … |
-| **Cycle** | *(as needed)* road, trainer, … |
-| **Row** | *(as needed)* steady, intervals, … |
+Do **not** also keep Walking / Running / Sprinting as separate PGs.
 
-Do **not** also keep Walk / Run / Sprint as separate PGs.
-
-### Combat (mode = PG; discipline = tag)
+### Combat (mode = PG; discipline = variation)
 
 | Primary group | Means |
 |---------------|--------|
-| **Competition Fight** | Match / tournament work. |
+| **Competition Fights** | Match / tournament work. |
 | **Drilling** | Technique, positional, pads. |
 | **Live Sparring** | Live rounds / rolling / sparring. |
 
@@ -134,6 +145,7 @@ Do **not** also keep Walk / Run / Sprint as separate PGs.
 
 | Primary group | Means |
 |---------------|--------|
+| **Breathwork** | Breath practice minutes. |
 | **Cold Exposure** | Cold plunge / shower minutes. |
 | **Meditation** | Meditation minutes. |
 | **Sauna** | Sauna minutes. |
@@ -141,19 +153,19 @@ Do **not** also keep Walk / Run / Sprint as separate PGs.
 ### Complex example
 
 ```text
-Name:     Mace 360-to-Squat
-PGs:      360s + Squats          ← multi-PG
-Muscles:  Quads, …               ← muscle groups field
-Tags:     Complex                ← optional flavor
-Tools:    Mace
-Reps:     300  →  +300 on Squats chart and +300 on 360s chart
+Name:        Mace 360-to-Squat
+PGs:         360s + Squats          ← multi-PG
+Muscles:     Quads, …               ← muscle groups field
+Variations:  Complex                ← optional flavor
+Tools:       Mace
+Reps:        300  →  +300 on Squats chart and +300 on 360s chart
 ```
 
 ---
 
 ## Muscle groups *(multiselect — defaults)*
 
-First-class anatomy axis (not tags). New-user defaults (seeded via
+First-class anatomy axis (not variations). New-user defaults (seeded via
 `ensure_default_muscle_groups`):
 
 | Muscle group | Notes |
@@ -175,92 +187,76 @@ First-class anatomy axis (not tags). New-user defaults (seeded via
 
 Multiselect on an exercise (e.g. Dips → Chest + Triceps + Shoulders).
 
-**Keep out of tags:** don’t also create Chest/Back-style anatomy tags once this
-field exists. Coarse **region** tags (`Legs`, `Upper Body`, `Full Body`) may
-remain as quick filters.
+**Keep out of variations:** don’t also create Chest/Back-style anatomy rows
+once this field exists. Coarse region / pattern / plane facets are **not** in
+the default seed — PG **category** + muscles cover them.
 
 ---
 
-## Analytics tags (by type — organization only)
+## Variations (modifiers)
 
-Flat in the DB. Types are folders for humans/agents only.
+Flat rows in `analytics_tags`. Product UI: **Variations**. Org folders below
+are for humans/agents only.
 
-### Movement pattern
-
-| Tag | Means |
-|-----|--------|
-| **Pull** | Pull-dominant pattern. |
-| **Push** | Push-dominant pattern. |
-
-### Plane / direction
-
-| Tag | Means |
-|-----|--------|
-| **Horizontal** | Horizontal plane. |
-| **Transverse** | Rotational / transverse plane. |
-| **Vertical** | Vertical plane. |
+Seed ~60 **shared / high-reuse** names; PG-specific names (`Goblet`, `Pendlay`,
+`Nordic`, …) are suggestion-only until first use. Full lists:
+[`New_User_Seeds.md`](./New_User_Seeds.md).
 
 ### Grip / stance
 
-| Tag | Means |
-|-----|--------|
+| Variation | Means |
+|-----------|--------|
+| **Close-Grip** | Closer than standard. |
 | **Narrow-Grip** | Narrower than standard. |
+| **Neutral-Grip** | Palms facing. |
+| **Reverse-Grip** | Supinated / underhand relative to the movement’s default. |
 | **Standard** | Default grip/stance for that movement. |
+| **Underhand** | Underhand emphasis (e.g. rows). |
 | **Wide-Grip** | Wider than standard. |
-| **Bilateral** | Both sides together. |
-| **Unilateral** | One side / alternating. |
 
-Use one grip family tag; don’t stack contradictory grips.
+Use one grip family variation; don’t stack contradictory grips.
 
-### Region *(coarse — optional beside muscle field)*
+### Side / limb · angle · execution · load *(examples)*
 
-| Tag | Means |
-|-----|--------|
-| **Full Body** | Whole-body emphasis. |
-| **Legs** | Lower-body emphasis. |
-| **Upper Body** | Upper-body emphasis. |
+`Single-Arm`, `Single-Leg`, `Alternating`, `Offset` · `Flat`, `Incline`,
+`Decline`, `Seated`, `Standing`, `Paused` · `Explosive`, `Archer`, `Kipping`,
+`Strict`, `Hold` · `Weighted`, `Assisted`, `Banded`, `Bodyweight`.
 
-### Modality / style
+### Gait / cardio flavor *(PG = Gait / Swimming / …)*
 
-| Tag | Means |
-|-----|--------|
-| **Calisthenics** | Bodyweight / calisthenics context. |
-| **Complex** | Multi-movement prescription (flavor; multi-PG does the credit). |
-
-### Gait / cardio flavor *(PG = Gait / Swim / …)*
-
-| Tag | Means |
-|-----|--------|
-| **Hike** | Hiking flavor under Gait. |
-| **Run** | Running flavor under Gait. |
-| **Sprint** | Sprint flavor under Gait. |
-| **Walk** | Walking flavor under Gait. |
-
-Add as needed: `easy`, `intervals`, `trail`, `road`, `loaded`, `walk-break`.
+| Variation | Means |
+|-----------|--------|
+| **Hiking** | Hiking flavor under Gait. |
+| **Running** | Running flavor under Gait. |
+| **Sprinting** | Sprint flavor under Gait. |
+| **Walking** | Walking flavor under Gait. |
+| **Easy** / **Intervals** / **Steady** | Cardio intensity chips. |
 
 ### Combat discipline *(PG = mode)*
 
-| Tag | Means |
-|-----|--------|
+| Variation | Means |
+|-----------|--------|
 | **BJJ** | Brazilian jiu-jitsu. |
+| **Boxing** | Boxing. |
 | **MMA** | Mixed martial arts. |
 | **Muay Thai** | Muay Thai. |
+| *(also)* | Judo, Kickboxing, Wrestling, … |
 
-### Event / context
+### Context
 
-| Tag | Means |
-|-----|--------|
-| **Murph Challenge** | Murph / Murph-prep filter across sessions. |
+| Variation | Means |
+|-----------|--------|
+| **Complex** | Multi-movement prescription (flavor; multi-PG does the credit). |
+| **Yoga** | Practice flavor under Mobility / Stretching. |
 
-Prefer block label **Challenge** for nest structure; keep the tag for filtering.
+### Not in the default seed
 
-### Other useful types (create when needed)
-
-| Type | Example tags |
-|------|----------------|
-| **Load / assistance** | Weighted, Band-Assist, Tempo |
-| **Wellness** | Morning, Guided, Contrast |
-| **Environment** | Indoor, Outdoor, Home, Gym |
+| Dropped | Why |
+|---------|-----|
+| `Push` / `Pull` / `Hinge`, planes, `Full Body` / `Legs` / `Upper Body` | Encoded by PG **category** + muscles. |
+| `Calisthenics` | Implied by `No Tool`. |
+| `Murph Challenge` | Use block label **Challenge**. |
+| Equipment names (`Barbell`, `Dumbbell`, …) | **Tools** only. |
 
 ---
 
@@ -268,39 +264,39 @@ Prefer block label **Challenge** for nest structure; keep the tag for filtering.
 
 ```text
 Exercise name:   Weighted Pullups
-Primary group:   Pullups
+Primary group:   Pullups (category Pull)
 Muscles:         Lats, Biceps, Forearms
-Tags:            Calisthenics · Vertical · Pull · Standard
+Variations:      Wide-Grip · Weighted
 Tool(s):         Straight Bar (+ Weighted Vest)
 Session label:   Strength or Hybrid
-Block label:     Workout
+Block label:     Main
 ```
 
 ```text
 Exercise name:   Easy Trail Run
 Primary group:   Gait
 Muscles:         — (optional)
-Tags:            Run · easy · trail          ← flavor under Gait
+Variations:      Running · Easy · Trail
 Tool(s):         None
 Session label:   Cardio
-Block label:     Workout
+Block label:     Main
 ```
 
 ```text
 Exercise name:   BJJ Live Rounds
 Primary group:   Live Sparring
 Muscles:         — (optional)
-Tags:            BJJ
+Variations:      BJJ
 Tool(s):         None
 Session label:   Martial Arts
-Block label:     Workout or Class
+Block label:     Main or Class
 ```
 
 ```text
 Exercise name:   Mace 360-to-Squat
 Primary groups:  360s + Squats               ← multi-PG
 Muscles:         Quads, Core, …
-Tags:            Complex
+Variations:      Complex
 Tool(s):         Mace
 ```
 
@@ -308,15 +304,17 @@ Tool(s):         Mace
 
 ## Working rules
 
-1. **PG = chart noun** (one today; many for complexes later). Name = prescription.
-2. **Muscle = anatomy.** Tags ≠ muscle list.
-3. **Cardio family = PG**; Walk/Run/Sprint/Hike = tags under `Gait` (same idea for Swim/Cycle/Row).
-4. **Combat mode = PG**; BJJ / Muay Thai / MMA = tags.
+1. **PG = chart noun** (one today; many for complexes). Name = prescription.
+2. **Muscle = anatomy.** Variations ≠ muscle list.
+3. **Cardio family = PG**; Walking/Running/Sprinting/Hiking = variations under
+   `Gait` (same idea for Swimming/Cycling/Rowing).
+4. **Combat mode = PG**; BJJ / Muay Thai / MMA = variations.
 5. **Session label = day intent.** Block/sequence = structure only.
 6. **Spell once** — one `BJJ`, one `Standard`, etc.
 7. **Users may customize everything**; defaults should still teach this shape.
-8. **Suggested tags per PG** (soft) keep the exercise tag picker focused; they never
-   replace the global tag pool or constrain stored links.
+8. **Suggested variations per PG** (soft) keep the exercise picker focused; they
+   never replace the global pool or constrain stored links.
+9. **Equipment = Tools only** — never dual-encode as a variation.
 
 ---
 
@@ -326,9 +324,11 @@ Fresh templates/logs — rebuild vocabulary to match this doc:
 
 | Change | Action |
 |--------|--------|
-| Walk / Run / Sprint / Run+Walk as PGs | Prefer **Gait** PG + flavor tags |
-| Gait as a tag | Remove; Gait is a PG |
+| Walk / Run / Sprint / Run+Walk as PGs | Prefer **Gait** PG + flavor variations |
+| Gait as a variation | Remove; Gait is a PG |
 | Anatomy-ish tags | Move intent to **muscle groups** (shipped) |
 | Prescription PGs (`KB Halo Rev. Lunges`) | Name only; PGs = `Halos` + `Lunges` (multi-PG) |
 | Rest | Empty-session label (`is_empty`; shipped) |
-| Suggested tags | Per-PG soft filter in Account → Taxonomy → Primary groups |
+| Suggested variations | Per-PG soft filter in Account → Taxonomy → Primary groups |
+| Block `Workout` | Prefer **Main** |
+| `Competition Fight` (singular) | Prefer **Competition Fights** |

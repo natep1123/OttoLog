@@ -1,6 +1,6 @@
 /**
  * Fixed UUIDs for global taxonomy sentinels.
- * Must match sql/004_taxonomy.sql, sql/011_layer_labels.sql, and sql/013 renames.
+ * Must match sql/greenfield/004_taxonomy.sql (and historical sql/deprecated/011 + 013 renames).
  */
 
 export const NO_TOOL_ID = '40000000-0000-4000-8000-000000000001';

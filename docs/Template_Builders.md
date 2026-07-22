@@ -197,7 +197,7 @@ Create → **From scratch** / **From template**, or Library → **Logs**.
   local calendar date for attribution).
 - Optional `template_id` when seeded from a session template; draft still saves
   as an independent log (JSON copy, then denest).
-- Save / load via `src/lib/sessionLogs.ts` against `sql/014` tables. Sequences
+- Save / load via `src/lib/sessionLogs.ts` against relational log tables (`sql/greenfield/007`). Sequences
   expand performed sets on denest (`expandClusterPerformedSets`).
 - List titles: `sessionLogTitle` → Label + local date, with `(session N)` when
   more than one log shares that date.
@@ -223,7 +223,7 @@ Session, Block, and Sequence have a **mandatory Label** (taxonomy) and an option
 - Exercise: blank name → always `Exercise` (no tool prefix, no order number).
 
 System null label rows (fixed UUIDs): **Session**, **Block**, **Sequence**.
-Seeded user defaults (Strength/Cardio/…, Warmup/Workout/Cooldown, Superset/Circuit)
+Seeded user defaults (Strength/Cardio/…, Warmup/Main/Cooldown, Superset/Circuit)
 are editable ordinary taxonomy rows via `ensure_default_template_labels()`.
 
 ## Name field and copy-from-template
@@ -259,11 +259,12 @@ analytics is on, each group also carries an include-in-rollups flag.
 
 Analytics is opt-in in the More panel. When on, it reveals required Primary
 analytics group(s) (multi searchable create-combobox; typically one), optional
-Muscle groups (multi), and optional Analytics tags (multi). Tag pickers soft-filter
-by the selected primary group(s)’ **suggested tags** when any are configured
-(empty suggestions = full A→Z; otherwise Suggested + Show all). Complexes with
-multiple PGs show a warning that volume accrues to each chart and must not be
-summed into one grand total. When off, primary groups, muscles, and tags clear.
+Muscle groups (multi), and optional Variations (multi; DB `analytics_tags`).
+Variation pickers soft-filter by the selected primary group(s)’ **suggested
+variations** when any are configured (empty suggestions = full A→Z; otherwise
+Suggested + Show all). Complexes with multiple PGs show a warning that volume
+accrues to each chart and must not be summed into one grand total. When off,
+primary groups, muscles, and variations clear.
 How to choose values: `docs/Analytics_Labeling.md`.
 
 ### Exercise as a sequence subitem

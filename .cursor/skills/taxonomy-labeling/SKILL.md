@@ -1,10 +1,11 @@
 ---
 name: taxonomy-labeling
 description: >-
-  Choose OttoLog Primary Groups, tags, muscles, tools, and session/block/sequence
-  labels without collapsing analytics slots. Use when adding taxonomy seeds,
-  labeling exercises, editing Account taxonomy, or the user mentions Primary
-  Group, tags, Label_Library, or Analytics_Labeling.
+  Choose OttoLog Primary Groups, variations, muscles, tools, and
+  session/block/sequence labels without collapsing analytics slots. Use when
+  adding taxonomy seeds, labeling exercises, editing Account taxonomy, or the
+  user mentions Primary Group, Variations, tags, Label_Library, New_User_Seeds,
+  or Analytics_Labeling.
 ---
 
 # Taxonomy labeling
@@ -12,26 +13,27 @@ description: >-
 ## Read first
 
 1. `docs/Analytics_Labeling.md` — vocabulary map + decision rule
-2. `docs/Label_Library.md` — seed / example vocabulary
-3. Schema contracts only if needed: `docs/Database_Outline.md` naming glossary
+2. `docs/Label_Library.md` — short seed / example vocabulary
+3. `docs/New_User_Seeds.md` — full new-account catalog (when seeding or picking defaults)
+4. Schema contracts only if needed: `docs/Database_Outline.md` naming glossary
 
 ## Decision rule
 
 > If Insights showed **one number** for this exercise this month, what noun should it sit under?
 
-That noun is a **Primary Group** (select multiple for complexes). Everything else is tag, muscle, tool, session/block/sequence label, or display name.
+That noun is a **Primary Group** (select multiple for complexes). Everything else is variation, muscle, tool, session/block/sequence label, or display name.
 
 ## Placement checklist
 
 - [ ] PG = chartable movement/activity noun(s), not session intent or nest structure
-- [ ] Muscles = anatomy; tags = how/style/context facets
+- [ ] Muscles = anatomy; variations = how/style/context modifiers
 - [ ] Tools = equipment; empty → **No Tool** (exclusive)
-- [ ] Session label = day kind; Block/Sequence labels = structure
+- [ ] Session label = day kind; Block/Sequence labels = structure (`Main`, not `Workout`)
 - [ ] Target shape = input fields only (locked atoms)
-- [ ] Names follow existing glossary — no synonym invention
+- [ ] Names follow existing glossary — no synonym invention (`Competition Fights` plural)
 
 ## Code touchpoints
 
 - Pickers / CRUD: `src/lib/taxonomy.ts`, Account `Taxonomy*` screens
 - Exercise analytics UI: `AnalyticsCheckbox`, `TargetsGrid`, exercise editor
-- Seeds / dumps (optional): `docs/default-user-taxonomy/Official_Default_Taxonomy.md`
+- Seeds / dumps (optional): `docs/New_User_Seeds.md`

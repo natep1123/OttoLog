@@ -12,7 +12,7 @@ Expo ~57 / React Native / TypeScript / Supabase. Before Expo APIs: https://docs.
 ## Layout
 
 - App code: `src/` (+ `App.tsx`)
-- SQL migrations: `sql/` — apply in order per `docs/Setup.md`
+- SQL migrations: `sql/greenfield/` (canonical) — apply in order per `docs/Setup.md`; `sql/deprecated/` is historical only
 - Canonical docs: `docs/*.md`
 - **Ignore** `docs/deprecated/` (historical only; not the contract)
 
@@ -25,7 +25,8 @@ Expo ~57 / React Native / TypeScript / Supabase. Before Expo APIs: https://docs.
 | Schema / RLS / naming | `docs/Database_Outline.md` |
 | Builders / nesting / lock | `docs/Template_Builders.md` |
 | Tokens / UI chrome | `docs/Styling.md` |
-| Label seeds | `docs/Label_Library.md` |
+| Label seeds (short) | `docs/Label_Library.md` |
+| New-user seed catalog | `docs/New_User_Seeds.md` |
 | Analytics slot choice | `docs/Analytics_Labeling.md` |
 
 ## Agent habits

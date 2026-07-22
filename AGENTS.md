@@ -14,7 +14,7 @@ Expo ~57 · React Native · TypeScript · Supabase (Auth + Postgres + RLS)
 |------|------|
 | `App.tsx` / `index.ts` | Entry: fonts, splash, auth gate |
 | `src/` | App code (auth, screens, components, lib, theme, types) |
-| `sql/` | Supabase migrations — run **in numeric order** (see `docs/Setup.md`) |
+| `sql/` | Supabase migrations — **greenfield** for new projects; `deprecated/` is historical (see `docs/Setup.md`) |
 | `docs/` | Canonical design docs (this is the contract) |
 | `docs/deprecated/` | Historical only — **ignore**; never treat as current |
 
@@ -27,8 +27,9 @@ Expo ~57 · React Native · TypeScript · Supabase (Auth + Postgres + RLS)
 | [`docs/Database_Outline.md`](docs/Database_Outline.md) | Schema, naming glossary, RLS, sentinels |
 | [`docs/Template_Builders.md`](docs/Template_Builders.md) | Nesting, lock/review mode, editors |
 | [`docs/Styling.md`](docs/Styling.md) | Tokens, chrome, form layer accents |
-| [`docs/Label_Library.md`](docs/Label_Library.md) | Seed / label vocabulary |
-| [`docs/Analytics_Labeling.md`](docs/Analytics_Labeling.md) | PG vs tags vs muscles vs tools |
+| [`docs/Label_Library.md`](docs/Label_Library.md) | Seed / label vocabulary (short map) |
+| [`docs/New_User_Seeds.md`](docs/New_User_Seeds.md) | Full new-account seed catalog |
+| [`docs/Analytics_Labeling.md`](docs/Analytics_Labeling.md) | PG vs variations vs muscles vs tools |
 
 ## Locked habits
 

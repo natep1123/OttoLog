@@ -372,7 +372,7 @@ Placeholder screen (`InsightsComingSoonScreen`). No analytics UI yet; relational
 
 Account hub: profile (username, email), then:
 
-- **Taxonomy**: Tools, Primary groups, Analytics tags. Create, rename, archive, hard-delete when unused. **Show archived** toggle. Pickers elsewhere stay active-only. Global **None** (No Tool) is system-locked. Session / Block / Sequence labels ship via taxonomy migrations; Account UI still centers tools + analytics for now.
+- **Taxonomy**: Tools, Primary groups, Variations. Create, rename, archive, hard-delete when unused. **Show archived** toggle. Pickers elsewhere stay active-only. Global **None** (No Tool) is system-locked. Session / Block / Sequence labels ship via taxonomy migrations; Account UI still centers tools + analytics for now.
 - **Settings**: Profile and Preferences (**Soon**), **Danger zone** (live)
 
 Danger zone has **Delete account** with confirmation. **Log out** is on the Account hub footer.

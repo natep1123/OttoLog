@@ -16,7 +16,7 @@ Five tabs when signed in: **Home**, **Insights**, **Create**, **Library**, **Acc
 | **Library** | Browse templates and session logs; open in review mode (locked + expanded outline) |
 | **Account** | Taxonomy (tools, primary groups, tags, labels); Settings with account delete |
 
-Also in place: auth, global **No Tool**, and kind-named system null labels (**Session**, **Block**, **Sequence**), searchable taxonomy pickers in the exercise editor, unique active template names per user (per layer). Composition is Session → Block → Sequence → Exercise (JSON copy, no cross-template FKs). Sequences use rounds × per-round exercises with sparse overrides; soft archive preferred. Session logs denest into relational tables (`sql/014`) via app-side save/load.
+Also in place: auth, global **No Tool**, and kind-named system null labels (**Session**, **Block**, **Sequence**), searchable taxonomy pickers in the exercise editor, unique active template names per user (per layer). Composition is Session → Block → Sequence → Exercise (JSON copy, no cross-template FKs). Sequences use rounds × per-round exercises with sparse overrides; soft archive preferred. Session logs denest into relational tables (`sql/greenfield/007`) via app-side save/load.
 
 **Next:** Insights / analytics surfaces; AI-assisted logging; week calendar on Home.
 

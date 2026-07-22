@@ -36,7 +36,7 @@ export function TaxonomyHubScreen({
         />
         <HubAction
           title="Block labels"
-          body="Warmup, Workout, Cooldown, and your own."
+          body="Warmup, Main, Cooldown, and your own."
           onPress={() => onOpenList('block_label')}
         />
         <HubAction
@@ -55,13 +55,13 @@ export function TaxonomyHubScreen({
           onPress={() => onOpenList('primary_group')}
         />
         <HubAction
-          title="Analytics tags"
-          body="Optional filters for tracked exercises."
+          title="Variations"
+          body="Modifiers for tracked exercises (grip, style, discipline)."
           onPress={() => onOpenList('analytics_tag')}
         />
         <HubAction
           title="Muscle groups"
-          body="Optional anatomy tags for tracked exercises."
+          body="Optional anatomy for tracked exercises."
           onPress={() => onOpenList('muscle_group')}
         />
       </View>

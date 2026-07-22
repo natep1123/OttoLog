@@ -84,7 +84,7 @@ type Props = {
  * Nestable exercise leaf — matches session-templator exercise anatomy:
  * coord → header (tool, name search, shape, ⋯) → more panel → targets grid.
  *
- * Tools / primary groups / tags are searchable create-comboboxes.
+ * Tools / primary groups / variations are searchable create-comboboxes.
  * Full rename / archive / delete lives under Account → Taxonomy.
  * Sets multipliers live in the targets grid Sets column (group counts).
  */
@@ -468,7 +468,7 @@ export function ExerciseEditor({
                     ) : null}
                   </View>
                   <View style={styles.field}>
-                    <Text style={styles.fieldLabel}>Analytics tags</Text>
+                    <Text style={styles.fieldLabel}>Variations</Text>
                     <View style={styles.comboFull}>
                       <SearchableSelect
                         accent={exerciseControlAccent}
@@ -485,9 +485,9 @@ export function ExerciseEditor({
                             return { data: null, error: 'Not signed in.' };
                           return createAnalyticsTag(userId, name);
                         }}
-                        placeholder="Search or create tags…"
-                        emptyLabel="No tags"
-                        accessibilityLabel="Analytics tags"
+                        placeholder="Search or create variations…"
+                        emptyLabel="No variations"
+                        accessibilityLabel="Variations"
                       />
                     </View>
                   </View>

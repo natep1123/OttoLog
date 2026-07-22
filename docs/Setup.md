@@ -32,31 +32,23 @@ Expo reads `.env.local` when you run `npx expo start`.
 
 ## 3. Database migrations
 
-Run each file in order in the Supabase SQL Editor (Dashboard → SQL → New query):
+For a **fresh** Supabase project, run each greenfield file in order in the SQL Editor (Dashboard → SQL → New query):
 
 ```text
-sql/001_users.sql
-sql/002_delete_own_account.sql
-sql/003_locked_atoms.sql
-sql/004_taxonomy.sql
-sql/005_analytics_taxonomy.sql
-sql/006_exercise_templates.sql
-sql/007_template_name_uniqueness.sql
-sql/008_cluster_templates.sql
-sql/009_block_templates.sql
-sql/010_session_templates.sql
-sql/011_layer_labels.sql
-sql/012_standard_sequence_label.sql
-sql/013_kind_system_null_labels.sql
-sql/014_session_logs.sql
-sql/015_exercise_tools.sql
-sql/016_session_empty_labels.sql
-sql/017_multi_primary_groups.sql
-sql/018_muscle_groups.sql
-sql/019_primary_group_tag_suggestions.sql
+sql/greenfield/001_users.sql
+sql/greenfield/002_delete_own_account.sql
+sql/greenfield/003_locked_atoms.sql
+sql/greenfield/004_taxonomy.sql
+sql/greenfield/005_analytics.sql
+sql/greenfield/006_templates.sql
+sql/greenfield/007_session_logs.sql
 ```
 
-After `004`, **No Tool** and the Session system-null label exist once for the whole project (fixed UUIDs). Signup does not create copies per user. Session templates require the Session sentinel (`010` depends on `004`; rename in `013`). Session logging requires `014` (tables + RLS; denest/renest run in the app). Multi-tool exercises require `015` (template + log tool link tables). Empty session labels (Rest) require `016` (`is_empty` on `session_categories` + expanded seed defaults). Multi primary groups (complexes) require `017` (template + log PG link tables). Muscle groups require `018` (taxonomy + template/log links + `ensure_default_muscle_groups`). Soft suggested tags per primary group require `019`.
+Do **not** mix greenfield with the old incremental set. Historical `sql/001`–`019` live under `sql/deprecated/` (already-applied projects only; do not re-run on a greenfield DB).
+
+After greenfield `004`, **No Tool** and the Session / Block / Sequence system-null labels exist once for the whole project (fixed UUIDs). Signup does not create copies per user. Nest-label defaults (`Main`, Rest/`is_empty`, …) come from `ensure_default_template_labels()`. Muscle defaults from `ensure_default_muscle_groups()`. PG / variation / tool New User Seeds content dumps are stubs until chat 6.
+
+Schema notes (category, log variation links, `set_type` / `intensity`, `track_intensity`): [`Database_Outline.md`](./Database_Outline.md) Current Status.
 
 **Auth vs profile:** credentials in `auth.users`; profile `username` in `public.users` where `id = auth.uid()`.
 
@@ -85,16 +77,13 @@ Scan the QR code in Expo Go.
 | Issue | Check |
 |-------|--------|
 | Auth errors | URL and anon key in `.env.local`; restart Metro after env changes |
-| RLS / empty lists | Migrations applied in order; user is signed in |
-| Delete account fails | `sql/002_delete_own_account.sql` applied |
-| Duplicate template name | By design. Active names are unique per user per layer (`007`–`010`). |
-| Sequence list empty / RLS | Apply `sql/008_cluster_templates.sql`; user signed in |
-| Block / Session list empty | Apply `sql/009` and `sql/010`; user signed in |
-| Session logs fail to save / empty Logs | Apply `sql/014_session_logs.sql`; user signed in |
-| Multi-tool exercises fail to save / load | Apply `sql/015_exercise_tools.sql` after `014` |
-| Rest / empty session label missing or blocks allowed | Apply `sql/016_session_empty_labels.sql` after `015` |
-| Multi primary groups fail to save / load | Apply `sql/017_multi_primary_groups.sql` after `016` |
-| Muscle groups missing / fail to save | Apply `sql/018_muscle_groups.sql` after `017` |
-| Primary-group suggested tags missing | Apply `sql/019_primary_group_tag_suggestions.sql` after `018` |
+| RLS / empty lists | Greenfield migrations applied in order; user is signed in |
+| Delete account fails | `sql/greenfield/002_delete_own_account.sql` applied |
+| Duplicate template name | By design. Active names are unique per user per layer |
+| Sequence / Block / Session list empty | Apply greenfield `006_templates.sql`; user signed in |
+| Session logs fail to save / empty Logs | Apply greenfield `007_session_logs.sql`; user signed in |
+| Rest / empty session label missing | Apply greenfield `004_taxonomy.sql` (includes `is_empty` + Rest seed) |
+| Muscle groups missing | Apply greenfield `005_analytics.sql`; call `ensure_default_muscle_groups` |
+| PG `category` / intensity / log variations missing | You are on deprecated `001`–`019` — use greenfield for a fresh project |
 
 Schema: [`Database_Outline.md`](./Database_Outline.md). Folders: [`Project_Structure.md`](./Project_Structure.md).

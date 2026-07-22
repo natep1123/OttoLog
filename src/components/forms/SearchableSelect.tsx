@@ -41,7 +41,7 @@ type SharedProps = {
   /** Fill parent width instead of fixed tool width (dense control rows). */
   fill?: boolean;
   /**
-   * Soft suggestions (e.g. tags for a primary group).
+   * Soft suggestions (e.g. variations for a primary group).
    * Empty / omitted → plain A→Z pool.
    * Non-empty → Suggested section; full A→Z only after Show all (under suggestions;
    * suggested ids also appear in A→Z; one toggle flips both).
@@ -70,7 +70,7 @@ function labelsForIds(options: TaxonomyOption[], ids: string[]): string {
 
 /**
  * Searchable combobox with inline “Create …” —
- * used for tools, primary groups, and analytics tags.
+ * used for tools, primary groups, and variations.
  * Menu overlays via Modal so layout never reflows.
  */
 export function SearchableSelect(props: Props) {
@@ -142,7 +142,7 @@ export function SearchableSelect(props: Props) {
   };
 
   /**
-   * Suggested section: configured suggestions (ordered) + any selected tags
+   * Suggested section: configured suggestions (ordered) + any selected values
    * not in the suggestion list (so they stay reachable without Show all).
    */
   const suggestedRows = useMemo(() => {
@@ -383,7 +383,7 @@ export function SearchableSelect(props: Props) {
                       onPress={() => setShowAll(true)}
                       style={styles.showAllBtn}
                       accessibilityRole="button"
-                      accessibilityLabel="Show all tags"
+                      accessibilityLabel="Show all"
                     >
                       <Text
                         style={[

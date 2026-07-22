@@ -42,7 +42,7 @@ export function AccountHubScreen({
       <View style={styles.actions}>
         <HubAction
           title="Taxonomy"
-          body="Tools, primary groups, and analytics tags."
+          body="Tools, primary groups, and variations."
           onPress={onTaxonomy}
         />
         <HubAction

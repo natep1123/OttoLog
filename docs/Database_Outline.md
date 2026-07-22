@@ -14,7 +14,7 @@ When outline, archived docs, and live SQL disagree, use this order:
 
 ## Current Status
 
-**Live today** *(applied in Supabase)*
+**Live today** *(current Supabase project still on the incremental set now in `sql/deprecated/001`–`019`)*
 
 | Layer | Objects |
 |-------|---------|
@@ -36,8 +36,8 @@ When outline, archived docs, and live SQL disagree, use this order:
 - **Insights**: placeholder tab (coming soon)
 - **Create** → Log a session (from scratch or from a session template) → denest save; Templates hub → Session / Block / Sequence / Exercise builders
 - **Library** → Templates and Logs: browse, search, open in review mode (locked + expanded outline), edit / archive / delete
-- Searchable create-comboboxes for tools, primary groups, and tags in the exercise builder
-- **Account** → Taxonomy: tools, primary groups, muscle groups, tags (create, rename, archive, hard-delete when unused)
+- Searchable create-comboboxes for tools, primary groups, and variations in the exercise builder
+- **Account** → Taxonomy: tools, primary groups, muscle groups, variations (create, rename, archive, hard-delete when unused)
 - **Account** → Settings → Danger zone: delete account
 - Name search on Session / Block / Sequence / Exercise builders can copy another template's fields into the current draft without switching which template you are editing
 - Active template names are unique per user per layer, case-insensitive (`sql/007`–`010`)
@@ -46,35 +46,46 @@ When outline, archived docs, and live SQL disagree, use this order:
 - Blocks nest an ordered mix of exercise and sequence blobs; sessions nest ordered block blobs (copied JSON, no cross-template FKs). Session/Block/Sequence use mandatory labels (`category_id` / `label_id`); names are optional Name/Brief
 - Session logs reuse the Session editor tree plus `session_date` / `status` / optional `template_id`; denest/renest run in `src/lib/sessionLogs.ts` (not Postgres RPCs yet)
 
+**Gaps on live deprecated `001`–`019` vs Insights day-one contract**
+
+| Gap | Needed for |
+|-----|------------|
+| No `analytics_primary_groups.category` | Balance charts (Push / Pull / …) |
+| No log variation links (`log_*_tag_links`) | Filter logged volume by Variation (renest currently drops tags) |
+| No `log_sets.set_type` / `intensity` | Working-set counts; intensity averages |
+| No `track_intensity` on exercises | More-menu Intensity toggle |
+| Incomplete nest-label seed (`Workout` vs `Main`, missing Wellness / …) | New User Seeds labels |
+| No New User Seeds PG / variation / tool seed RPCs (stubs only in greenfield) | First-run vocabulary (chat 6) |
+
+**Greenfield (authored, not applied to production)** — `sql/greenfield/001`–`007`
+
+Condensed schema for a **fresh** Supabase project. Do **not** run over live `001`–`019`. Closes the Insights gaps above; keeps identifiers stable (`analytics_tags`, `cluster_*`, sentinel UUIDs).
+
+| File | Role |
+|------|------|
+| `001_users.sql` | Profile + signup trigger |
+| `002_delete_own_account.sql` | Delete RPC |
+| `003_locked_atoms.sql` | Target shapes / load / distance units |
+| `004_taxonomy.sql` | Tools + nest labels + New User Seeds nest list (`Main`, `Wellness`, Rest/`is_empty`, …) |
+| `005_analytics.sql` | PGs **+ `category`**, tags, muscles, suggestions; muscle seed; **stubs** for PG/variation/tool ensure |
+| `006_templates.sql` | All template layers + template link tables + `track_intensity` |
+| `007_session_logs.sql` | Log tree + tool/PG/muscle/**tag** links + `set_type` / `intensity` + `track_intensity` |
+
 **Not live yet**
 
-- Insights / analytics query surfaces over log tables
-- Postgres `fn_denest_session_log` / `fn_renest_session_log` wrappers (optional; app denest/renest already ships)
-- AI-assisted log drafting; Home week calendar wired to logs
+- Insights UI / query helpers in the app (chat 5 — also denest/renest + intensity)
+- Seed content dump for New User Seeds PGs / ~60 variations / tools (chat 6)
+- Postgres `fn_denest_session_log` / `fn_renest_session_log` wrappers (optional)
+- AI-assisted log drafting; e1RM / ACWR / session-load rollups
 
-Applied migrations:
+Applied migrations *(current project — historical path)*:
 
-- `sql/001_users.sql`
-- `sql/002_delete_own_account.sql`
-- `sql/003_locked_atoms.sql`
-- `sql/004_taxonomy.sql`
-- `sql/005_analytics_taxonomy.sql`
-- `sql/006_exercise_templates.sql`
-- `sql/007_template_name_uniqueness.sql`
-- `sql/008_cluster_templates.sql`
-- `sql/009_block_templates.sql`
-- `sql/010_session_templates.sql`
-- `sql/011_layer_labels.sql` — block/sequence labels, nullable names, seed RPC
-- `sql/012_standard_sequence_label.sql` — sequence system-null rename (superseded display word by 013)
-- `sql/013_kind_system_null_labels.sql` — system nulls → Session / Block / Sequence
-- `sql/014_session_logs.sql` — relational session log tables + RLS
-- `sql/015_exercise_tools.sql` — multi-tool links for exercise templates + log items
-- `sql/016_session_empty_labels.sql` — `is_empty` on session labels + Rest seed
-- `sql/017_multi_primary_groups.sql` — multi PG links for exercise templates + log items
-- `sql/018_muscle_groups.sql` — muscle group taxonomy + template/log links + seed RPC
-- `sql/019_primary_group_tag_suggestions.sql` — soft suggested tags per primary group
+- `sql/deprecated/001_users.sql` … `sql/deprecated/019_primary_group_tag_suggestions.sql`
+
+Canonical path for **new** projects: `sql/greenfield/001`–`007` (see `docs/Setup.md`).
 
 ---
+
 
 ## Philosophy
 
@@ -101,7 +112,7 @@ Array order in the editor is the source of truth. Persisted `*_order` / `set_num
 
 ## Design Decision: Global Sentinels (locked)
 
-**Decision:** **No Tool** and **Uncategorized** are single global rows with **known fixed UUID primary keys** and **`user_id IS NULL`**.
+**Decision:** **No Tool** and **Session** (system null session label) are single global rows with **known fixed UUID primary keys** and **`user_id IS NULL`**.
 
 This deliberately diverges from `docs/deprecated/original-concept/Backend/Database_Design.md`, which seeded a copy of each default per user. Official project docs win.
 
@@ -144,7 +155,7 @@ tools
   archived_at     timestamptz NULL  -- always null for sentinel
 
 session_categories
-  id              uuid PK   -- FIXED known UUID for Uncategorized
+  id              uuid PK   -- FIXED known UUID for Session null (UNCATEGORIZED_ID)
   user_id         uuid NULL
   name            text      -- 'Session' (system null label word)
   is_system_default boolean
@@ -152,16 +163,16 @@ session_categories
   archived_at     timestamptz NULL
 ```
 
-Fixed UUIDs (locked; must match `sql/003_locked_atoms.sql`, `sql/004_taxonomy.sql`, and `src/constants/`):
+Fixed UUIDs (locked; must match `sql/greenfield/003_locked_atoms.sql`, `sql/greenfield/004_taxonomy.sql`, and `src/constants/`):
 
 | Constant | UUID | Row |
 |----------|------|-----|
 | `NO_TOOL_ID` | `40000000-0000-4000-8000-000000000001` | tools → No Tool |
-| `UNCATEGORIZED_ID` | `40000000-0000-4000-8000-000000000002` | session_categories → Session |
+| `UNCATEGORIZED_ID` | `40000000-0000-4000-8000-000000000002` | session_categories → **Session** (system null) |
 | `GENERAL_BLOCK_LABEL_ID` | `50000000-0000-4000-8000-000000000001` | block_labels → Block |
 | `CLUSTER_LABEL_NULL_ID` | `60000000-0000-4000-8000-000000000001` | cluster_labels → Sequence |
 
-Locked-atom IDs are listed at the top of `sql/003_locked_atoms.sql` and in `src/constants/lockedAtoms.ts`.
+Locked-atom IDs are listed at the top of `sql/greenfield/003_locked_atoms.sql` and in `src/constants/lockedAtoms.ts`.
 
 ### RLS implications
 
@@ -176,7 +187,7 @@ Policies must use explicit `is_system_default` / `user_id IS NULL` checks. Do no
 
 ### What signup does *not* do
 
-Signup creates `auth.users` + `public.users` only. It does **not** insert No Tool or Uncategorized. Those rows exist once for the whole project.
+Signup creates `auth.users` + `public.users` only. It does **not** insert No Tool or the Session system null. Those rows exist once for the whole project.
 
 ---
 
@@ -187,20 +198,22 @@ Use these names consistently in SQL, app code, and docs. Do not invent synonyms.
 | Concept | Table | FK / field | Notes |
 |---------|--------|------------|--------|
 | Tool | `tools` | `tool_id` / `tool_ids[]` | Equipment. Global sentinel: **No Tool**. Primary = first selected; extras via tool link tables. |
-| Session category | `session_categories` | `category_id` | Session/template label. Global sentinel: **Uncategorized**. Not a target shape. |
+| Session category | `session_categories` | `category_id` | Session/template label. Global sentinel display name: **Session** (constant `UNCATEGORIZED_ID`). Not a target shape. |
 | Target shape | `target_shapes` | `target_shape_id` | Which **set/target input fields** an exercise uses (Reps, Time, Time & Distance, Time & Reps, Distance). Locked atom. Not tree `kind`. Not session category. |
-| Primary analytics group | `analytics_primary_groups` | `primary_group_id` / `primary_group_ids[]` | Chart noun(s) when `track_analytics = true`. Primary = first selected; extras via PG link tables. Complexes credit multiple buckets. |
-| Analytics tag | `analytics_tags` | via `analytics_tag_links.tag_id` | Many optional filters per exercise template. |
+| Primary analytics group | `analytics_primary_groups` | `primary_group_id` / `primary_group_ids[]` | Chart noun(s) when `track_analytics = true`. Primary = first selected; extras via PG link tables. Complexes credit multiple buckets. Greenfield: required **`category`** (Push / Pull / Lower / Core / Power / Skill / Cardio / Combat / Mobility / Wellness). |
+| Analytics tag (Variation) | `analytics_tags` | via `analytics_tag_links.tag_id` / log `*_tag_links` | Product UI: **Variations**. Template links live; **log** variation links ship in greenfield (`log_item_tag_links` / `log_sub_item_tag_links`). |
 | Muscle group | `analytics_muscle_groups` | via muscle link tables / `muscle_group_ids[]` | Anatomy rollups (0–N). Seeded defaults. |
-| Tag link | `analytics_tag_links` | `exercise_template_id`, `tag_id` | M2M join only. No “groups” join table. |
+| Tag link | `analytics_tag_links` | `exercise_template_id`, `tag_id` | M2M join only (templates). |
 | Tool link | `exercise_template_tool_links` | `exercise_template_id`, `tool_id`, `sort_order` | Ordered M2M for multi-tool exercises. Log mirrors: `log_item_tools` / `log_sub_item_tools`. |
+| Set type | `log_sets.set_type` | — | Greenfield: `Warmup` / `Working` / `Drop` / `Failure` / `AMRAP` / `Backoff` (default `Working`). |
+| Intensity | `log_sets.intensity` | — | Greenfield: nullable `numeric(3,1)`, 0.5–10.0 half-steps; UI 0 → `NULL`. Gated by exercise `track_intensity`. |
 
 **Target shape (important)**
 
 - An exercise in the nest (template or log) points at one `target_shape_id`.
 - That row decides which columns appear on each set/target: reps, time, distance (and combinations).
 - It does **not** mean the structural role of the node (`kind = exercise | cluster`).
-- It does **not** mean session labeling (`category_id` / Uncategorized).
+- It does **not** mean session labeling (`category_id` / Session null).
 - `default_target_shape` (jsonb on exercise templates) is the **prescribed targets array payload**, not the shape enum. The enum is `target_shape_id`; the jsonb holds the actual target rows for that shape.
 - Legacy / concept-doc name `composition_categories` / `comp_category_id` is **retired** in official project docs and SQL. Archived docs under `docs/deprecated/` may still say composition; this outline wins.
 
@@ -234,10 +247,10 @@ taxonomy
     ├── global: No Tool (fixed UUID, user_id NULL)
     └── user rows (user_id = owner)
   session_categories                       ← LIVE
-    ├── global: Uncategorized (fixed UUID, user_id NULL)
+    ├── global: Session null (fixed UUID, user_id NULL)
     └── user rows (user_id = owner)
-  analytics_primary_groups                 ← LIVE (user only)
-  analytics_tags                           ← LIVE (user only)
+  analytics_primary_groups                 ← LIVE (user only; greenfield + category)
+  analytics_tags                           ← LIVE (user only; product: Variations)
   analytics_muscle_groups                  ← LIVE (user only)
   analytics_tag_links                      ← LIVE (via exercise_templates)
   analytics_primary_group_tag_suggestions  ← LIVE (soft PG→tag picker hints)
@@ -246,21 +259,22 @@ taxonomy
   exercise_template_muscle_group_links     ← LIVE (via exercise_templates)
 
 templates (library / blueprints)
-  exercise_templates                       ← LIVE
+  exercise_templates                       ← LIVE (greenfield + track_intensity)
   cluster_templates             (jsonb content)  ← LIVE
   block_templates               (jsonb content)  ← LIVE
   session_templates             (jsonb content)  ← LIVE
 
-logs (relational facts)                    ← LIVE (`sql/014`–`018` link tables)
+logs (relational facts)                    ← LIVE (deprecated `014`–`018`; greenfield `007`)
   session_logs
     └── log_blocks              (X)
           └── log_items         (Y: exercise | cluster)
                 ├── log_item_tools (exercise only)
                 ├── log_item_primary_group_links / log_item_muscle_group_links
+                ├── log_item_tag_links           ← greenfield (Variations on logs)
                 ├── log_sub_items (Z, cluster children only)
                 │     ├── log_sub_item_tools
-                │     └── log_sub_item_*_group_links
-                └── log_sets
+                │     └── log_sub_item_*_group_links / tag_links
+                └── log_sets                     ← greenfield + set_type / intensity
 ```
 
 ---
@@ -286,7 +300,7 @@ On signup (intended full flow):
 1. Create `auth.users`
 2. Insert / trigger-create `public.users`
 
-No Tool and Uncategorized are **not** created here. They are global sentinels (see Design Decision).
+No Tool and the Session system null are **not** created here. They are global sentinels (see Design Decision).
 
 ---
 
@@ -319,7 +333,7 @@ Do not confuse:
 | Term | Table / field | Means |
 |------|---------------|--------|
 | Target shape | `target_shapes` / `target_shape_id` | Set input field pattern |
-| Session category | `session_categories` / `category_id` | How the user labels a session/template (e.g. Uncategorized) |
+| Session category | `session_categories` / `category_id` | How the user labels a session/template (e.g. Session null, Strength, Rest) |
 | Tree kind | `kind` on items | `exercise` vs `cluster` in the nest |
 | Default targets payload | `default_target_shape` jsonb | The actual prescribed target rows for an exercise template |
 
@@ -333,8 +347,8 @@ Mixed ownership on tools / session categories; analytics tables are user-only.
 |-------|-----------|---------|
 | `tools` | Global sentinel + user rows | Equipment vocabulary. Global **No Tool**; users add their own tools. |
 | `session_categories` | Global sentinel + user rows | Session / template labels. Global **Session** null; users add their own. `is_empty` (default false): when true, sessions/templates with that label cannot have blocks (notes only). Seeded **Rest** has `is_empty = true`. |
-| `analytics_primary_groups` | User only | Reporting buckets. Referenced by `primary_group_id` + PG link tables. |
-| `analytics_tags` | User only | Free-form filters. Referenced by `analytics_tag_links.tag_id`. |
+| `analytics_primary_groups` | User only | Reporting buckets. Referenced by `primary_group_id` + PG link tables. Greenfield adds required `category`. |
+| `analytics_tags` | User only | Variations (modifiers). Template: `analytics_tag_links`. Log (greenfield): `log_item_tag_links` / `log_sub_item_tag_links`. |
 | `analytics_muscle_groups` | User only | Anatomy rollups. Referenced by muscle group link tables. Seeded via `ensure_default_muscle_groups`. |
 | `analytics_tag_links` | User only (via owning exercise template) | M2M: `exercise_template_id` ↔ `tag_id`. |
 | `exercise_template_tool_links` | User only (via owning exercise template) | Ordered M2M: `exercise_template_id` ↔ `tool_id` (`sort_order`). |
@@ -364,8 +378,10 @@ Sentinels cannot be renamed, archived, or deleted. User taxonomy rows may be sof
 - If `track_analytics = true`, the exercise has ≥1 primary group: singular `primary_group_id` (first) plus ordered `exercise_template_primary_group_links` / log PG links (editor `primary_group_ids[]`).
 - If `track_analytics = false`, `primary_group_id` is null, link rows are empty, and there are no `analytics_tag_links` (editor `analytics_tag_ids` is `[]`).
 - Multiple differently named exercises can share one `analytics_primary_groups` row so volume rolls up together. Complexes may select **multiple** PGs so the same volume accrues to each chart (do not sum PG totals into one grand total).
-- Tags (`analytics_tags`) are optional many-to-many filters and never replace primary groups.
-- **Suggested tags** (soft): Account → Taxonomy → Primary group → Suggested tags. Empty suggestions → exercise tag picker shows the full A→Z pool. Any suggestions → Suggested section first; **Show all** reveals the full A→Z list underneath (suggested tags appear in both; toggling one flips both). Multi-PG unions suggestions. Does not affect muscle groups.
+- Variations (`analytics_tags`) are optional many-to-many modifiers and never replace primary groups. Product UI: **Variations**.
+- On **live** schema, variations persist only on exercise templates; log renest currently drops them. **Greenfield** denests variations onto `log_*_tag_links` so Insights can filter logged volume.
+- **Suggested variations** (soft): Account → Taxonomy → Primary group → Suggested variations. Empty suggestions → exercise variation picker shows the full A→Z pool. Any suggestions → Suggested section first; **Show all** reveals the full A→Z list underneath (suggested variations appear in both; toggling one flips both). Multi-PG unions suggestions. Does not affect muscle groups.
+- **Greenfield PG `category`:** required text enum for balance Insights. Live `001`–`019` has no `category` column yet.
 
 ---
 
@@ -375,7 +391,7 @@ Personal library objects for Create → Build templates.
 
 | Table | Storage style | Notes |
 |-------|---------------|--------|
-| `exercise_templates` | Columns + `default_target_shape` jsonb | Presets. Always primary `tool_id` + `target_shape_id`. Full tool list via `exercise_template_tool_links` (ordered); editor `tool_ids[]`. Optional `track_analytics` + `primary_group_id` (required iff tracking). Tags via `analytics_tag_links`, not a column on this table. `default_target_shape` holds the targets[] payload for that shape. Active names are unique per user (case-insensitive), enforced app-side and by a partial unique index (`sql/007`). |
+| `exercise_templates` | Columns + `default_target_shape` jsonb | Presets. Always primary `tool_id` + `target_shape_id`. Full tool list via `exercise_template_tool_links` (ordered); editor `tool_ids[]`. Optional `track_analytics` + `primary_group_id` (required iff tracking). Variations via `analytics_tag_links`, not a column on this table. `default_target_shape` holds the targets[] payload for that shape. Active names are unique per user (case-insensitive), enforced app-side and by a partial unique index (`sql/007`). |
 | `cluster_templates` | Columns + `content` jsonb | Standalone Sequence blob (internal legacy table name). Mandatory `label_id` → `cluster_labels` (system null **Sequence**). Optional `name` (Name/Brief). Legacy `cluster_type` kept for dual-write. `content` holds `{ rounds, notes, track_duration, duration, items[], overrides[] }`. Nested items are per-round prescriptions. Active **nonblank** names unique per user. Soft-archive preferred. |
 | `block_templates` | Columns + `content` jsonb | Mandatory `label_id` → `block_labels` (system null **Block**). Optional `name`. `content` holds mixed exercise/sequence items (`kind = 'cluster'` internally). Active **nonblank** names unique per user. Soft-archive preferred. |
 | `session_templates` | `content` jsonb + `category_id` | Full session tree. `category_id` is the session **label** (never null; default Session). Optional `name` (Name/Brief). `content` holds `{ notes, track_duration, duration, blocks[] }`. Active **nonblank** names unique per user. Soft-archive preferred. |
@@ -398,7 +414,7 @@ Personal library objects for Create → Build templates.
 
 ## 5. Logs (relational fact layer)
 
-Logged sessions are fully relational so analytics can query sets. Tables and RLS ship in `sql/014`; multi-tool links in `sql/015`. Denest (editor tree → rows) and renest (rows → editor tree) live in `src/lib/sessionLogs.ts` for v1; optional Postgres RPCs can wrap the same shape later.
+Logged sessions are fully relational so analytics can query sets. Tables and RLS: greenfield `007` (or historical `sql/deprecated/014`+). Denest (editor tree → rows) and renest (rows → editor tree) live in `src/lib/sessionLogs.ts` for v1; optional Postgres RPCs can wrap the same shape later.
 
 | Table | Role |
 |-------|------|
@@ -406,9 +422,10 @@ Logged sessions are fully relational so analytics can query sets. Tables and RLS
 | `log_blocks` | Block level (X) via `block_order`; mandatory `label_id` → `block_labels` |
 | `log_items` | Item level (Y): `kind = 'exercise'` or `'cluster'` |
 | `log_sub_items` | Nested exercise inside a cluster (Z) |
-| `log_sets` | One row per set; exactly one of `log_item_id` / `log_sub_item_id` is set |
-| `log_item_tools` | Ordered tools for exercise-kind `log_items` (`sql/015`) |
-| `log_sub_item_tools` | Ordered tools for `log_sub_items` (`sql/015`) |
+| `log_sets` | One row per set; exactly one of `log_item_id` / `log_sub_item_id` is set. Greenfield adds `set_type` + `intensity`. |
+| `log_item_tools` | Ordered tools for exercise-kind `log_items` (`sql/015` / greenfield `007`) |
+| `log_sub_item_tools` | Ordered tools for `log_sub_items` |
+| `log_item_tag_links` / `log_sub_item_tag_links` | Greenfield only: Variations denested onto logged exercises |
 
 ### `log_items` rules
 
@@ -447,7 +464,7 @@ auth.users
   └── public.users
 
 tools / session_categories
-  ├── global sentinels (No Tool, Uncategorized)
+  ├── global sentinels (No Tool, Session)
   └── user-owned rows
   └── session_templates.category_id / session_logs.category_id → session_categories
   └── exercise tool_id / exercise_template_tool_links → tools (No Tool allowed)
@@ -494,7 +511,7 @@ Do not create the full graph in one migration. Ship in dependency order:
 |------|------|---------|
 | 0 | `public.users` + delete RPC | Auth shell *(done)* |
 | 1 | Locked atoms (`target_shapes`, load/distance units) | Exercise set-input patterns *(done)* |
-| 2 | `tools` + `session_categories` **including global No Tool / Uncategorized** | Valid FKs for templates/logs *(done)* |
+| 2 | `tools` + `session_categories` **including global No Tool / Session null** | Valid FKs for templates/logs *(done)* |
 | 3 | `analytics_primary_groups`, `analytics_tags`, `analytics_tag_links` | Optional exercise analytics *(done)* |
 | 4 | `exercise_templates` | First Create → save → Library path *(done)* |
 | 5 | `cluster_templates` | Sequence Create → save → Library *(done)* |
@@ -516,14 +533,27 @@ Do not create the full graph in one migration. Ship in dependency order:
 
 ---
 
+## Insights query contract (day one)
+
+Facts Insights must read (prefer greenfield schema; live project missing starred rows):
+
+| Need | Tables / columns |
+|------|------------------|
+| Date window + status | `session_logs.user_id`, `session_date`, `status`, `category_id` |
+| Set metrics | `log_sets`: reps, time, distance, load, `is_per_side`, **`set_type`**, **`intensity`** |
+| Exercise identity | `track_analytics`, PG links, muscle links, tool links, **variation (`*_tag_links`)**, **`track_intensity`** |
+| Dims | `analytics_primary_groups.name` + **`category`**, muscles, tags, tools, session labels |
+
+**Deferred:** New User Seeds content dump (chat 6), starter templates, Insights UI polish, e1RM / ACWR, Postgres denest RPCs, rename `analytics_tags`.
+
 ## Out of Scope for v1
 
 - Live-linked templates (editing a library block updates old sessions)
-- Seeded exercise libraries or extra default categories/tools beyond the two global sentinels
+- Seeded exercise libraries or extra default categories/tools beyond the two global sentinels *(New User Seeds tool/PG/variation content dump is chat 6; greenfield stubs exist)*
 - Extra load units (`% 1RM`, etc.) or cluster types beyond `superset` / `circuit`
 - Soft propagation between template layers
-- Log-instance tag join tables beyond template defaults (revisit later)
-- Per-user copies of system nulls (No Tool / Session / Block / Sequence) — rejected; see Global Sentinels. Editable **seeded defaults** (Strength, Warmup, Superset, Circuit, …) are ordinary user-owned rows via `ensure_default_template_labels()`.
+- Per-user copies of system nulls (No Tool / Session / Block / Sequence) — rejected; see Global Sentinels. Editable **seeded defaults** (Strength, Warmup / Main, Superset, Circuit, …) are ordinary user-owned rows via `ensure_default_template_labels()`.
+- Set rest / tempo columns; derived load / e1RM math
 
 ---
 
@@ -535,9 +565,9 @@ Do not create the full graph in one migration. Ship in dependency order:
 | `docs/Analytics_Labeling.md` | Primary Group vs tags vs nest labels — how to organize analytics vocabulary |
 | `docs/Styling.md` | Official visual system |
 | `docs/Project_Structure.md` | Folders, navigation, key files |
-| `docs/deprecated/original-concept/Backend/Database_Design.md` | Historical schema + JSON tree. Retired names (`composition_categories`), retired seeding model. Log tables now live; prefer `sql/014` + this outline |
+| `docs/deprecated/original-concept/Backend/Database_Design.md` | Historical schema + JSON tree. Retired names (`composition_categories`), retired seeding model. Log tables now live; prefer `sql/greenfield/007` + this outline |
 | `docs/deprecated/` | Archived design set (README explains what is stale) |
-| `sql/` | Applied and pending migrations |
+| `sql/` | `greenfield/` = canonical fresh-project set; `deprecated/` = old `001`–`019` |
 
 ---
 
@@ -545,6 +575,6 @@ Do not create the full graph in one migration. Ship in dependency order:
 
 - Use this outline when planning the next backend chat or migration.
 - Mark sections Live / Planned as SQL lands.
-- Keep field-level SQL in `sql/*.sql`, not duplicated here.
+- Keep field-level SQL in `sql/greenfield/*.sql` (or `sql/deprecated/` for the old incremental set), not duplicated here.
 - After each migration ships, update **Current Status** and the relevant layer notes.
 - Prefer this document over archived docs when they disagree on locked decisions.

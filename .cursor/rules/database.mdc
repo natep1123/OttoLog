@@ -13,10 +13,10 @@ alwaysApply: false
 
 ## Conventions
 
-- New SQL goes in `sql/` with the next numeric prefix; never reorder past files casually.
+- New SQL goes in `sql/greenfield/` with the next numeric prefix (canonical for new projects); never revive or extend `sql/deprecated/`.
 - Run migrations **in order** in the Supabase SQL editor (list in `docs/Setup.md`).
 - Use locked glossary names (`tools`, `session_categories`, `target_shapes`, `analytics_primary_groups`, …) — no synonym invention.
 - Global sentinels use fixed UUIDs + `user_id IS NULL` (see outline + `src/constants/sentinelIds.ts`).
-- Templates: jsonb content on session/block/cluster (+ relational exercise). Logs: relational denest/renest in `sessionLogs.ts` (`sql/014`+).
+- Templates: jsonb content on session/block/cluster (+ relational exercise). Logs: relational denest/renest in `sessionLogs.ts` (`sql/greenfield/007`).
 - RLS: users own their rows; global sentinel rows are readable, not user-writable copies.
 - Domain writes go through `src/lib/*Templates.ts`, `sessionLogs.ts`, `taxonomy.ts` — mirror existing list/get/save/delete patterns.

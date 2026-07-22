@@ -68,7 +68,7 @@ export function HomeDashboardScreen({
           />
           <HubAction
             title="Manage taxonomy"
-            body="Tools, primary groups, and analytics tags."
+            body="Tools, primary groups, and variations."
             onPress={onManageTaxonomy}
           />
         </View>

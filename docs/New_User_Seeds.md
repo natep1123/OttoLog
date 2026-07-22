@@ -1,11 +1,15 @@
-# Official Default Taxonomy (rev. 3 — LOCKED)
+# New User Seeds (rev. 3 — LOCKED)
 
-> **Status:** Rev. 3 **LOCKED**. Docs-only; no SQL / DB / app code. Parked next:
-> seed SQL, starter templates, `Label_Library.md` sync.
+> **Status:** Rev. 3 **LOCKED**. Canonical catalog for what a new account inherits
+> (PGs + category, lean Variations seed, muscles, tools, nest labels). Product
+> term for the tag slot is **Variations** (DB table remains `analytics_tags`).
+> Shorter seed map: [`Label_Library.md`](./Label_Library.md). Still parked:
+> seed SQL content dump, starter templates, in-app user guide. Set-row
+> `intensity` / `set_type` columns ship in `sql/greenfield/`; UI + denest are
+> chat 5.
 >
-> Decision rules: [`../Label_Library.md`](../Label_Library.md),
-> [`../Analytics_Labeling.md`](../Analytics_Labeling.md). Diffs are relative to
-> [`Current_Developer_Taxonomy.md`](./Current_Developer_Taxonomy.md).
+> Decision rules: [`Label_Library.md`](./Label_Library.md),
+> [`Analytics_Labeling.md`](./Analytics_Labeling.md).
 
 Audience served by one shared library: calisthenics / hybrid / martial-arts
 athletes, the average gym-goer, bodybuilders, runners, CrossFitters, fighters,
@@ -22,7 +26,7 @@ double-encoded:
 flowchart LR
   EX([Exercise]) --> PG["Primary Group<br/>(chart noun + category)"]
   EX --> MG["Muscle Groups<br/>(anatomy)"]
-  EX --> TG["Tags<br/>(variations / modifiers)"]
+  EX --> TG["Variations<br/>(modifiers)"]
   EX --> TL["Tool(s)<br/>(equipment)"]
 ```
 
@@ -30,29 +34,30 @@ flowchart LR
   (Push / Pull / Lower / Core / Power / Skill / Cardio / Combat / Mobility /
   Wellness) that powers balance analytics automatically.
 - **Muscle groups** = anatomy (14 seeded defaults).
-- **Tags = variations / modifiers only** — what turns a PG into a specific
-  exercise (grip, angle, named variant, execution, load, discipline, cardio
-  flavor). Flat rows, **spelled once**. Redundant facets removed (pattern,
-  plane, coarse region) because PG + category + muscles already encode them.
+- **Variations = modifiers only** — what turns a PG into a specific exercise
+  (grip, angle, named variant, execution, load, discipline, cardio flavor).
+  Flat rows in `analytics_tags`, **spelled once**. Redundant facets removed
+  (pattern, plane, coarse region) because PG + category + muscles already encode
+  them.
 - **Tool(s) = equipment** (`No Tool` = bodyweight). **Equipment is never also a
-  tag** — a dumbbell curl is PG `Curls` + Tool `Dumbbell(s)`, not a `Dumbbell`
-  tag.
-- **Set-row fields** (RPE, set type) are proposed separately — see the design
-  note at the end.
+  variation** — a dumbbell curl is PG `Curls` + Tool `Dumbbell(s)`, not a
+  `Dumbbell` variation.
+- **Set-row fields** (Intensity, set type) are proposed separately — see the
+  design note at the end.
 
 **Example:** *Weighted Wide-Grip Pullups* → PG `Pullups` (category **Pull**) ·
-Muscles Lats / Biceps / Forearms · Tags `Wide-Grip`, `Weighted` · Tools
-Straight Bar + Weight Belt · Set: Working @ RPE 8.
+Muscles Lats / Biceps / Forearms · Variations `Wide-Grip`, `Weighted` · Tools
+Straight Bar + Weight Belt · Set: Working @ Intensity 8.
 
 ## Naming conventions
 
 - Discrete movements = plural noun (`Pushups`, `Rows`, `Curls`); pressing stays
   singular (`Bench Press`, `Overhead Press`).
-- Family PGs use an umbrella noun, flavor = tag: `Gait`, `Jumps`, cardio gerunds
-  `Rowing` / `Swimming` / `Cycling`.
+- Family PGs use an umbrella noun, flavor = variation: `Gait`, `Jumps`, cardio
+  gerunds `Rowing` / `Swimming` / `Cycling`.
 - Combat = mode phrase (`Drilling`, `Live Sparring`, `Competition Fights`);
-  discipline = tag.
-- Variation tags read like plain English (`Goblet`, `Sumo`, `Archer`,
+  discipline = variation.
+- Variation names read like plain English (`Goblet`, `Sumo`, `Archer`,
   `Running`, `Box`).
 
 ---
@@ -64,8 +69,8 @@ Each PG lists its **category** (section), **default muscle groups** (0–N), and
 muscles (`—`). Suggested variations are **movement/execution variations only** —
 equipment lives in Tools. `(new)` marks PGs added in rev. 3.
 
-> **Seed note:** only the **shared / high-reuse** variations (see Tags section)
-> are seeded as default `analytics_tags`. PG-specific names shown here
+> **Seed note:** only the **shared / high-reuse** variations (see Variations
+> section) are seeded as default `analytics_tags`. PG-specific names shown here
 > (`Goblet`, `Pendlay`, `Nordic`, `Farmer`, …) are **suggestion-only** — created
 > on first use or via later templates, not seeded up front.
 
@@ -169,13 +174,14 @@ equipment lives in Tools. `(new)` marks PGs added in rev. 3.
 
 ---
 
-# Tags (variations / modifiers)
+# Variations (modifiers)
 
-Flat `analytics_tags` rows, spelled once. Equipment is **never** a tag (it's a
-Tool). Two tiers: a **seeded default set** (below) and **suggestion-only** names
-that appear in the catalog but are created on first use.
+Flat `analytics_tags` rows, spelled once. Product UI calls this slot
+**Variations**. Equipment is **never** a variation (it's a Tool). Two tiers: a
+**seeded default set** (below) and **suggestion-only** names that appear in the
+catalog but are created on first use.
 
-## Seeded default tags *(shared / high-reuse)*
+## Seeded default variations *(shared / high-reuse)*
 
 - **Grip / stance:** `Standard`, `Wide-Grip`, `Narrow-Grip`, `Neutral-Grip`,
   `Reverse-Grip`, `Close-Grip`, `Underhand`
@@ -194,7 +200,7 @@ that appear in the catalog but are created on first use.
 - **Practice:** `Yoga`
 - **Context (optional):** `Complex` (multi-PG complexes)
 
-`Standard` is the universal "default variation" chip. **~60 seeded tags.**
+`Standard` is the universal "default variation" chip. **~60 seeded variations.**
 
 ## Suggestion-only *(created on first use — not seeded)*
 
@@ -204,7 +210,7 @@ The ~50 PG-specific movement names in the catalog (`Goblet`, `Pendlay`, `Sumo`,
 `Russian`, `Farmer`, `Freestyle`, `HSPU`, `Pads`, …). They read as suggestions
 in the picker and become real rows the first time a user commits one.
 
-## Removed from the default tag set
+## Removed from the default variation set
 
 | Dropped | Why |
 |---------|-----|
@@ -213,7 +219,7 @@ in the picker and become real rows the first time a user commits one.
 | `Full Body`, `Upper Body`, `Legs` | Duplicate muscle groups + category. |
 | `Calisthenics` | Context, not a variation; implied by `No Tool`. |
 | `Murph Challenge` | User-specific event → use the `Challenge` block label. |
-| `Barbell`, `Dumbbell`, `Cable`, `Kettlebell`, `Machine`, `Ring`, `Band` | **Equipment → Tools**, never tags. |
+| `Barbell`, `Dumbbell`, `Cable`, `Kettlebell`, `Machine`, `Ring`, `Band` | **Equipment → Tools**, never variations. |
 
 > **Live-account caveat:** dropping the facet tags is for the **default seed
 > only**. Do **not** wipe `Push` / `Pull` / etc. from existing accounts until
@@ -232,7 +238,7 @@ in the picker and become real rows the first time a user commits one.
 
 Global sentinel: **`No Tool`**. `(new)` = added in rev. 3. `(s)` marks
 pluralizable implements. Equipment-style "variations" (dumbbell, barbell, cable,
-trap-bar, EZ-bar, ring, machine) are represented **here**, not as tags.
+trap-bar, EZ-bar, ring, machine) are represented **here**, not as Variations.
 
 Ab Wheel · Barbell · Bench · Cable Machine · Club(s) · Dumbbell(s) ·
 **EZ Bar** *(new)* · **Foam Roller** *(new)* · Gymnastic Rings · Jump Rope ·
@@ -307,26 +313,24 @@ Later (once derived math / rollups are added — deferred for now):
 
 | Change | Detail |
 |--------|--------|
-| Tags reframed | Facet folders → **variation/modifier** tags, curated per PG, flat + spelled once. |
+| Tags → Variations | Product term **Variations** (modifiers); DB `analytics_tags` unchanged until SQL rewrite. Facet folders → curated per-PG, flat + spelled once. |
 | Facets deleted | `Push`/`Pull`/`Hinge`, planes, coarse region, `Calisthenics`, `Murph Challenge`. |
 | Equipment un-tagged | `Barbell`/`Dumbbell`/`Cable`/`Kettlebell`/`Machine`/`Ring`/`Band` moved to Tools only (no dual-encoding). |
 | Category promoted | Section groupings → first-class PG **`category`** attribute. |
-| Lean seed rule | Seed ~60 shared/high-reuse tags; ~50 PG-specific names are suggestion-only. |
+| Lean seed rule | Seed ~60 shared/high-reuse variations; ~50 PG-specific names are suggestion-only. |
 | PGs added | `Chest Flys`, `Shrugs`, `Back Extensions`, `Burpees`, `Handstands`, `Muscle-Ups` (now 43). |
 | Tools added | `Machine`, `EZ Bar`, `Suspension Trainer (TRX)`, `Foam Roller` (now 27). |
-| Set-row note | Added RPE / set-type design note (no schema built). |
+| Nest label nits | Block `Workout` → `Main`; add `Wellness`; combat PG stays **`Competition Fights`** (plural). |
+| Set-row note | Intensity / set-type design note; columns now in `sql/greenfield/007` (UI + denest = chat 5). |
+| Doc sync | Mirrored into `Label_Library.md` + light `Analytics_Labeling.md` vocab. |
 
 ## Parked (out of scope until requested)
 
 - Starter exercise templates (hyper-specific clones, e.g. *Cable Rope Skull
-  Crushers* → `Triceps Extensions` + tag `Rope` + Tools Cable Machine).
-- `ensure_default_*` seed SQL / migrations (implements the lean seed rule +
-  `category`).
-- Set-row schema implementation (the intensity / set-type note above).
+  Crushers* → `Triceps Extensions` + variation `Rope` + Tools Cable Machine).
+- `ensure_default_*` seed **content** (implements the lean seed rule + `category`
+  values; stubs already exist in `sql/greenfield/005`). Optional rename of
+  `analytics_tags` table later.
 - In-app user guide ("how OttoLog is meant to be used"), which houses the 0–10
   intensity legend and the taxonomy how-to.
-- Rename `analytics_tags` → `Variations` (do it during the SQL rewrite; combat
-  discipline confirmed as a variant, so Variations covers all cases).
-- Doc sync into `Label_Library.md` (keep `Competition Fights` plural; `Workout`
-  → `Main`; add `Wellness` block label; mirror the variation-tag + category
-  model).
+- Chat 5 app work: denest/renest variations, `track_intensity` UI, Insights MVP.

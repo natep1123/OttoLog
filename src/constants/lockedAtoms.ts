@@ -1,6 +1,6 @@
 /**
  * Fixed UUIDs for OttoLog locked atoms.
- * Must match sql/003_locked_atoms.sql seeds.
+ * Must match sql/greenfield/003_locked_atoms.sql seeds.
  *
  * target_shapes = which set/target input fields an exercise uses
  * (not session categories, not tree kind).

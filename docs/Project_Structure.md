@@ -13,7 +13,7 @@ ottolog-app/
 ├── .cursor/
 │   ├── rules/              Scoped Cursor rules (point at docs; do not paste them)
 │   └── skills/             Repeatable workflows (SQL migrations, taxonomy labeling)
-├── sql/                    Supabase migrations (001 through 019), run in order — see Setup.md
+├── sql/                    Supabase migrations — greenfield/ (canonical); deprecated/ historical
 ├── docs/                   Official project docs (this folder)
 │   ├── Database_Outline.md
 │   ├── Project_Structure.md
@@ -22,7 +22,7 @@ ottolog-app/
 │   ├── Template_Builders.md
 │   ├── Label_Library.md
 │   ├── Analytics_Labeling.md
-│   ├── default-user-taxonomy/  Optional seed dumps (Official vs personal Current)
+│   ├── New_User_Seeds.md   Full new-account seed catalog (PGs, variations, tools, …)
 │   └── deprecated/         Archived design set (historical, not the contract)
 │       └── original-concept/
 └── src/
@@ -69,7 +69,7 @@ Library opens of templates and logs use **`reviewMode`**: `EditorChrome` starts 
 | `clusterTemplates.ts` | Sequence persistence (legacy internal name): list, get, save, archive / hard-delete; rounds + overrides; `clusterTemplateToDraft`; `expandClusterPerformedSets` for log denest |
 | `blockTemplates.ts` | List, get, save, archive / hard-delete; mixed exercise/sequence items; `blockTemplateToDraft` |
 | `sessionTemplates.ts` | List, get, save, archive / hard-delete; nested blocks; `sessionTemplateToDraft`; default Session label |
-| `sessionLogs.ts` | List, get, save, delete session logs; denest draft tree → `sql/014` tables (+ `sql/015` tool links); renest rows → editor draft |
+| `sessionLogs.ts` | List, get, save, delete session logs; denest draft tree → log tables (+ tool / PG / muscle links; greenfield also variation links); renest rows → editor draft |
 | `lockedPreviewPages.ts` | Paginate a locked outline into screenshot pages for `LockedPreviewModal` (notes/overrides row packing; swipe + chevron sync) |
 | `taxonomy.ts` | Picker lists and Account taxonomy CRUD (tools, analytics, session/block/sequence labels) |
 | `localTime.ts` | Local greeting, week strip, session date keys / labels (`dayjs`) |
@@ -96,8 +96,8 @@ Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `Co
 
 ### `src/constants/` and `src/types/`
 
-- **`sentinelIds.ts`**: `NO_TOOL_ID`, `UNCATEGORIZED_ID` (Session), `GENERAL_BLOCK_LABEL_ID` (Block), `CLUSTER_LABEL_NULL_ID` (Sequence) — must match `sql/004` / `sql/011` / `sql/013`
-- **`lockedAtoms.ts`**: Target shape UUIDs from `sql/003`
+- **`sentinelIds.ts`**: `NO_TOOL_ID`, `UNCATEGORIZED_ID` (Session), `GENERAL_BLOCK_LABEL_ID` (Block), `CLUSTER_LABEL_NULL_ID` (Sequence) — must match `sql/greenfield/004`
+- **`lockedAtoms.ts`**: Target shape UUIDs from `sql/greenfield/003`
 - **`targetShapeFields.ts`**: Which columns each shape shows in the targets grid
 - **`types/exerciseTemplate.ts`**: Exercise template row and editor input types
 - **`types/clusterTemplate.ts`**: Sequence template row, content blob, and editor input types (legacy internal name)
