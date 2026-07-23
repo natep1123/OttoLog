@@ -20,7 +20,7 @@ ottolog-app/
 │   └── deprecated/         Historical only (ignored by .cursorignore)
 │   ├── Status.md           Living ops board (shipped / next / parked)
 │   ├── Analytics_Overhaul_Proposal.md  Insights product board (hub = Dashboard + Query builder)
-│   ├── Insights_Query_Builder.md       Query builder nest contract (Query→Section→Breakdown→Subject→Measure)
+│   ├── Insights_Query_Builder.md       Query builder contract (nest AST + madlib author / locked nest readout)
 │   ├── Database_Outline.md
 │   ├── Project_Structure.md
 │   ├── Setup.md
@@ -49,7 +49,7 @@ No React Navigation yet. **`HomeScreen`** holds five bottom tabs and a nested st
 | Tab | Hub | Live drill-in | Stubs |
 |-----|-----|---------------|-------|
 | **Home** | Dashboard | Quick actions → Create session builder / Library exercises / Account taxonomy | Week → sessions (Soon) |
-| **Insights** | Insights hub (card select) | **Dashboard** (per-PG facet readout; fast, unsaved) · **Query builder** (nested savable/lockable — slices 1–2 shipped, ephemeral; next = totals → save) | `src/lib/insights.ts`, `src/components/querybuilder/` |
+| **Insights** | Insights hub (card select) | **Dashboard** (per-PG facet readout; fast, unsaved) · **Query builder** (nest AST + lock/preview shipped; madlib author next — ephemeral) | `src/lib/insights.ts`, `src/components/querybuilder/` |
 | **Create** | Create hub | Log from scratch / from template; Templates → Session / Block / Sequence / Exercise builders | AI-assisted log |
 | **Library** | Library hub | Templates → Sessions / Blocks / Sequences / Exercises; Logs → log editor (review mode) | — |
 | **Account** | Account hub | Taxonomy → lists; Settings → Danger zone | Profile, Preferences |
@@ -98,7 +98,7 @@ Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `Co
 | `home/HomeDashboardScreen.tsx` | Home tab UI |
 | `insights/InsightsHubScreen.tsx` | Insights hub — card select (Dashboard / Query builder) |
 | `insights/InsightsDashboardScreen.tsx` | Dashboard — PG-first per-PG facet readout (fast, unsaved) |
-| `insights/InsightsQueryBuilderScreen.tsx` | Query builder — nested builder (Query→Section→Breakdown→Subject→Measure); nest + 1.5 chrome/feel parity shipped (ephemeral) |
+| `insights/InsightsQueryBuilderScreen.tsx` | Query builder — nest AST + lock grammar/preview shipped; madlib author surface next (ephemeral) |
 | `components/querybuilder/` | `Qb*` nest chrome + `qbTokens.ts` (maps to workout `layer` by depth) + `types.ts` + `engine.ts` client-side aggregate (forks `forms/` builder DNA) |
 | `create/` | Create hub, template hub, session / block / sequence / exercise builders, session log builder, log-from-template picker |
 | `library/` | Library hub, templates hub, session / block / sequence / exercise lists, logs list |

@@ -43,7 +43,7 @@
 
 ## Next (priority order)
 
-1. **Insights Query builder — madlib authoring spike (ephemeral)** — Unlock = Query frame + Subject clause-blocks (FOR/WITH/SHOW/SPLIT); lock = existing `qbOutline` + preview. Collapse Section in UI; whole-ask lock look. No `src` yet from the docs commit — **spike kickoff next**. Then slice **3** totals polish → **4** `saved_queries` (**ask first**) → **5** multi-Section/dims/ops. Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §2 / §9. Dashboard stays the fast unsaved look.
+1. **Insights Query builder — madlib authoring spike → ~80%+ v1 polish** — Unlock = Query frame + Subject clause-blocks (FOR/WITH/SHOW/SPLIT); lock = existing `qbOutline` + preview. Collapse Section in UI; whole-ask lock look. **Bar:** bring QB to ~**80%+ polish** for v1 (workout chrome ~**95%** — don’t chase parity of complexity; chase feel). Then slice **3** totals → **4** `saved_queries` (**ask first**) → **5** multi-Section/dims/ops. Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §2 / §9. Dashboard stays the fast unsaved look.
 2. **Identity conviction** — PG + Variations + muscles (+ tools + nest labels); category stays PG metadata for balance **saved views**; Counts as = default facet (Phase 4)
 3. **PG Counts as + Chat 6 (Phase 4)** — `natural_metric` on PGs; Account edit; New User Seeds dump
 4. **Exercise lock ↔ pills scroll** — exercise form correctly hides the pills scroller when lock=ON and dropdown=OPEN, and shows it when lock=OFF or lock=ON + dropdown=COLLAPSED. Explore mirror on Sequence / Block / Session builders
