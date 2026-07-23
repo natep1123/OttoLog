@@ -61,7 +61,9 @@ Pasteable prompt must include:
 5. Stop for Nate review / no commit unless asked  
 
 Below the prompt (Nate only): **suggested model** + cheaper fallback from the
-workflow allowlist. Do **not** put the model name inside the agent prompt.
+workflow allowlist; **mode** (default **Agent**; recommend **Plan** when
+approach forks / tradeoffs need Nate before code). Do **not** put model or mode
+inside the agent prompt.
 
 ## Execution habits
 

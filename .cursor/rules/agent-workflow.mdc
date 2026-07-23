@@ -76,3 +76,4 @@ Recommend **only** from this list (exact display names). Do not suggest models o
 **Outside / below the prompt** (orchestrator → Nate only):
 
 - **Suggested model** (+ optional cheaper fallback) from the allowlist only. Nate picks the model in the new chat; do not bake the recommendation into the agent prompt.
+- **Mode** — default **Agent**. Recommend **Plan** when the slice still has open product/UX forks, multi-approach tradeoffs, or Nate should approve the approach before code. Do not put mode inside the agent prompt.
