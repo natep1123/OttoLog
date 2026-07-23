@@ -3,10 +3,15 @@
 > **Status:** Design contract — **layer AST + read chrome signed off (Jul 22);**
 > **author/read split decided (Jul 22 evening).** Replaces the v1 flat-subject
 > model (dead). Slices **1 nest + 1.5 warm chrome + 2 lock grammar/preview**
-> shipped (ephemeral). **Next:** madlib authoring spike (ephemeral) before
-> totals (3) / save (4). Nest-shell-only authoring is **parked** — do not keep
-> forcing five edit shells. No `saved_queries` / `008` from this doc alone —
-> ask at the save slice. Nate owns the go and the commit gate.
+> shipped (ephemeral). **Madlib author (2.5) + polish + WITH/SPLIT B+C** in tree.
+> **§11 (Jul 23, revised Jul 23):** author nest-chrome — **locks recorded and
+> promoted to build spike** (Query→WHERE→FOR ≈ Session→Block→Exercise; dusk
+> **Insight** cards hold WITH+SHOW under gold FOR; SPLIT≈Sequence; SPLIT mode
+> **C** + one-shot seed; `Subject.asks[]` AST lean; credit-each across
+> overlapping Insights). Nest-shell-only authoring remains **parked**; §11 is a
+> middle path, not an un-park. SHOW dropdown polish stays parallel/follow-on.
+> No `saved_queries` / `008` from this doc alone — ask at the save slice. Nate
+> owns the go and the commit gate.
 >
 > **Author vs read:** unlocked = condensed madlib / clause compose; locked =
 > nest LockedOutline + maximize preview (workout chrome family). Definition +
@@ -429,6 +434,8 @@ GROUP BY / compare windows later — don’t redesign authoring around them.
 **Still open:**
 - **SHOW chip interaction:** keep `op | field` look; prefer **dropdowns** on
   each half instead of tap-to-cycle; fix truncation; wire `availableFields`.
+  *(Working tree may already hold a dropdown + `availableFields` polish —
+  confirm on dogfood / Status before treating as shipped.)*
 - **Save definition:** confirm nest JSON as canonical (madlib = view) before
   `saved_queries`.
 - **Breakdown dimensions beyond variation/tool:** `date bucket` next capability
@@ -437,5 +444,236 @@ GROUP BY / compare windows later — don’t redesign authoring around them.
 - **Measure field availability:** `QbMeasureRow`’s `availableFields` prop
   (shape-driven fields the Subject actually logged) is still unwired from the
   Subject clause — cycling currently walks the full 5-field set regardless of
-  what's logged in-window.
+  what's logged in-window. *(Same caveat as SHOW chip interaction above.)*
+- **Author nest chrome (Insight / WHERE / SPLIT) — build spike:** see **§11**.
+  Naming (**Insight**), AST lean (`Subject.asks[]`), SPLIT mode (**C** +
+  one-shot seed), and credit-each are locked; Nate promoted to Status Next.
+  SHOW dropdown polish stays parallel/follow-on.
+
+---
+
+## 11. Author nest chrome (Jul 23, revised Jul 23) — **locks recorded · build spike**
+
+> **Status:** Product ideation revised after Nate’s review pass, then **promoted
+> to a build spike**. The **naming** (product noun **Insight**), the **AST lean**
+> (`Subject.asks[]`), the **SPLIT mode** (**C** + optional one-shot seed), and
+> **credit-each across overlapping Insights** are **locked**. This is **not** a
+> signed §8 decision yet and does **not** un-park nest-shell-only authoring or
+> imply a migration. SHOW dropdown polish (§10) stays parallel/follow-on and
+> unblocked. Read alongside [`Template_Builders.md`](./Template_Builders.md) and
+> [`Styling.md`](./Styling.md) `layer` / `override` for the chrome DNA this forks.
+>
+> **Lingo:** SQL-ish / technical nouns stay for agent clarity (form→SQL). A later
+> product-copy pass will clarify coach-facing labels once behavior is settled —
+> don’t invent a full glossary rename mid-spike.
+
+**Glossary — Insight:** a dusk-chrome card that holds one **WITH** identity
+combo (variations/tools, any/all) + one or more **SHOW** measures, nested
+under a gold **FOR** (one Primary Group). Product noun, parallel in *nest
+depth* to workout **Set** — many Insights can stack under one FOR the same
+way many Sets stack under one Exercise/round. That parallel is **structural
+only**: an Insight keeps **dusk** chrome (the workout-override family), not
+the amber set-chip look, and it does not touch the shipped §3 “Measure
+(leaf · = Set)” mapping — **Measure** (op × field) still lives *inside* an
+Insight and is still the node that plays the Set role in the SQL-per-layer
+table. UI copy never says “pink” or “override” for this card; **override**
+stays a workout-only term (round exceptions on Sequences —
+`Template_Builders.md` / `Styling.md`).
+
+### 11.1 Nate’s priority (what he wants)
+
+1. **Force a little of the old hierarchy in the Insights author UI** so analytics
+   feels **near-identical in structure** to workout chrome, while showing
+   **different info** — same layer / color language, different nouns/payload.
+2. **Direct color ↔ meaning map** at each depth. A coach who knows Session /
+   Block / Sequence / Exercise / override dusk should recognize the same rails
+   in Query builder without learning a second chrome dialect.
+3. **Spine he is converging on:**
+   - **Query → WHERE → FOR** ≈ **Session → Block → Exercise**
+   - **FOR is the only Exercise-matched level** (Primary Group only on gold)
+   - **SPLIT ≈ Sequence** (violet)
+   - Inside each **FOR**, dusk **Insight** cards hold **WITH + SHOW**
+     (identity combo + ops). User picks PG, then adds one Insight per unique
+     variation/tool combo and calc they care about (e.g. Gait → Insight
+     “Running · sum time”; Insight “Walking · sum distance”).
+4. **WHERE acts like Blocks:** both **filter** (nest labels / set policy) and
+   **org tool** (container that holds FORs / SPLITs) — not a flat chip row only.
+5. **Transferability bar:** the **dusk chrome family** (workout: round
+   overrides) and **violet** (Sequence) should remain **reasonably
+   transferable** to the query author surface; Query↔Session and WHERE↔Block
+   should feel the same kind of similar. The product **term** “override”
+   stays **workout-only** — Insights borrows the *chrome*, not the *word*.
+
+### 11.2 Proposed UI spine (sketch)
+
+```
+Query          (session rail)   — report / day: IN window, name, notes, lock
+  WHERE        (block rail)     — scope chips + container for children
+    [SPLIT?]   (violet / seq)   — optional “for each <dim>” loop wrapper
+      FOR      (gold / exercise)— one Primary Group only
+        Insight (dusk)          — each card = WITH combo + SHOW measures
+        Insight (dusk)
+    —or no SPLIT—
+      FOR …
+        Insight …
+  + Add FOR → WHERE
+```
+
+Madlib **words** (`FOR` / `WITH` / `SHOW` / `SPLIT`) can stay as body copy
+inside the right-colored cards — the ideation is **re-wrapping** into nest
+geometry, not throwing away coach-plain clause vocabulary. UI never labels a
+card “pink” or “override” — say **Insight** (or leave it wordless, letting
+the dusk rail carry the meaning the way workout overrides do today).
+
+### 11.3 Color / layer transfer map
+
+| Workout chrome | Token family | Insights author (proposed) | Payload |
+|---|---|---|---|
+| **Session** | `layer.session` | **Query** | Window, name/notes, whole-ask lock |
+| **Block** | `layer.block` | **WHERE** (Section) | Nest labels + set policy; **holds** FORs / SPLITs |
+| **Sequence** | `layer.cluster` | **SPLIT** (Breakdown) | `GROUP BY` dim (`variation` / `tool`); wraps FORs |
+| **Exercise** | `layer.exercise` | **FOR** (Subject) | **PG only** — identity/measures move off gold |
+| **Override** (workout term, dusk chrome) | `override` dusk | **Insight** card under FOR | One **WITH** identity combo + **SHOW** ops |
+| **Set** | set / amber chip | Measure chips inside an Insight | `op × field` (dropdown halves — separate polish) |
+
+**Primary goal for reviewers:** every rail color should mean the **same job
+class** as in workout builders (day / section+org / loop / noun / exception rx /
+leaf values) — only the content differs. The **word** “override” is not
+reused; **Insight** is the Query-builder-native noun for that dusk depth.
+
+### 11.4 Insight semantics (WITH + SHOW under FOR)
+
+- Gold **FOR** = “which Primary Group” (Gait, Pullups, …).
+- Each dusk **Insight** = one ask-slice: soft identity (`WITH` variations/tools,
+  any/all) + one or more **SHOW** measure chips.
+- Example under `FOR Gait`:
+  - Insight A — `WITH Running` — `SHOW sum time · avg load`
+  - Insight B — `WITH Walking` — `SHOW sum distance`
+  - Insight C — `WITH Running + Weighted` (all) — `SHOW max load`
+  - Insight D — `WITH (all)` — `SHOW count sets` (catch-all under PG)
+- Visual win Nate called out: **see Gait as a stack of Insight cards** for
+  each unique combo/calc the user wants, instead of one soft WITH + cycling
+  measures on a flat Subject clause.
+- Closest workout cousin: same exercise, multiple override / rx cards — not a
+  second Exercise layer. (Chrome cousin only — the product word stays
+  **Insight**, never “override,” on this surface.)
+
+**AST lean — locked (Nate, Jul 23):** `Subject.asks[]`. Each ask **is** an
+Insight — one identity combo (WITH any/all) + its SHOW measures — nested
+under **one** gold FOR (Subject). This is **not** N Subjects sharing a
+`pgId`; the PG lives once on the Subject, and Insights are children that
+only carry identity + measures. Ideation sketch (not the canonical §5
+shape — §5 stays as-is until this is promoted):
+
+```
+SubjectNode (ideation — not the shipped §5 shape)
+  pgId
+  asks: Array<InsightNode>        // was: variationIds / toolIds / measures directly on Subject
+    InsightNode
+      identityMatch: 'any' | 'all'
+      variationIds[], toolIds[]
+      measures: MeasureNode[]
+```
+
+**Credit-each — locked (Nate, Jul 23):** overlapping Insights (e.g. `WITH
+Running` and `WITH Running + Weighted` on the same FOR) **credit-each** —
+each Insight computes its own aggregate over whatever facts match its own
+WITH filter; a set that qualifies for two Insights counts in both, same as
+Subjects credit-each today (§8 #7, §7 Example A). Coach-plain copy for this:
+**“asks can overlap”** — a set can answer more than one ask, and each ask’s
+numbers are independent, so don’t expect an Insight’s siblings to sum to the
+FOR’s total. SPLIT auto-groups keep today’s sibling / peer rules (Option B+C
+in §10) — unaffected by this lock.
+
+### 11.5 How SPLIT fits (Sequence)
+
+Today SPLIT is a chip on the Subject clause; locked outline paints violet
+“For each…”. In this ideation, **SPLIT is the violet Sequence card** between
+WHERE and FOR (or wrapping FORs):
+
+- **Off:** FORs (with hand-authored Insights) hang under WHERE like
+  standalone exercises under a Block.
+- **On:** violet wrapper = “for each variation | tool”; Insights under FOR
+  are the per-iteration / per-group ask-slices.
+
+**SPLIT mode — locked (Nate, Jul 23): Mode C.** Hand-authored Insights *or*
+auto partition are **two distinct controls, never both live** on the same
+FOR at once — this is what resolves the “double metaphor” risk below.
+Optional one-shot **`+ Split into Insights`**: SPLIT auto-partitions by the
+chosen dimension (today’s peer/sibling rules, unchanged) and **seeds** one
+editable Insight card per resulting group (WITH prefilled from the partition
+value). After that seed fires, the seeded cards are **plain hand-authored
+Insights** — SPLIT is not left “live”-wired to them; the user can then edit,
+delete, or add Insights freely. Mode **A** (auto-explode, from the original
+three-way fork) survives only as this one-shot seed action, not as an
+always-on auto-explode control. Mode **B** (wrapper-only, no seed) is
+rejected as too weak an author job for the Sequence parallel.
+
+Empty WITH + SPLIT → seeds Insights for every peer tag (today’s full peer
+partition). Non-empty WITH + SPLIT → seeds sibling co-tags among filtered
+sets (shipped B+C). Both are one-shot seeds under Mode C, not a live binding.
+
+Depth cap unchanged: **no SPLIT inside SPLIT** (no nested Breakdowns).
+
+### 11.6 What stays / what moves (vs shipped madlib)
+
+| Keep | Move / rethink |
+|---|---|
+| Nest AST + client engine over `v_log_set_facts` | Author chrome: clause rows → nested cards by depth |
+| Locked outline / preview as read surface | WHERE as real Block-shell container (not only Query-frame chips) |
+| Whole-ask Query lock (v1) | WITH+SHOW off gold onto dusk **Insight** children under FOR |
+| Soft identity + B+C sibling SPLIT semantics | SPLIT as violet Sequence card (author) + one-shot `+ Split into Insights` seed, not only lock paint |
+| No `008` / no Dashboard merge | Progressive empty: FOR first; then `+ Add Insight` / `+ Split into Insights` |
+
+**Protect from shipped madlib (do not regress while ideating):** progressive
+FOR disclosure, SHOW chip grammar, WITH any/all + sibling SPLIT (B+C),
+whole-ask Query lock/outline, nest-shell-only-authoring **parked**. §11 is
+additive on top of these, not a rewrite of them.
+
+This is **not** “bring back five empty Session-edit shells.” It is **nest-shaped
+author with madlib fields in the right-colored cards** — a middle path between
+parked nest-shell-only authoring and today’s flat Subject clause.
+
+### 11.7 Friction / risks for the reviewing agent
+
+- **Card weight:** Murph (3 PGs) × several Insights gets tall; need
+  progressive disclosure and cheap add (`+ Add Insight` under FOR).
+- **Double metaphor — resolved by Mode C:** hand Insights and SPLIT auto
+  partition are never both live on the same FOR, so WITH does not have to
+  live on both gold and dusk at once. The one-shot seed hands the user a
+  starting set of Insights; ownership moves fully to the hand-authored cards
+  once seeded.
+- **AST shape — resolved:** `Subject.asks[]` (§11.4). Each Insight is a
+  child of Subject sharing the Subject’s `pgId`, not a second `pgId`-bearing
+  node.
+- **Override DNA purity:** workout overrides are round exceptions; Insights
+  here are identity-scoped measure bundles. Transfer is **chrome +
+  “exception/variant under the noun,”** not round numbers, and not the word
+  “override” — that stays workout-only.
+- **Do not block** SHOW dropdown polish / slice 3 totals / save on this
+  ideation. §11 stays ideation; spike sequencing (if Nate promotes it) comes
+  **after** SHOW dropdown polish, not instead of it.
+
+### 11.8 Review checklist (for the other agent)
+
+- [x] Does Query→WHERE→FOR↔Session→Block→Exercise hold under real Murph asks?
+      — Holds per Nate’s stated priority (§11.1); not yet dogfooded in UI
+      (no build yet).
+- [x] SPLIT mode — **C** (+ one-shot `+ Split into Insights` seed), decided
+      (§11.5). A survives only as the seed action; B rejected.
+- [x] AST: Insight = new node — **`Subject.asks[]`**, decided (§11.4). Not
+      multi-Subject with shared PG.
+- [x] Credit-each vs partition across hand Insights — **credit-each**,
+      decided (§11.4). “Asks can overlap” is the coach-plain copy.
+- [ ] Is dusk **Insight** chrome honest enough for coaches who know round
+      overrides, or does it need its own accent distinct from `override`?
+      Still open — reusing dusk without reusing the word is the current
+      lean, not yet stress-tested against a real screenshot.
+- [ ] What to protect from current madlib (progressive FOR, SHOW chip
+      grammar, B+C sibling SPLIT, lock outline, whole-ask Query lock,
+      nest-shell-only parked) — recorded (§11.6/§11.7); still needs to hold
+      up once someone actually spikes the chrome.
+- [ ] Promote to §8 / Status Next, park, or keep revising — **Nate decides**;
+      not automatic even with the locks above. Sequencing: **after** SHOW
+      dropdown polish, per Nate.
 
