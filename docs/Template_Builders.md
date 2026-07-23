@@ -3,7 +3,8 @@
 How the four nested template builders and the session log builder behave as shipped.
 Source of truth is the code in `src/components/forms/` and `src/screens/create/`.
 Data contracts live in `Database_Outline.md`; visual tokens and chrome live in
-`Styling.md`.
+`Styling.md`. **Gold UI shots** (structure/feel reference for agents): 
+[`references/workout-builder/`](./references/workout-builder/).
 
 There are four template builders: Session, Block, Sequence, Exercise. They compose
 the same leaf editors, so a Session builder contains Block editors, which contain

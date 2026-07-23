@@ -15,8 +15,10 @@
 > **Read alongside:** [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md)
 > (product direction: hub = Dashboard + Query builder), [`Template_Builders.md`](./Template_Builders.md)
 > (the builder chrome this now clones), [`Database_Outline.md`](./Database_Outline.md)
-> (fact grain), [`Styling.md`](./Styling.md) (form chrome + the new cool query
-> palette), and [`Status.md`](./Status.md) (Next #1).
+> (fact grain), [`Styling.md`](./Styling.md) (form chrome — QB reuses the same
+> nest `layer` / `override` accents by depth), [`Status.md`](./Status.md) (Next #1),
+> and **UI gold shots** under [`references/workout-builder/`](./references/workout-builder/)
+> (structure/feel target; content inside nodes stays analytics).
 >
 > **Ground truth today:** `src/lib/insights.ts` — `loadInsightQuery` +
 > `v_log_set_facts` (Dashboard read) **and** `loadQueryFacts` (raw scoped facts for
@@ -25,11 +27,13 @@
 > (**slice 1 nest skeleton — shipped, ephemeral**); `src/components/querybuilder/`
 > — the live `Qb*` nest chrome (`QbLayer`, `QbCoordRow`, `QbAddChildButton`,
 > `Qb{Query,Section,Breakdown,Subject}Card`, `QbMeasureRow`), `types.ts` draft
-> model, `engine.ts` client-side aggregate; `tokens.ts` `queryLayer` + `measureChip`
-> (cool palette). Forked from builder chrome under `src/components/forms/`
-> (`NestedLayer`, `CoordRow`, `LockController`, `ExpansionController`, `LockedOutline`,
-> `LockedPreviewModal`, `Disclosure`, `MorePanel`, `SearchableSelect`) — the DNA
-> slices 2+ still draw on for lock / preview / save.
+> model, `engine.ts` client-side aggregate. **Palette note (Jul 22 evening):** slice 1
+> shipped a provisional cool `queryLayer` ramp — **overturned.** Next chrome pass
+> reuses workout `layer` / `override` / set-chip accents by depth (Query=Session,
+> Section=Block, Breakdown=Sequence, Subject=Exercise, Measure=Set). Forked from
+> `src/components/forms/` (`NestedLayer`, `CoordRow`, `LockController`,
+> `ExpansionController`, `LockedOutline`, `LockedPreviewModal`, `Disclosure`,
+> `MorePanel`, `SearchableSelect`) — DNA for structure/feel parity + lock/preview.
 
 ---
 
@@ -197,12 +201,14 @@ reusing `LockController` ancestor-forcing + unlock-own-locks-children, with a ne
 ## 5. Builder DNA reuse map + definition shape
 
 Fork the chrome, don't reinvent it. New code under `src/components/querybuilder/`
-with `Qb*` names; **distinct cool analytics palette** (own 4-step ramp) so a query
-nest never looks like a workout nest.
+with `Qb*` names. **Structure and feel ≈ workout nest** (rails, chevron, lock,
+More, pills, `+ Add → parent`, locked outline / preview). **Content inside nodes
+differs** (PG / dims / ops × fields — not sets / tools / shapes). Not a pixel-1:1
+clone of Session copy — same chrome family, analytics payload.
 
 | Builder chrome (`src/components/forms/`) | Query builder (`src/components/querybuilder/`) | Notes / departure |
 |---|---|---|
-| `NestedLayer` + `CoordRow` | `QbLayer` + reuse `CoordRow` geometry | Same shell (rail, chevron, lock toggle, `metaChips`, `trailing`, title/label). Subject uses a **PG picker** in the name slot; Breakdown uses a **dimension picker** as its label. **New cool 4-token palette** (`queryLayer` in `tokens.ts`) — do **not** reuse the warm Session/Block/Sequence/Exercise rails. |
+| `NestedLayer` + `CoordRow` | `QbLayer` + `QbCoordRow` geometry | Same shell (rail, chevron, lock toggle, `metaChips`, trailing IconButtons, title/label). Subject = **PG picker** in the name slot; Breakdown = **dimension picker**. **Palette by depth = workout `layer`** (Query→session, Section→block, Breakdown→cluster, Subject→exercise); Measure / extras under leaf use set-chip / `override` dusk as appropriate. |
 | `LockController` / `useNodeLock` / `LOCK_ROOT` | whole-Query + per-layer lock | Ephemeral UI state, ancestor-forcing, unlock-own-locks-children — carry over unchanged. Add a `query` root id. |
 | `ExpansionController` + `EditorTools` tray | “Collapse all” / “Unlock & Expand All” | Same tray above the form. |
 | `LockedOutline` | Breakdown sub-rows + totals; Subject/Measure grammar when locked+expanded | New outline builder (`outlineQuery` / `outlineSection` / `outlineSubject`) emitting measure/breakdown lines instead of set prescriptions. Same thin-left-spine geometry + notes rendering. |
@@ -327,7 +333,7 @@ Supersedes the v1 §8 table. Build to these.
 | 9 | Set policy + nest scope | **Section-level (WHERE).** With one Section this reads query-global. |
 | 10 | Lock granularity | **Full tree** (Query / Section / Breakdown / Subject / Measure) via `LockController`. |
 | 11 | Naming / code | Product: Query/Section/Breakdown/Subject/Measure. Code: `src/components/querybuilder/`, `Qb*`, **no** legacy aliases. Saved artifact = **Query**. |
-| 12 | Palette | **Distinct cool analytics ramp** (own 4-token block in `tokens.ts`); reuse chrome geometry only. |
+| 12 | Palette / feel | **Overturned Jul 22 evening.** Reuse workout nest accents by depth (`layer` + `override` + set chip) so structure/feel match Session→…→Set. Keep `Qb*` nouns. Content inside nodes stays analytics — not a Session clone. Gold shots: `docs/references/workout-builder/`. |
 | 13 | Defaults | New Query opens **Query → Section → empty Subject → empty Measure** (no Breakdown). |
 | 14 | Engine | **Client-side group/aggregate** over `v_log_set_facts`. **No migration** until Nate asks. |
 | 15 | SQL teaching | English-SELECT grammar is enough. **"Show as SQL" is a later optional stretch.** |
@@ -341,14 +347,15 @@ v1 flat shell has been **scrapped** and replaced by the nest skeleton below.
 
 - **Slice 0 — this doc (v2 layer model).** Contract + definition shape. No code. **Done.**
 - **Slice 1 — nest skeleton (no persistence). ✅ Shipped in tree (ephemeral).**
-  `InsightsQueryBuilderScreen` is the real nest: `QbLayer` chrome (cool `queryLayer`
-  palette) rendering Query → Section → (optional Breakdown) → Subject → Measure, with
-  collapse per node and `+ Add Breakdown / Subject / Measure`. Defaults per §6.
-  Reads via `loadQueryFacts` (raw scoped facts) + `querybuilder/engine.ts`
-  client-side group/aggregate (the five ops). Reload loses the draft.
+  Real nest + engine; provisional cool `queryLayer` (to be replaced in 1.5).
+- **Slice 1.5 — chrome / feel parity (next).** Make QB structure/feel match the
+  workout nest gold shots: map rails/chips to `layer`/`override` by depth; CoordRow
+  DNA (lock control visible, More / trailing IconButtons, label-first headers where
+  it fits); keep analytics content. Still ephemeral. **No** `saved_queries` / `008`.
+  Refs: `docs/references/workout-builder/` (+ `pool-query-insights/001.jpg` = before).
 - **Slice 2 — lock + preview.** Wire `LockController` (full tree) → grammar lines;
   `LockedOutline` for expanded-locked Breakdowns/Subjects; `LockedPreviewModal` for
-  share. Still ephemeral.
+  share. Still ephemeral. Can land tightly after or with 1.5 once chrome matches.
 - **Slice 3 — Breakdown depth + totals polish.** Firm up the grouped sub-rows +
   totals rendering in-card and in the locked outline (credit-each safe).
 - **Slice 4 — save / reopen.** `saved_queries` (**ask first**), name + notes via
@@ -369,9 +376,9 @@ form + save/lock hold.
   the obvious next and unlocks trend asks — promote in slice 5 or sooner?
 - **Multi-key GROUP BY:** deferred with multi-Section; revisit only if a real ask
   needs two grouping keys at once.
-- **Cool palette exact hexes:** pick the 4-step ramp with `Styling.md` at build
-  time; add a `queryLayer` token block to `tokens.ts` (mirror `layer` geometry).
 - **Where "add Subject/Measure" affordances live** when locked vs unlocked — follow
-  the workout builder's resolution once the skeleton is on device.
+  the workout builder's resolution once chrome parity + lock are on device.
+- **Date-bucket Breakdown dim:** promote after lock (+ ideally save); first major
+  capability gap after the builder feels lockable (see Status / ideation).
 - **Empty Measure display:** how an unfilled Measure reads before op×field is chosen
   (placeholder token vs hidden until valid).

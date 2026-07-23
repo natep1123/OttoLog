@@ -201,7 +201,8 @@ Nest labels are **WHERE**, not rival subjects. No “lens” vocabulary in the U
 | Review mode + lock → clean outline | **Lock Query** → paginated grammar / screenshot |
 
 **Same nest depth, own chrome.** The QB clones the builder *DNA* (collapse / lock →
-grammar / preview / save-reopen) with its own `Qb*` nodes + cool palette. Full nest
+grammar / preview / save-reopen) with its own `Qb*` nodes; structure/feel ≈ workout
+nest (`layer` accents by depth). Full nest
 contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
 
 Engineers may notice the SQL shape; users see **“what / how / where / when.”**
@@ -358,7 +359,8 @@ PG, soft suggestions), shape-driven facets. Lives behind the Dashboard card.
 > rebuild it.
 
 - [x] Insights card hub (`InsightsHubScreen`) → Dashboard + Query builder; routing in `HomeScreen`
-- [x] **Slice 1 — nest skeleton (shipped, ephemeral):** `src/components/querybuilder/` `Qb*` nest (cool `queryLayer` palette) rendering Query → Section → (optional) Breakdown → Subject → Measure; collapse + `+ Add …`; client-side aggregate over `v_log_set_facts` (`loadQueryFacts` + `engine.ts`)
+- [x] **Slice 1 — nest skeleton (shipped, ephemeral):** `src/components/querybuilder/` `Qb*` nest rendering Query → Section → (optional) Breakdown → Subject → Measure; collapse + `+ Add …`; client-side aggregate over `v_log_set_facts` (`loadQueryFacts` + `engine.ts`). Provisional cool `queryLayer` — superseded by Decision 12 overturn.
+- [ ] **Slice 1.5 — chrome/feel parity:** reuse workout `layer`/`override`/set-chip by depth; CoordRow DNA (lock control, More/trailing); gold shots `docs/references/workout-builder/`; content stays analytics
 - [ ] **Slice 2 — lock + preview:** lock **per layer** (full tree) → grammar-condensed line; expand to edit; **preview modal** (Locked Preview family)
 - [ ] **Slice 3 — Breakdown totals polish:** per-group sub-rows + totals in card and locked outline (credit-each safe)
 - [ ] **Slice 4 — save/reopen:** `saved_queries` persistence (`name`, `notes`, `definition jsonb`, …) — **ask before migrating**; list/picker (Library-like); reopen → OPEN + locked clean view; re-run live (or historic if pinned)
