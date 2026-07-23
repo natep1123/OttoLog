@@ -39,6 +39,7 @@ Expo ~57 / React Native / TypeScript / Supabase. Before Expo APIs: https://docs.
 - Derive conventions from those docs and existing code — do not invent synonyms or schema.
 - Prefer small, scoped changes; match neighboring patterns.
 - Full project map: `AGENTS.md`. Scoped rules: `.cursor/rules/*.mdc`.
+- **Workflow / models:** `.cursor/rules/agent-workflow.mdc` — orchestrator (Auto) vs execution chats; recommend models for tasks; token-aware quality.
 - When a feature/phase chat closes, update `docs/Status.md` (Shipped / Next / Parked / Open questions). Do not paste Status wholesale into always-on rules.
 - **Voice:** coach-plain UI copy — no AI marketing tone, decorative em dashes, or fluff. See `AGENTS.md` “Voice / copy”.
 - **Commits:** Nate owns the gate. Never `git commit` / push / amend unless he explicitly asks in this chat. “Ship” or “done” ≠ permission to commit — leave the working tree for inspection.

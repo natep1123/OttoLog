@@ -1,0 +1,55 @@
+---
+description: Orchestrator vs execution chats; model recommendations; token efficiency
+alwaysApply: true
+---
+
+# Agent workflow (OttoLog)
+
+Nate has Cursor Pro and wants **high quality with efficient tokens** — not defaulting to one model forever, not burning tokens for sport.
+
+## Orchestrator vs execution
+
+| Chat role | Use for | Default model | Commit gate |
+|-----------|---------|---------------|-------------|
+| **Orchestrator** | Direction, reviews, kickoffs, Status hygiene, “what next?” | **Auto** | Never commit unless Nate says “commit” in that chat |
+| **Execution** | Implement a scoped slice / spike / docs pass | **Recommend** a model in the kickoff (see below) | Same git gate unless Nate grants commit in the kickoff |
+
+**Balance**
+- Keep the orchestrator chat long-lived and relatively thin: decide → kickoff → review summary → Status. Don’t implement large slices in the orchestrator.
+- Spin **new** execution chats for each slice/spike. Paste a scoped kickoff (git gate, read list, in/out of scope, Murph acceptance, stop for review).
+- Bring results back to the orchestrator; don’t fork product direction in five parallel chats without a merge point.
+- Prefer one execution agent finishing a slice over overlapping agents on the same files.
+
+## Model recommendations (do this regularly)
+
+Agents (especially the orchestrator when drafting kickoffs) should **briefly recommend a model** for the next task — 1–2 lines, why, and a cheaper alternative if quality allows.
+
+**Defaults**
+- **Auto** — orchestrator; light Q&A; Status/docs nits; when unsure.
+- Don’t lock every chat to Opus. Rotate when the task fits.
+
+**Rough fit (friendly names; pick what’s available in Cursor)**
+
+| Task shape | Prefer | Skip / overkill |
+|------------|--------|-----------------|
+| Orchestration, kickoffs, Status | **Auto** | Opus for routine routing |
+| Hard product/UX judgment, ambiguous bugs, architecture | **Opus 4.8** (or strongest Claude thinking) | Fast/composer-only |
+| Scoped feature build (madlib spike, lock polish, screen work) | **Sonnet** or strong mid Claude; **Composer** if the slice is narrow and well-specified | Opus unless stuck or high-risk |
+| Fast mechanical edits, renames, small follow-ups | **Composer** / fast model | Opus |
+| Alternate opinion / second pass on a stuck design | **GPT** or **Grok** (different family) once — then converge | Running three models on the same trivial edit |
+
+**Quality bar**
+- Max quality when the decision or bug is expensive to reverse (schema, Insights contract, nest chrome DNA).
+- Token-aware: tight kickoffs, open only needed docs/images, no wholesale doc pastes, no exploratory rewrites of working code.
+- If Auto is doing fine on a task type, say so — don’t upsell.
+
+**When speaking to Nate:** use the same model names he uses (e.g. “Auto”, “Opus 4.8”). Don’t dump internal kebab slugs unless he asks.
+
+## Kickoffs should include
+
+1. Git gate (no commit unless asked — unless Nate granted it in the prompt).
+2. Read list + gold `.jpg` paths when UI.
+3. In / out of scope.
+4. Acceptance (Murph / device).
+5. **Suggested model** (+ optional cheaper fallback).
+6. Stop for Nate review.

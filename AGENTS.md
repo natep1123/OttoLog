@@ -37,6 +37,14 @@ Expo ~57 · React Native · TypeScript · Supabase (Auth + Postgres + RLS)
 | [`docs/New_User_Seeds.md`](docs/New_User_Seeds.md) | Full new-account seed catalog |
 | [`docs/Analytics_Labeling.md`](docs/Analytics_Labeling.md) | PG vs variations vs muscles vs tools |
 
+## Orchestrator / execution / models
+
+- Full habit: [`.cursor/rules/agent-workflow.mdc`](.cursor/rules/agent-workflow.mdc) (always on).
+- **Orchestrator chat** (this role): direction, kickoffs, reviews, Status — default **Auto**. Thin chat; don’t implement large slices here.
+- **Execution chats**: scoped builds/spikes — orchestrator (or Nate) picks a model; **recommend regularly** (quality fit + cheaper fallback). Nate has Pro and wants max quality when it matters, without wasting tokens.
+- Don’t default every hard task to Opus; don’t default every build to Auto-only either — match the task.
+- Kickoff prompts should include a **suggested model** line unless Nate already chose one.
+
 ## Locked habits
 
 - Prefer existing shared components and `src/theme/tokens.ts` / `formTokens.ts`.
