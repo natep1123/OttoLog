@@ -16,22 +16,14 @@ import { NOTES_MAX_LENGTH } from '../forms/formTokens';
 import { useExpansionController } from '../forms/ExpansionController';
 import { useNodeLock } from '../forms/LockController';
 import { StatusText } from '../StatusText';
-import { QbAddChildButton } from './QbAddChildButton';
 import { QbLayer } from './QbLayer';
 import { QbMadlibQueryFrame } from './QbMadlibQueryFrame';
-import { QbMadlibSubjectClause } from './QbMadlibSubjectClause';
+import { QbWhereCard } from './QbWhereCard';
 import { outlineQuery, type QbOutlineLabels } from './qbOutline';
-import { QB_LOCK_ROOT, QB_SECTION_ID } from './qbLockIds';
+import { QB_LOCK_ROOT } from './qbLockIds';
 import { qbFormKind } from './qbTokens';
 import type { SectionResult } from './engine';
-import {
-  emptySubject,
-  sectionChildKey,
-  sectionChildSubject,
-  type QueryDraft,
-  type SectionChild,
-  type SectionNode,
-} from './types';
+import type { QueryDraft, SectionNode } from './types';
 
 type Props = {
   draft: QueryDraft;
@@ -85,7 +77,9 @@ export function QbQueryCard({
 }: Props) {
   const expansion = useExpansionController();
   const expandAllSignal = expansion?.expandAllSignal ?? 0;
-  const { locked, ownLocked, onToggleLock, lockDisabled } = useQueryLock(draft);
+  const { locked, ownLocked, onToggleLock, lockDisabled } = useQueryLock(
+    draft.section.id,
+  );
   const [expanded, setExpanded] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
   const [notesFocused, setNotesFocused] = useState(false);
@@ -94,27 +88,6 @@ export function QbQueryCard({
   const nameRef = useRef<TextInput>(null);
 
   const setSection = (section: SectionNode) => onChange({ ...draft, section });
-
-  const updateChild = (index: number, next: SectionChild) => {
-    setSection({
-      ...draft.section,
-      children: draft.section.children.map((c, i) => (i === index ? next : c)),
-    });
-  };
-
-  const removeChild = (index: number) => {
-    setSection({
-      ...draft.section,
-      children: draft.section.children.filter((_, i) => i !== index),
-    });
-  };
-
-  const addSubjectClause = () => {
-    setSection({
-      ...draft.section,
-      children: [...draft.section.children, emptySubject()],
-    });
-  };
 
   const labels: QbOutlineLabels = {
     primaryGroups,
@@ -263,16 +236,7 @@ export function QbQueryCard({
               </View>
             </MorePanel>
 
-            <QbMadlibQueryFrame
-              draft={draft}
-              onChange={onChange}
-              sessionLabels={sessionLabels}
-              onSessionLabelsChange={onSessionLabelsChange}
-              blockLabels={blockLabels}
-              onBlockLabelsChange={onBlockLabelsChange}
-              sequenceLabels={sequenceLabels}
-              onSequenceLabelsChange={onSequenceLabelsChange}
-            />
+            <QbMadlibQueryFrame draft={draft} onChange={onChange} />
 
             {meta ? (
               <Text style={styles.meta}>
@@ -284,32 +248,25 @@ export function QbQueryCard({
 
             {error ? <StatusText tone="error">{error}</StatusText> : null}
 
-            <View style={styles.clauses}>
-              {draft.section.children.map((child, index) => (
-                <QbMadlibSubjectClause
-                  key={sectionChildKey(child)}
-                  child={child}
-                  result={results[sectionChildKey(child)] ?? null}
-                  primaryGroups={primaryGroups}
-                  onPrimaryGroupsChange={onPrimaryGroupsChange}
-                  variations={variations}
-                  onVariationsChange={onVariationsChange}
-                  tools={tools}
-                  onToolsChange={onToolsChange}
-                  suggestedIds={
-                    sectionChildSubject(child).pgId
-                      ? suggestedByPg[sectionChildSubject(child).pgId as string] ?? []
-                      : []
-                  }
-                  onChange={(next) => updateChild(index, next)}
-                  onRemove={() => removeChild(index)}
-                  canRemove={draft.section.children.length > 1}
-                />
-              ))}
-              <QbAddChildButton
-                childKind="subject"
-                parentTitle="Query"
-                onPress={addSubjectClause}
+            <View style={styles.whereBlock}>
+              <QbWhereCard
+                section={draft.section}
+                results={results}
+                queryWindow={draft.window}
+                primaryGroups={primaryGroups}
+                onPrimaryGroupsChange={onPrimaryGroupsChange}
+                sessionLabels={sessionLabels}
+                onSessionLabelsChange={onSessionLabelsChange}
+                blockLabels={blockLabels}
+                onBlockLabelsChange={onBlockLabelsChange}
+                sequenceLabels={sequenceLabels}
+                onSequenceLabelsChange={onSequenceLabelsChange}
+                variations={variations}
+                onVariationsChange={onVariationsChange}
+                tools={tools}
+                onToolsChange={onToolsChange}
+                suggestedByPg={suggestedByPg}
+                onChange={setSection}
               />
             </View>
           </>
@@ -332,12 +289,12 @@ export function QbQueryCard({
   );
 }
 
-/** Query root lock — owns the single Section id as its child. */
-function useQueryLock(_draft: QueryDraft) {
+/** Query root lock — owns WHERE's own (dynamic) lock id as its child. */
+function useQueryLock(sectionId: string) {
   const { locked, ownLocked, forcedByAncestor, canToggle, toggle } = useNodeLock(
     QB_LOCK_ROOT,
     null,
-    () => [QB_SECTION_ID],
+    () => [sectionId],
   );
   return {
     locked,
@@ -382,8 +339,7 @@ const styles = StyleSheet.create({
   },
   notes: { minHeight: 64, textAlignVertical: 'top' },
   notesFocused: { borderColor: layer.session.chip.color },
-  clauses: {
-    gap: spacing.sm,
+  whereBlock: {
     marginTop: spacing.sm,
   },
   fieldLabel: {

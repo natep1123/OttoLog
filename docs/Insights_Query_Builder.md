@@ -8,8 +8,18 @@
 > promoted to build spike** (Query→WHERE→FOR ≈ Session→Block→Exercise; dusk
 > **Insight** cards hold WITH+SHOW under gold FOR; SPLIT≈Sequence; SPLIT mode
 > **C** + one-shot seed; `Subject.asks[]` AST lean; credit-each across
-> overlapping Insights). Nest-shell-only authoring remains **parked**; §11 is a
-> middle path, not an un-park. SHOW dropdown polish stays parallel/follow-on.
+> overlapping Insights). **Build spike implemented** (`QbWhereCard` /
+> `QbForCard` / `QbInsightCard` / `QbSplitWrapperCard`; ephemeral, **uncommitted
+> — awaiting Nate's dogfood/commit**). Nest-shell-only authoring remains
+> **parked**; §11 is a middle path, not an un-park. SHOW dropdown polish stays
+> parallel/follow-on.
+> **§12 (Jul 23, post-§11 dogfood ideation):** five follow-on locks sequenced
+> into two slices — **A** (WITH facet-split any/all + WHERE nested date
+> window) and **B** (per-layer lock/pills at WHERE+FOR + Insight
+> summary-row/editor) — **both implemented** (ephemeral, uncommitted).
+> Multi-WHERE side-by-side date-slice compare **deferred to Slice 5**, not
+> pulled forward. See §12. **Next** outside §12: SHOW dropdown polish →
+> totals (3) → `saved_queries` (ask first).
 > No `saved_queries` / `008` from this doc alone — ask at the save slice. Nate
 > owns the go and the commit gate.
 >
@@ -676,4 +686,33 @@ parked nest-shell-only authoring and today’s flat Subject clause.
 - [ ] Promote to §8 / Status Next, park, or keep revising — **Nate decides**;
       not automatic even with the locks above. Sequencing: **after** SHOW
       dropdown polish, per Nate.
+
+---
+
+## 12. Post-§11 ideation locks (Jul 23) — facet-split WITH, nested date window, per-layer chrome
+
+> **Status:** Ideated after dogfooding the §11 build spike against
+> `references/query-builder/08-author-where-for-insight.jpg` and the workout
+> Override chrome (`references/workout-builder/08`/`09`). **Five decisions
+> locked.** **Slice A + Slice B both implemented** (ephemeral, uncommitted).
+> Does not un-park nest-shell-only authoring; does not touch schema/`008`.
+> Follow-on outside this section: SHOW dropdown polish → totals → save.
+
+| # | Decision | Ruling | Slice |
+|---|---|---|---|
+| 1 | WITH match logic | `InsightNode.identityMatch` (one shared any/all) **splits into independent `variationMatch` + `toolMatch`** (each `'any'\|'all'`). Still lives on the Insight (§11.4 already moved identity there) — this only decouples the two facets, it is **not** full nested AND/OR condition groups (that idea was raised and explicitly rejected as more than needed; multiple Insights already cover the OR-of-asks case via credit-each). | A |
+| 2 | Nested date window | `SectionNode` (WHERE) gains an **optional date sub-window** that must **clamp inside** the Query's outer window (unset = inherit Query's window unchanged — must not regress today's behavior). Date filters stop at WHERE — **FOR and Insight stay identity-only, no date knob**, so a "document" doesn't grow five independent notions of "when." | A |
+| 3 | Multi-WHERE / side-by-side compare | **Deferred to Slice 5** (multi-Section), not pulled forward now. The motivating case ("one Query, 4 WHEREs = 4 weeks of a month, side by side") is real but out of scope until Slice 5. When it lands: prefer a **`+ Duplicate WHERE`** clone action (copy the FOR/Insight tree, just change the date sub-window) over rebuilding per WHERE, and default rendering to a **vertical stack** (report-read order) — true horizontal/tabbed comparison is the separate, already-parked Phase 5 "Compare mode" idea in `Analytics_Overhaul_Proposal.md`, not this doc's job. | — (Slice 5, later) |
+| 4 | Per-layer lock + pills | **Reverses** the v1 "whole-ask Query lock only" call (§8 #10, §10 "Per-Subject lock: parked"). **WHERE and FOR each become independently lockable nodes** (own `useNodeLock` id, same ancestor-cascade rules as workout Block/Exercise). Each also gets a **collapsed child-summary pill-scroller row** (WHERE → its FOR PG names; FOR → its Insight summaries), matching Session/Block chrome. **Insight itself stays without its own lock toggle** — it remains a child governed by its FOR, same as Measure/Set never getting an independent lock today. | B |
+| 5 | Insight interaction model | `QbInsightCard`'s always-expanded inline form becomes a **two-state component**: a compact **summary row** (WITH+SHOW value line + edit pencil + Remove, styled like the workout Overrides list item, `workout-builder/08`) and a separate **editor panel** opened by the edit tap (WITH pickers + SHOW measures + Save/Cancel, styled like `workout-builder/09`). Locked outline / preview grammar (`qbOutline.ts`, `LockedOutline`) is unaffected — this only changes the unlocked author interaction. | B |
+
+**Slice A** (facet-split match + WHERE date nesting) — **done in tree.**
+**Slice B** (per-layer lock/pills + Insight summary-row/editor) — **done in
+tree.** Follow-on: SHOW dropdown polish → totals (3) → `saved_queries`.
+
+**Supersedes:** §10 "Decided by WITH any/all + sibling SPLIT" (single
+`identityMatch` → split into `variationMatch`/`toolMatch`, decision 1 above);
+§8 #10 and §10 "Per-Subject lock: parked" (decision 4 above — WHERE/FOR now
+planned to be independently lockable). §11.4/§11.6's description of Insight as
+an always-open card is superseded by decision 5 above.
 

@@ -82,6 +82,8 @@ export type InsightQueryResult = {
 
 export type Fact = {
   sessionLogId: string;
+  /** Inclusive YYYY-MM-DD — used by the Query builder's WHERE date sub-window. */
+  sessionDate: string;
   sessionCategoryId: string;
   blockLabelId: string | null;
   sequenceLabelId: string | null;
@@ -246,27 +248,30 @@ function passesScope(
 
 /**
  * Per-PG identity gate (soft scope): a fact counts toward a PG's panel only if it
- * matches that PG's variation/tool filters. Empty filters = pass. `identityMatch`
- * (default `'any'`) governs both sets: `'any'` = at least one selected id present;
- * `'all'` = every selected id present (intersection). Dashboard call sites don't
- * pass a mode and keep today's any-of behavior.
+ * matches that PG's variation/tool filters. Empty filters = pass. `variationMatch`
+ * / `toolMatch` (default `'any'` each, doc §12 decision 1 — split from the old
+ * shared `identityMatch`) independently govern their own facet: `'any'` = at
+ * least one selected id present; `'all'` = every selected id present
+ * (intersection). Dashboard call sites don't pass a mode and keep today's
+ * any-of behavior.
  */
 function passesPgIdentity(
   fact: Fact,
   variationIds: string[],
   toolIds: string[],
-  identityMatch: IdentityMatch = 'any',
+  variationMatch: IdentityMatch = 'any',
+  toolMatch: IdentityMatch = 'any',
 ): boolean {
   if (variationIds.length > 0) {
     const matches =
-      identityMatch === 'all'
+      variationMatch === 'all'
         ? variationIds.every((id) => fact.tagIds.includes(id))
         : variationIds.some((id) => fact.tagIds.includes(id));
     if (!matches) return false;
   }
   if (toolIds.length > 0) {
     const matches =
-      identityMatch === 'all'
+      toolMatch === 'all'
         ? toolIds.every((id) => fact.toolIds.includes(id))
         : toolIds.some((id) => fact.toolIds.includes(id));
     if (!matches) return false;
@@ -395,6 +400,7 @@ type FactRow = {
 function mapFactRow(row: FactRow): Fact {
   return {
     sessionLogId: row.session_log_id,
+    sessionDate: row.session_date,
     sessionCategoryId: row.session_category_id,
     blockLabelId: row.block_label_id,
     sequenceLabelId: row.sequence_label_id,

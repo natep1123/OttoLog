@@ -7,7 +7,7 @@ pasting the same images into every chat.
 
 | Folder | Use |
 |--------|-----|
-| [`workout-builder/`](./workout-builder/) | Workout nest gold — Session → … → Exercise (+ locked preview) |
+| [`workout-builder/`](./workout-builder/) | Workout nest gold — Session → … → Exercise (+ locked preview, Sequence overrides) |
 | [`query-builder/`](./query-builder/) | Insights QB after-gallery — madlib author (SHOW/SPLIT) + locked outline |
 
 ## Archive (optional / history)

@@ -8,7 +8,7 @@
  * becomes the `saved_queries` definition — no table yet.
  */
 
-import type { IdentityMatch, InsightFacetId, SetType } from '../../lib/insights';
+import type { IdentityMatch, InsightFacetId, QueryWindow, SetType } from '../../lib/insights';
 import { daysAgoKey } from '../../lib/insights';
 import { todayDateKey } from '../../lib/localTime';
 
@@ -32,20 +32,41 @@ export type MeasureNode = {
   field: MeasureField | null;
 };
 
-/** One Primary Group + soft identity filters + its Measures. */
+/**
+ * One ask-slice under a FOR — product noun **Insight** (doc §11.4, locked
+ * AST lean `Subject.asks[]`). A soft identity combo (`WITH` variations/tools,
+ * any/all) + its `SHOW` measures. Many Insights can stack under one Subject
+ * the way many Sets stack under one Exercise/round — structural parallel
+ * only: dusk chrome (the workout-override family), never the word
+ * "override" on this surface.
+ */
+export type InsightNode = {
+  id: string;
+  variationIds: string[];
+  toolIds: string[];
+  /**
+   * WITH match mode for the variation facet (doc §12 decision 1 — splits the
+   * old shared `identityMatch`): `'any'` (default) = has at least one
+   * selected variation; `'all'` = must have every one selected
+   * (intersection). Independent of `toolMatch`.
+   */
+  variationMatch: IdentityMatch;
+  /** WITH match mode for the tool facet — independent of `variationMatch`. */
+  toolMatch: IdentityMatch;
+  measures: MeasureNode[];
+};
+
+/**
+ * One Primary Group (`FOR`) + its Insights. §11.4 AST lean: identity
+ * (variations/tools/match) and Measures moved **off** the Subject onto each
+ * `InsightNode` — the Subject itself only carries the PG and the ordered ask
+ * list. This is **not** N Subjects sharing a `pgId`; the PG lives once here.
+ */
 export type SubjectNode = {
   id: string;
   /** Null until the user picks a Primary Group. */
   pgId: string | null;
-  variationIds: string[];
-  toolIds: string[];
-  /**
-   * WITH match mode (Option B, doc §10): `'any'` (default) = has at least
-   * one selected variation/tool; `'all'` = must have every one selected
-   * (intersection). Applies uniformly to the variation set and the tool set.
-   */
-  identityMatch: IdentityMatch;
-  measures: MeasureNode[];
+  asks: InsightNode[];
 };
 
 /** `For each <dimension>` — wraps Subjects, no nested Breakdowns in v1. */
@@ -75,9 +96,24 @@ export type SectionSetPolicy = {
   includeWarmups: boolean;
 };
 
+/**
+ * WHERE's own date sub-window (doc §12 decision 2) — same shape as the
+ * Query's window. Must clamp inside the Query's outer window; see
+ * `clampSectionWindow` / `effectiveSectionWindow`.
+ */
+export type SectionDateWindow = QueryWindow;
+
 export type SectionNode = {
+  /**
+   * Stable lock-tree id (doc §12 decision 4) — minted, not a static constant,
+   * so multi-WHERE (Slice 5) drops in without a lock-id rework. v1 AST still
+   * holds exactly one Section.
+   */
+  id: string;
   scope: SectionScope;
   setPolicy: SectionSetPolicy;
+  /** Null = inherit the Query's window unchanged (today's behavior, no regression). */
+  dateWindow: SectionDateWindow | null;
   children: SectionChild[];
 };
 
@@ -116,17 +152,37 @@ export function emptyMeasure(): MeasureNode {
   return { id: qbId('measure'), op: 'sum', field: null };
 }
 
-/** An empty Subject (no PG yet) with one empty Measure. */
+/** An empty Insight (no WITH picks yet; one empty Measure). */
+export function emptyInsight(): InsightNode {
+  return {
+    id: qbId('insight'),
+    variationIds: [],
+    toolIds: [],
+    variationMatch: 'any',
+    toolMatch: 'any',
+    measures: [emptyMeasure()],
+  };
+}
+
+/** An empty Subject (no PG yet) with one empty Insight. */
 export function emptySubject(): SectionChildSubject {
   return {
     id: qbId('subject'),
     kind: 'subject',
     pgId: null,
-    variationIds: [],
-    toolIds: [],
-    identityMatch: 'any',
-    measures: [emptyMeasure()],
+    asks: [emptyInsight()],
   };
+}
+
+/**
+ * The Insight a SPLIT (Breakdown) uses as its partition template — its WITH
+ * filter narrows which facts are grouped, its SHOW measures apply to each
+ * resulting group. Mode C (doc §11.5): hand Insights and auto-partition are
+ * never both live, so a SPLIT-wrapped Subject reads its single template
+ * ask here rather than a full `asks[]` list.
+ */
+export function templateAsk(subject: SubjectNode): InsightNode {
+  return subject.asks[0] ?? emptyInsight();
 }
 
 /** A fresh Breakdown wrapping one empty Subject. */
@@ -149,11 +205,42 @@ export function defaultQueryDraft(): QueryDraft {
     notes: null,
     window: { fromDate: daysAgoKey(6), toDate: todayDateKey() },
     section: {
+      id: qbId('section'),
       scope: { sessionCategoryIds: [], blockLabelIds: [], sequenceLabelIds: [] },
       setPolicy: { setTypes: ['Working'], includeWarmups: false },
+      dateWindow: null,
       children: [emptySubject()],
     },
   };
+}
+
+/**
+ * Clamp a candidate WHERE date sub-window inside the Query's outer window
+ * (doc §12 decision 2) — never wider than the Query. If the candidate
+ * doesn't overlap the Query's window at all, collapses to a single day at
+ * the nearer edge rather than producing an inverted range.
+ */
+export function clampSectionWindow(
+  candidate: SectionDateWindow,
+  queryWindow: QueryWindow,
+): SectionDateWindow {
+  const fromDate =
+    candidate.fromDate < queryWindow.fromDate ? queryWindow.fromDate : candidate.fromDate;
+  const toDate = candidate.toDate > queryWindow.toDate ? queryWindow.toDate : candidate.toDate;
+  if (fromDate > toDate) return { fromDate: toDate, toDate };
+  return { fromDate, toDate };
+}
+
+/**
+ * The Section's effective date window for fact filtering: its own clamped
+ * sub-window when set, else the Query's window unchanged (no-regression
+ * default — doc §12 decision 2).
+ */
+export function effectiveSectionWindow(
+  section: SectionNode,
+  queryWindow: QueryWindow,
+): QueryWindow {
+  return section.dateWindow ? clampSectionWindow(section.dateWindow, queryWindow) : queryWindow;
 }
 
 /** Type guard: Section child is a Breakdown. */
@@ -173,7 +260,16 @@ export function wrapInBreakdown(
   dimension: BreakdownDimension = 'variation',
 ): BreakdownNode {
   const { kind: _kind, ...rest } = subject;
-  return { id: qbId('breakdown'), kind: 'breakdown', dimension, subjects: [rest] };
+  // Mode C (doc §11.5): hand Insights and auto-partition are never both
+  // live on the same FOR — collapse to a single template ask when SPLIT
+  // turns on (the first existing Insight, or a fresh empty one).
+  const template = rest.asks[0] ?? emptyInsight();
+  return {
+    id: qbId('breakdown'),
+    kind: 'breakdown',
+    dimension,
+    subjects: [{ ...rest, asks: [template] }],
+  };
 }
 
 /** SPLIT off: unwrap a Breakdown back to its (single, madlib-authored) Subject. */

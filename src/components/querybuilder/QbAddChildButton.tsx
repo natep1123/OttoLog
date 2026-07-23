@@ -8,14 +8,21 @@ import {
 } from 'react-native';
 import { colors, radii, typography } from '../../theme/tokens';
 import { FormArrow } from '../forms/FormArrow';
-import { qbAddButtonColors, qbMeasureColors } from './qbTokens';
+import { qbAddButtonColors, qbInsightColors, qbMeasureColors } from './qbTokens';
 
-/** What the add control creates. `measure` uses the amber Set-analog chip token. */
-export type QbAddKind = 'breakdown' | 'subject' | 'measure';
+/**
+ * What the add control creates. `measure` uses the amber Set-analog chip
+ * token; `insight` uses the dusk override-family chip token (§11); `for`
+ * shares the gold Subject/Exercise token (FOR is the madlib word for a
+ * Subject clause).
+ */
+export type QbAddKind = 'breakdown' | 'subject' | 'for' | 'insight' | 'measure';
 
 const CHILD_LABEL: Record<QbAddKind, string> = {
   breakdown: 'Breakdown',
   subject: 'Subject',
+  for: 'FOR',
+  insight: 'Insight',
   measure: 'Measure',
 };
 
@@ -40,7 +47,9 @@ export function QbAddChildButton({
   const token =
     childKind === 'measure'
       ? qbMeasureColors()
-      : qbAddButtonColors(childKind === 'breakdown' ? 'breakdown' : 'subject');
+      : childKind === 'insight'
+        ? qbInsightColors()
+        : qbAddButtonColors(childKind === 'breakdown' ? 'breakdown' : 'subject');
   const childLabel = CHILD_LABEL[childKind];
 
   return (
@@ -79,9 +88,10 @@ export function QbAddChildButton({
 const styles = StyleSheet.create({
   button: {
     width: '92%',
-    height: 32,
+    minHeight: 32,
     alignSelf: 'center',
     paddingHorizontal: 10,
+    paddingVertical: 6,
     justifyContent: 'center',
     borderWidth: 1,
     borderRadius: radii.sm,
@@ -93,24 +103,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   action: {
-    flex: 1,
+    // Weighted over destination: the action word ("+ Add Measure") matters
+    // more than the (often short) destination — don't split 50/50 and cut it.
+    flexGrow: 2,
+    flexShrink: 1,
+    flexBasis: 0,
     minWidth: 0,
     fontFamily: typography.fontMedium,
-    fontSize: 13,
+    fontSize: 12,
     textAlign: 'left',
   },
   arrowSlot: {
-    width: 28,
+    width: 24,
     flexShrink: 0,
-    marginRight: 8,
+    marginHorizontal: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   destination: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
     minWidth: 0,
     fontFamily: typography.fontMedium,
-    fontSize: 13,
+    fontSize: 12,
     textAlign: 'left',
   },
 });

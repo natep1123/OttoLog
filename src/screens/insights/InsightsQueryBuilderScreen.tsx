@@ -143,9 +143,12 @@ export function InsightsQueryBuilderScreen({ onBrandPress, onBack }: Props) {
   }, [pgKey]);
 
   // Aggregate client-side (pure) whenever facts or the section shape change.
+  // WHERE's own date sub-window (doc §12 decision 2) narrows within the
+  // already-fetched Query window — no extra fetch needed.
   const results: SectionResult = useMemo(
-    () => (factsResult ? evaluateSection(factsResult.facts, draft.section) : {}),
-    [factsResult, draft.section],
+    () =>
+      factsResult ? evaluateSection(factsResult.facts, draft.section, draft.window) : {},
+    [factsResult, draft.section, draft.window],
   );
 
   const meta = factsResult

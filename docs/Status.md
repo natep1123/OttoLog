@@ -12,14 +12,17 @@
 
 - Stack / greenfield path: `sql/greenfield/001`–`007` (facts view in `007`; no `008`)
 - Live smoke DB: **OttoLog** Supabase (greenfield; email/password; confirm-email OFF for smoke)
-- App: Insights is now a **card hub** → **Dashboard** + **Query builder** (nest AST + lock + madlib + polish + **WITH any/all + sibling SPLIT**; ephemeral). **Next:** **§11 author nest chrome build** (Insight cards under FOR; SPLIT mode C + seed; `Subject.asks[]`) → SHOW dropdown polish → totals (3) → `saved_queries` (4 — **ask first**). Locks: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) **§11**. Per-Subject lock parked. Gold: [`references/query-builder/`](./references/query-builder/)
+- App: Insights is now a **card hub** → **Dashboard** + **Query builder** (nest AST + lock + madlib + polish + **WITH any/all + sibling SPLIT** + **§11 Insight nest-chrome** + **§12 A/B** facet-split, WHERE date, per-layer lock/pills, Insight summary-row/editor; ephemeral, uncommitted). **Next:** SHOW dropdown polish → totals (3) → `saved_queries` (4 — **ask first**). Locks: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) **§11–§12**. Multi-WHERE side-by-side compare deferred to Slice 5. Gold: [`references/query-builder/`](./references/query-builder/)
 - **Analytics direction (locked, Jul 22; authoring updated same evening):** Insights = **two tools**. **Dashboard** = quick unsaved PG/facet look. **Query builder** = structured, eventually savable ask — **madlib author** + **locked nest outline** (workout chrome family for read/share). Nest AST + client engine stay. See [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md) + [`Insights_Query_Builder.md`](./Insights_Query_Builder.md). v1 Hybrid/cube doc archived under `docs/deprecated/`
 - Seeds: `sql/seeds/murph_personal_seed.sql` applied on `n8.perry` (personal smoke only; not Chat 6)
 - Living board: this file (linked from AGENTS / README / Project_Structure)
 
 ## Shipped recently (newest first)
 
-- **Insights Query builder — WITH any/all + sibling SPLIT (Jul 23, ephemeral)** — Option **B:** `identityMatch: 'any' | 'all'` on Subject (WITH intersection). Option **C:** non-empty WITH + SPLIT → sibling co-tags (exclude WITH ids from group keys); empty WITH → peer credit-each SPLIT. Outline: `among <identity>`; empty sibling line. Gold: `01` locked among Running or Walking; `06` author WITH + Match hint. **Still open UI:** SHOW halves as **dropdowns** (not tap-cycle); chip truncation; wire `availableFields`. Per-Subject lock **parked**.
+- **Insights Query builder — §12 Slice B: per-layer lock/pills + Insight editor (Jul 23, ephemeral, uncommitted)** — WHERE + FOR independently lockable via `useNodeLock` (Query→WHERE→FOR cascade; Insight has no own lock). Collapsed child-summary pill rows (WHERE→FOR PGs; FOR→Insight summaries). `QbInsightCard` two-state: summary row + edit panel (Save/Cancel draft; fresh Insights open in editor). `QB_SECTION_ID` static constant removed — Section/FOR use draft node ids. Contract §12 #4–5. tsc clean. **Not yet committed — Nate's gate.**
+- **Insights Query builder — §12 Slice A: WITH facet-split + WHERE nested date (Jul 23, ephemeral, uncommitted)** — `InsightNode.identityMatch` → independent `variationMatch` / `toolMatch`; `passesPgIdentity` + engine + outline phrasing updated. `SectionNode.dateWindow` optional + `clampSectionWindow` / `effectiveSectionWindow` (clamp-on-change, inherit Query when unset). WHERE “Date range” Disclosure; Insight Match rows split per facet. Contract §12 #1–2. tsc clean. **Not yet committed — Nate's gate.**
+- **Insights Query builder — §11 Insight nest-chrome build spike (Jul 23, ephemeral, uncommitted)** — `QbWhereCard` (WHERE as a real Block-like container: nest-scope/set-policy disclosures + `+ Add FOR`), `QbForCard` (gold PG-only FOR + Insight stack), `QbInsightCard` (dusk WITH+SHOW), `QbSplitWrapperCard` (violet SPLIT wrapper + live preview + one-shot `+ Split into Insights` seed, Mode C). AST: `SubjectNode.asks: InsightNode[]` (identity+measures moved off Subject onto each Insight); engine credit-each per Insight; `qbOutline` renders Insights as dusk override-family entries. Deleted superseded `QbMadlibSubjectClause`/`QbSectionCard`/`QbSubjectCard`/`QbBreakdownCard`. tsc clean. Gold: `query-builder/08`. Dogfooded by Nate → prompted §12. **Not yet committed — Nate's gate.**
+- **Insights Query builder — WITH any/all + sibling SPLIT (Jul 23, ephemeral)** — Option **B:** shared `identityMatch` (superseded by §12 Slice A facet-split). Option **C:** non-empty WITH + SPLIT → sibling co-tags (exclude WITH ids from group keys); empty WITH → peer credit-each SPLIT. Outline: `among <identity>`; empty sibling line. Gold: `01` locked among Running or Walking; `06` author WITH + Match hint. **Still open UI:** SHOW halves as **dropdowns** (not tap-cycle); chip truncation; wire `availableFields`.
 - **Insights Query builder — madlib author polish A–G (Jul 23, ephemeral)** — Progressive empty (FOR first); SHOW as `op | field` chips (tap-cycle); WITH collapsed chip; live SPLIT groups behind disclosure; locked outline soft-hides “Section”; date pill hidden unlocked+expanded. Early 2.5 shots → [`references/archive/query-madlib-2.5-early/`](./references/archive/query-madlib-2.5-early/).
 - **Insights Query builder — slice 2.5 madlib authoring spike (Jul 23, ephemeral)** — Unlocked author = Query frame (**IN** presets + **WHERE** summary/expand) + Subject clause-blocks (**FOR** / **WITH** / **SHOW** / optional **SPLIT**). Section collapsed in author UI; whole-ask Query lock only. Maps to existing nest AST; locked branch + `qbOutline` / preview protected. Nest-shell author cards kept unused (fallback). No `008` / save. Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
 - **Scoped execution chats skill + Pro+ (Jul 23)** — [`.cursor/skills/scoped-execution-chats/SKILL.md`](../.cursor/skills/scoped-execution-chats/SKILL.md); workflow notes Pro+ / no on-demand; Sonnet 5 as mid-range sweet spot (promo through Aug 31).
@@ -47,7 +50,7 @@
 
 ## Next (priority order)
 
-1. **Insights Query builder — §11 author nest chrome (Insight cards) — build spike** — Query→WHERE→FOR nest rails; gold FOR = PG only; dusk **Insight** cards = WITH+SHOW (`Subject.asks[]`); SPLIT mode **C** + optional one-shot `+ Split into Insights`; credit-each across overlapping Insights; protect B+C + lock outline. Contract §11. Ephemeral; no `008`. Then SHOW dropdown polish if not already in tree → slice **3** totals → **4** `saved_queries` (**ask first**).
+1. **Insights Query builder — SHOW dropdown polish** — keep `op | field` chip look; each half = dropdown (not tap-cycle); fix truncation; wire `availableFields` if cheap. May already be partially in tree (`QbMeasureRow`) — dogfood / confirm before treating as shipped. Then slice **3** totals → **4** `saved_queries` (**ask first**).
 2. **Identity conviction** — PG + Variations + muscles (+ tools + nest labels); category stays PG metadata for balance **saved views**; Counts as = default facet (Phase 4)
 3. **PG Counts as + Chat 6 (Phase 4)** — `natural_metric` on PGs; Account edit; New User Seeds dump
 4. **Exercise lock ↔ pills scroll** — exercise form correctly hides the pills scroller when lock=ON and dropdown=OPEN, and shows it when lock=OFF or lock=ON + dropdown=COLLAPSED. Explore mirror on Sequence / Block / Session builders
@@ -65,14 +68,16 @@ is **madlib / clause compose** (not five Session-like edit shells). Full contrac
 [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
 Gold shots: [`references/workout-builder/`](./references/workout-builder/) + [`references/query-builder/`](./references/query-builder/). Docs index: [`README.md`](./README.md).
 
-- **Shipped:** slices 1 + 1.5 + 2 + 2.5 madlib + author polish + **WITH any/all + sibling SPLIT**. **Next:** **§11 Insight nest-chrome build** → SHOW dropdown polish → totals (3) → save (`saved_queries`, **ask first**) → multi-Section + more dims/ops + seeds.
-- **§11 author nest chrome — build spike:** dusk **Insight** cards = WITH+SHOW under FOR; SPLIT mode **C** + one-shot seed; `Subject.asks[]`; credit-each. Does not un-park nest-shell-only authoring. Contract §11.
+- **Shipped:** slices 1 + 1.5 + 2 + 2.5 madlib + author polish + **WITH any/all + sibling SPLIT** + **§11 Insight nest-chrome** + **§12 A/B** (facet-split, WHERE date, per-layer lock/pills, Insight summary-row/editor) — ephemeral, uncommitted. **Next:** SHOW dropdown polish → totals (3) → save (`saved_queries`, **ask first**) → multi-Section + more dims/ops + seeds.
+- **§11 author nest chrome — build spike, implemented:** dusk **Insight** cards = WITH+SHOW under FOR; SPLIT mode **C** + one-shot seed; `Subject.asks[]`; credit-each. Does not un-park nest-shell-only authoring. Contract §11.
+- **§12 A+B — implemented:** facet-split match, WHERE `dateWindow` clamp, WHERE/FOR per-layer lock + collapsed pills, Insight summary-row/editor. Multi-WHERE side-by-side date-slice compare **deferred to Slice 5**. Contract §12.
 - **Save ≈ templates/logs (later):** nameable + notes; reopen → OPEN + locked clean view; re-run live (rolling) or historic (pinned window). Prefer nest JSON behind madlib view.
 - **v1 flat Subject-card QB is dead** — do not rebuild it. **Nest-shell-only authoring is parked** — do not keep forcing it as the main bet. §11 middle-path (nest-shaped cards + madlib fields / Insight leaf) is the author bet now in build. Dashboard keeps category browse + per-PG soft suggestions as the quick path.
 
 ## Parked
 
 - **QB nest-shell-only authoring** — forcing Query→Section→Breakdown→Subject→Measure as the *edit* path; superseded by madlib author / nest readout (softened nest = fallback only if spike fails). **Related but separate:** §11 nest-shaped author + dusk Insight (WITH+SHOW) cards has locks recorded (ideation) — not an automatic un-park of this item.
+- **Multi-WHERE side-by-side date-slice compare** — e.g. one Query, 4 WHEREs = 4 weeks of a month, viewed together. Raised in §12 ideation; deferred to Slice 5 multi-Section rather than pulled forward now. When it lands: prefer a `+ Duplicate WHERE` clone action over rebuilding the FOR/Insight tree per WHERE, and default to vertical stacking (report-read order) over a horizontal/tabbed compare — true side-by-side stays the separate, already-parked Phase 5 "Compare mode" idea in `Analytics_Overhaul_Proposal.md`.
 - v1 **Simple card stack / Power cube** (`measure × dimension × time`) — superseded by Saved Insight templates
 - Dashboard **lens × metric** IA (Phase 1a layout — retired; fact loader evolved into Phase 2 query API)
 - Home week calendar wired to session logs
@@ -95,7 +100,7 @@ Rough priority bands only; not sequenced against Phase 3. Ideas stay ideas until
 
 ### Product structure (medium)
 
-- **QB author nest chrome (§11) — build spike** — Query→WHERE→FOR ≈ Session→Block→Exercise; dusk **Insight** cards under FOR = WITH+SHOW; SPLIT≈Sequence (mode C + one-shot seed); `Subject.asks[]`; credit-each. Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §11.
+- **QB SHOW dropdown polish — Next** — measure chip halves as dropdowns; truncation; `availableFields`. May partially be in tree already.
 - **Grouped taxonomy proposal (under review)** — three-tier drill-down **Group → Movement → Modifier**; second-agent review in [`Analytics_Labeling.md`](./Analytics_Labeling.md). **No `008` yet.** Half-step on Dashboard: category browse + Murph suggestion thicken. Full adopt only after Query builder feel / before Chat 6.
 - **Taxonomy screens** — reorganize Account taxonomy for clarity
 - **Library + Create IA** — revisit structure so both tabs read clearly
@@ -112,10 +117,10 @@ Rough priority bands only; not sequenced against Phase 3. Ideas stay ideas until
 
 ## Open questions
 
-- Query builder **author nest chrome (§11) — build spike:** dusk **Insight** cards under FOR hold WITH+SHOW; SPLIT≈Sequence. **Locked:** naming (Insight), SPLIT mode **C** + one-shot `+ Split into Insights` seed, AST lean `Subject.asks[]`, credit-each across overlapping Insights. See [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §11.
-- Query builder **SHOW chips:** keep `op | field` look; each half = **dropdown**, not tap-to-cycle; fix chip truncation; wire `availableFields` if cheap (parallel/follow-on to §11). (May already be in working tree — dogfood / Status ship note pending.)
-- Query builder **Subject / exercise lock:** **parked** — whole-ask Query lock for v1 madlib; revisit later.
-- Query builder **WITH any/all + sibling SPLIT decided (Jul 23):** Option B `identityMatch` + Option C sibling-on-filtered-set. Venn dashboards later. See contract §10.
+- Query builder **author nest chrome (§11) — build spike, implemented:** dusk **Insight** cards under FOR hold WITH+SHOW; SPLIT≈Sequence. **Locked:** naming (Insight), SPLIT mode **C** + one-shot `+ Split into Insights` seed, AST lean `Subject.asks[]`, credit-each across overlapping Insights. Ephemeral, uncommitted. See [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §11.
+- Query builder **§12 A+B — implemented:** facet-split (`variationMatch`/`toolMatch`), WHERE nested date window, WHERE/FOR per-layer lock + pills, Insight summary-row/editor. Multi-WHERE compare deferred to Slice 5. See [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §12.
+- Query builder **SHOW chips:** keep `op | field` look; each half = **dropdown**, not tap-to-cycle; fix chip truncation; wire `availableFields` if cheap. (May already be in working tree — dogfood / Status ship note pending.)
+- Query builder **WITH any/all + sibling SPLIT decided (Jul 23):** Option B (shared match, superseded by Slice A facet-split) + Option C sibling-on-filtered-set. Venn dashboards later. See contract §10.
 - Query builder madlib polish **decided:** progressive empty; WITH collapsed; live SPLIT disclosure; soft-hide Section; date pill rules. Still open: nest JSON save shape; date-bucket SPLIT.
 - Query builder: IN presets shipped; rolling vs pinned date semantics live in saved definition (slice 4)
 - Dashboard lock/collapse grammar — still open if Dashboard ever grows lock; today it stays unlocked/fast
@@ -129,4 +134,4 @@ Rough priority bands only; not sequenced against Phase 3. Ideas stay ideas until
 - Pull-to-refresh: global rule vs per-tab
 - Brand: logo / slogan / icon timing vs Auth landing restyle
 
-Dashboard lean locks applied; Query builder **through WITH/SPLIT B+C in tree** — still ephemeral. **Next: §11 Insight nest-chrome build → SHOW dropdowns → totals (3) → `saved_queries` (4, ask first).** Refs: [`references/query-builder/`](./references/query-builder/).
+Dashboard lean locks applied; Query builder **through §11 + §12 A/B in tree (uncommitted)**. **Next: SHOW dropdown polish → totals (3) → `saved_queries` (4, ask first).** Multi-WHERE compare deferred to Slice 5. Refs: [`references/query-builder/`](./references/query-builder/).

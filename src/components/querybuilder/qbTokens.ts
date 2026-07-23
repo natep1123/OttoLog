@@ -41,6 +41,17 @@ export const qbMeasureChip = {
 /** Dusk override accent for sparse leaf extras (Subject `For each …` / totals). */
 export const qbLeafOverride = override;
 
+/**
+ * Insight card chip — dusk (the workout-override family), because an Insight
+ * borrows that chrome cousin (§11.4: "same exercise, multiple override / rx
+ * cards") without reusing the word "override" in product copy.
+ */
+export const qbInsightChip = {
+  color: override.color,
+  border: override.border,
+  background: override.wash,
+} as const;
+
 /** Add controls use the exact chip token of the layer they create. */
 export function qbAddButtonColors(creates: QbLayerKind) {
   const token = qbLayerToken(creates);
@@ -57,5 +68,14 @@ export function qbMeasureColors() {
     border: qbMeasureChip.color,
     wash: qbMeasureChip.background,
     label: qbMeasureChip.color,
+  };
+}
+
+/** Insight add/leaf uses the dusk override-family chip token. */
+export function qbInsightColors() {
+  return {
+    border: qbInsightChip.color,
+    wash: qbInsightChip.background,
+    label: qbInsightChip.color,
   };
 }
