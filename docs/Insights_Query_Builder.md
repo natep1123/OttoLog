@@ -384,14 +384,17 @@ GROUP BY / compare windows later — don’t redesign authoring around them.
 
 ## 10. Open decisions
 
-- **Madlib chrome density:** single Query card with clause rows vs short chip
-  “sentence” rails — spike decides.
-- **Empty Subject block:** placeholder `FOR ▢ · SHOW ▢` vs hide until PG picked.
-- **SPLIT + one Subject:** locked outline always purple “For each…”, or flatten
-  when trivial?
+**Decided by slice 2.5 madlib spike (Jul 23):**
+- **Madlib chrome density:** single Query card with **clause rows** (`FOR` / `WITH` / `SHOW` / `SPLIT` as leading words) — not chip-sentence rails.
+- **Empty Subject block:** always show FOR / WITH / SHOW / SPLIT rows (not hide until PG picked).
+- **SPLIT + one Subject:** locked outline **always** purple “For each…” — no flatten-when-trivial.
+- **IN presets:** Last 7 / Last 28 / This week / Custom as UI over `{fromDate, toDate}` — no new AST field.
+
+**Still open:**
 - **Save definition:** confirm nest JSON as canonical (madlib = view) before
   `saved_queries`.
 - **Breakdown dimensions beyond variation/tool:** `date bucket` next capability
   gap (slice 5 or sooner once authoring lands).
 - **Multi-key GROUP BY / compare windows:** deferred — don’t block madlib.
 - **Empty Measure display** on author SHOW chips before op×field chosen.
+

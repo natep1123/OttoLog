@@ -8,13 +8,13 @@ pasting the same images into every chat.
 | Folder | Use |
 |--------|-----|
 | [`workout-builder/`](./workout-builder/) | Workout nest gold — Session → … → Exercise (+ locked preview) |
-| [`query-builder/`](./query-builder/) | Insights QB after-gallery — locked outline, preview, unlocked Subject |
+| [`query-builder/`](./query-builder/) | Insights QB after-gallery — madlib author + locked outline / preview |
 
 ## Archive (optional / history)
 
 | Folder | Use |
 |--------|-----|
-| [`archive/`](./archive/) | Optionals + QB open-state history (cool → warm). Not primary kickoff targets. |
+| [`archive/`](./archive/) | Optionals + QB open-state history + pre-madlib nest-shell shots. Not primary kickoff targets. |
 
 ## How agents should use these
 

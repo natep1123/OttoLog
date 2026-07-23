@@ -28,7 +28,8 @@ Agents (especially the orchestrator when drafting kickoffs) should **briefly rec
 
 **Defaults**
 - **Auto** — orchestrator; light Q&A; Status/docs nits; when unsure.
-- Don’t lock every chat to Opus 4.8. Rotate when the task fits.
+- **Sonnet 5** — strong mid-range pick for scoped builds (quality + cost). Launch promo through **Aug 31, 2026** (~33% cheaper API rates). Prefer when the task fits; not a ban on larger models.
+- Use **Opus 4.8** (or another larger allowlist model) when judgment, ambiguity, or reverse-cost justifies it — don’t default every chat there, and don’t avoid it when it’s the right tool.
 
 ### Allowed models only (Nate’s Cursor account)
 
@@ -51,7 +52,7 @@ Recommend **only** from this list (exact display names). Do not suggest models o
 |------------|--------|-----------------|
 | Orchestration, kickoffs, Status | **Auto** | Opus 4.8 for routine routing |
 | Hard product/UX judgment, ambiguous bugs, architecture | **Opus 4.8** | Composer 2.5 alone |
-| Scoped feature build (madlib spike, lock polish, screen work) | **Sonnet 5**; **Composer 2.5** if narrow + well-specified | Opus 4.8 unless stuck or high-risk |
+| Scoped feature build (madlib spike, lock polish, screen work) | **Sonnet 5** (mid-range sweet spot); **Composer 2.5** if narrow + well-specified | Opus only if stuck / high-risk — but use it when justified |
 | Fast mechanical edits, renames, small follow-ups | **Composer 2.5** | Opus 4.8 |
 | Alternate opinion / second pass on a stuck design | **GPT-5.6 Sol**, **GPT-5.6 Terra**, **Cursor Grok 4.5**, or **Fable 5** (once) — then converge | Running three models on the same trivial edit |
 

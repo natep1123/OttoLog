@@ -30,8 +30,11 @@ to paste a kickoff into a **new** execution chat instead of continuing.
 
 1. **One slice per execution chat.** Done → summarize → stop. No “while we’re here.”
 2. **Git gate.** Never commit/push/amend unless Nate says `commit` in **this** chat.
-3. **No on-demand.** Prefer **Auto** / **Composer 2.5** when quality allows; use
-   **Sonnet 5** for scoped builds; **Opus 4.8** only when reverse-cost is high.
+3. **No on-demand.** Match model to task: **Auto** / **Composer 2.5** when
+   mechanical; **Sonnet 5** for mid-range scoped builds (promo ~33% cheaper
+   through Aug 31, 2026 — still a strong quality/cost pick after). **Opus 4.8**
+   or another larger allowlist model when judgment / ambiguity / reverse-cost
+   justifies it — use it then; don’t burn it on routine work.
 4. **Open on demand.** Canonical docs by path; never paste wholesale into the chat.
 5. **Gold images.** Open `.jpg`s only for the UI surface you’re changing; not every
    gallery “for context.”

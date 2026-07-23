@@ -43,11 +43,14 @@ function collectPgIds(draft: QueryDraft): string[] {
 }
 
 /**
- * Insights Query builder — v2 slice 2 (lock grammar + preview, ephemeral).
+ * Insights Query builder — v2 slice 2.5 (madlib authoring spike, ephemeral).
  *
- * Nested builder: Query → Section → (optional) Breakdown → Subject → Measure.
- * Lock + expanded → LockedOutline analytics grammar; maximize → paginated
- * LockedPreviewModal. Still ephemeral — no `saved_queries` yet.
+ * Unlocked = madlib author: Query frame (IN / WHERE) + Subject clause-blocks
+ * (FOR / WITH / SHOW / SPLIT). Same nest AST underneath (Query → Section →
+ * (optional) Breakdown → Subject → Measure) — Section stays collapsed into
+ * the Query frame in the author UI. Lock + expanded → LockedOutline analytics
+ * grammar; maximize → paginated LockedPreviewModal. Still ephemeral — no
+ * `saved_queries` yet.
  */
 export function InsightsQueryBuilderScreen({ onBrandPress, onBack }: Props) {
   const [draft, setDraft] = useState<QueryDraft>(() => defaultQueryDraft());
@@ -160,7 +163,7 @@ export function InsightsQueryBuilderScreen({ onBrandPress, onBack }: Props) {
     >
       <ScreenHeader
         title="Query builder"
-        subtitle="Build a nested ask, layer by layer. Draft only — not saved yet."
+        subtitle="Describe your ask, then lock it to see the breakdown. Draft only — not saved yet."
         onBack={onBack}
         onBrandPress={onBrandPress}
       />

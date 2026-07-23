@@ -153,3 +153,34 @@ export function defaultQueryDraft(): QueryDraft {
 export function isBreakdown(child: SectionChild): child is BreakdownNode {
   return (child as BreakdownNode).kind === 'breakdown';
 }
+
+/**
+ * Madlib author: **SPLIT** on a Subject clause wraps that one Subject in a
+ * Breakdown (doc §2/§3 — "SPLIT chip on Subject clause", no nested
+ * Breakdowns). Wrap/unwrap keep the Subject's own `id` so engine results
+ * (`SectionResult` keyed by Subject id) and React keys stay stable across the
+ * toggle — only the wrapper changes.
+ */
+export function wrapInBreakdown(
+  subject: SectionChildSubject,
+  dimension: BreakdownDimension = 'variation',
+): BreakdownNode {
+  const { kind: _kind, ...rest } = subject;
+  return { id: qbId('breakdown'), kind: 'breakdown', dimension, subjects: [rest] };
+}
+
+/** SPLIT off: unwrap a Breakdown back to its (single, madlib-authored) Subject. */
+export function unwrapBreakdown(breakdown: BreakdownNode): SectionChildSubject {
+  const subject = breakdown.subjects[0] ?? emptySubject();
+  return { ...subject, kind: 'subject' };
+}
+
+/** Stable list-key for a Section child across SPLIT toggles (keys off the Subject). */
+export function sectionChildKey(child: SectionChild): string {
+  return isBreakdown(child) ? (child.subjects[0]?.id ?? child.id) : child.id;
+}
+
+/** The one Subject a Section child carries, whether SPLIT-wrapped or plain. */
+export function sectionChildSubject(child: SectionChild): SubjectNode {
+  return isBreakdown(child) ? child.subjects[0] : child;
+}

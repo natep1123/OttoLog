@@ -12,13 +12,15 @@
 
 - Stack / greenfield path: `sql/greenfield/001`–`007` (facts view in `007`; no `008`)
 - Live smoke DB: **OttoLog** Supabase (greenfield; email/password; confirm-email OFF for smoke)
-- App: Insights is now a **card hub** (like Library / Create) → **Dashboard** (fast unsaved PG facets) + **Query builder** (v2 nest AST + 1.5 warm chrome + **slice 2 lock grammar/preview**; ephemeral). **Author/read split decided:** madlib compose / nest readout. **Next:** madlib authoring spike (ephemeral) → totals (3) → `saved_queries` (4 — **ask first**). Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md). UI gold: [`references/workout-builder/`](./references/workout-builder/) + [`references/query-builder/`](./references/query-builder/)
+- App: Insights is now a **card hub** (like Library / Create) → **Dashboard** (fast unsaved PG facets) + **Query builder** (v2 nest AST + 1.5 warm chrome + slice 2 lock grammar/preview + **slice 2.5 madlib author**; ephemeral). **Author/read split live:** madlib compose / nest readout. **Next:** dogfood + polish → totals (3) → `saved_queries` (4 — **ask first**). Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md). UI gold: [`references/workout-builder/`](./references/workout-builder/) + [`references/query-builder/`](./references/query-builder/)
 - **Analytics direction (locked, Jul 22; authoring updated same evening):** Insights = **two tools**. **Dashboard** = quick unsaved PG/facet look. **Query builder** = structured, eventually savable ask — **madlib author** + **locked nest outline** (workout chrome family for read/share). Nest AST + client engine stay. See [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md) + [`Insights_Query_Builder.md`](./Insights_Query_Builder.md). v1 Hybrid/cube doc archived under `docs/deprecated/`
 - Seeds: `sql/seeds/murph_personal_seed.sql` applied on `n8.perry` (personal smoke only; not Chat 6)
 - Living board: this file (linked from AGENTS / README / Project_Structure)
 
 ## Shipped recently (newest first)
 
+- **Insights Query builder — slice 2.5 madlib authoring spike (Jul 23, ephemeral)** — Unlocked author = Query frame (**IN** presets + **WHERE** summary/expand) + Subject clause-blocks (**FOR** / **WITH** / **SHOW** / optional **SPLIT**). Section collapsed in author UI; whole-ask Query lock only. Maps to existing nest AST; locked branch + `qbOutline` / preview **unchanged**. §10 spike picks: clause rows (not chip-sentence); empty Subject shows all rows; SPLIT keeps purple rail (no flatten); IN presets are UI over `{fromDate,toDate}` only. Nest-shell author cards kept unused (fallback). No `008` / save. Gold: [`references/query-builder/`](./references/query-builder/) (`05`/`06` madlib + `01` locked; pre-madlib archived). Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
+- **Scoped execution chats skill + Pro+ (Jul 23)** — [`.cursor/skills/scoped-execution-chats/SKILL.md`](../.cursor/skills/scoped-execution-chats/SKILL.md); workflow notes Pro+ / no on-demand; Sonnet 5 as mid-range sweet spot (promo through Aug 31).
 - **Insights Query builder — author/read split (Jul 22, docs)** — Decision: **madlib author** (Query frame + Subject clause-blocks) vs **nest LockedOutline readout** (protect slices 1–2 chrome). Collapse Section in author UI until multi-Section; Breakdown = author SPLIT chip / read purple rail; whole-ask lock for v1 madlib. Nest AST + engine + warm accents stay. Nest-shell-only authoring **parked**. Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
 - **Docs map + agent workflow (Jul 22)** — `docs/README.md` + references archive reorg earlier; always-on [`.cursor/rules/agent-workflow.mdc`](../.cursor/rules/agent-workflow.mdc): orchestrator (Auto) vs execution chats; regular model recommendations; token-aware quality.
 - **Insights Query builder — slice 2 lock grammar + preview (Jul 22)** — Locked+expanded shows `LockedOutline` analytics grammar via `qbOutline.ts` (measure tokens, Breakdown groups + dusk totals); maximize → shared `LockedPreviewModal` (paginated). Unlock restores edit body; Tools tray **Unlock & Expand All** (`QbEditorTools`). Still ephemeral — no `saved_queries`/`008`. Gold: [`references/query-builder/`](./references/query-builder/).
@@ -43,7 +45,7 @@
 
 ## Next (priority order)
 
-1. **Insights Query builder — madlib authoring spike → ~80%+ v1 polish** — Unlock = Query frame + Subject clause-blocks (FOR/WITH/SHOW/SPLIT); lock = existing `qbOutline` + preview. Collapse Section in UI; whole-ask lock look. **Bar:** bring QB to ~**80%+ polish** for v1 (workout chrome ~**95%** — don’t chase parity of complexity; chase feel). Then slice **3** totals → **4** `saved_queries` (**ask first**) → **5** multi-Section/dims/ops. Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §2 / §9. Dashboard stays the fast unsaved look.
+1. **Insights Query builder — dogfood madlib → ~80%+ v1 polish → slice 3 totals** — Murph asks A–C on device; gold refs updated (madlib empty/split + locked). Light polish (chip truncation, empty SHOW copy). Then **slice 3** Breakdown totals on the read surface. Then **4** `saved_queries` (**ask first**) → **5** multi-Section/dims/ops. Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §2 / §9. Dashboard stays the fast unsaved look.
 2. **Identity conviction** — PG + Variations + muscles (+ tools + nest labels); category stays PG metadata for balance **saved views**; Counts as = default facet (Phase 4)
 3. **PG Counts as + Chat 6 (Phase 4)** — `natural_metric` on PGs; Account edit; New User Seeds dump
 4. **Exercise lock ↔ pills scroll** — exercise form correctly hides the pills scroller when lock=ON and dropdown=OPEN, and shows it when lock=OFF or lock=ON + dropdown=COLLAPSED. Explore mirror on Sequence / Block / Session builders
@@ -61,7 +63,7 @@ is **madlib / clause compose** (not five Session-like edit shells). Full contrac
 [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
 Gold shots: [`references/workout-builder/`](./references/workout-builder/) + [`references/query-builder/`](./references/query-builder/). Docs index: [`README.md`](./README.md).
 
-- **Shipped:** slices 1 nest + 1.5 chrome/feel + **2 lock grammar/preview** (ephemeral) + **author/read split decision (docs)**. **Next:** madlib spike → totals (3) → save (`saved_queries`, **ask first**) → multi-Section + more dims/ops + seeds.
+- **Shipped:** slices 1 nest + 1.5 chrome/feel + **2 lock grammar/preview** + **2.5 madlib author** (ephemeral) + author/read split. **Next:** dogfood / re-shoot refs → totals (3) → save (`saved_queries`, **ask first**) → multi-Section + more dims/ops + seeds.
 - **Save ≈ templates/logs (later):** nameable + notes; reopen → OPEN + locked clean view; re-run live (rolling) or historic (pinned window). Prefer nest JSON behind madlib view.
 - **v1 flat Subject-card QB is dead** — do not rebuild it. **Nest-shell-only authoring is parked** — do not keep forcing it as the main bet. Dashboard keeps category browse + per-PG soft suggestions as the quick path.
 
@@ -106,9 +108,9 @@ Rough priority bands only; not sequenced against Phase 3. Ideas stay ideas until
 
 ## Open questions
 
-- Query builder madlib spike: chrome density (clause rows vs chip sentence); empty Subject placeholder; SPLIT outline always purple vs flatten; confirm nest JSON as save shape — see [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §10
-- Query builder: **AST + read chrome signed off**; **author/read split decided** (madlib / nest readout). Palette/feel (Decision 12): warm `layer` by depth. Extra dims / empty-Measure / add affordances still open in doc §10
-- Query builder: dynamic date presets (last 7 / last 28 / this week / custom fixed range) — rolling vs pinned lives in the saved definition (slice 4)
+- Query builder madlib §10 **decided (Jul 23 spike):** clause rows (not chip-sentence); empty Subject shows FOR/WITH/SHOW/SPLIT; SPLIT locked outline always purple (no flatten); IN presets = UI over date window. Still open: confirm nest JSON as save shape; Breakdown dims beyond variation/tool; empty SHOW chip copy before op×field — see [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §10
+- Query builder: **AST + read chrome + madlib author signed off** (device dogfood). Palette/feel (Decision 12): warm `layer` by depth. Extra dims / add affordances still open in doc §10
+- Query builder: IN presets shipped in author UI; rolling vs pinned date semantics still live in the saved definition (slice 4)
 - Dashboard lock/collapse grammar — still open if Dashboard ever grows lock; today it stays unlocked/fast
 - Grouped taxonomy (Group → Movement → Modifier): Option A vs B; enforced vs soft modifier scoping? See [`Analytics_Labeling.md`](./Analytics_Labeling.md) proposal
 - Credit-each vs partition for balance **saved views** (credit-each default under the hood today)
@@ -120,5 +122,5 @@ Rough priority bands only; not sequenced against Phase 3. Ideas stay ideas until
 - Pull-to-refresh: global rule vs per-tab
 - Brand: logo / slogan / icon timing vs Auth landing restyle
 
-Dashboard (Phases 2–3a) lean locks applied; Query builder **slices 1 + 1.5 + 2 in tree** + **author/read split (docs)** ([`Insights_Query_Builder.md`](./Insights_Query_Builder.md)) — nest AST, warm chrome, lock grammar + preview; still ephemeral. **Next: madlib spike → totals (3) → `saved_queries` (4, ask first).** Refs: [`references/workout-builder/`](./references/workout-builder/) + [`references/query-builder/`](./references/query-builder/).
+Dashboard (Phases 2–3a) lean locks applied; Query builder **slices 1 + 1.5 + 2 + 2.5 in tree** ([`Insights_Query_Builder.md`](./Insights_Query_Builder.md)) — nest AST, warm chrome, lock grammar + preview, madlib author; still ephemeral. **Next: dogfood → totals (3) → `saved_queries` (4, ask first).** Refs: [`references/workout-builder/`](./references/workout-builder/) + [`references/query-builder/`](./references/query-builder/).
 

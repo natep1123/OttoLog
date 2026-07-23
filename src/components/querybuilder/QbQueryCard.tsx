@@ -13,17 +13,25 @@ import { LockedOutline } from '../forms/LockedOutline';
 import { LockedPreviewModal } from '../forms/LockedPreviewModal';
 import { MorePanel } from '../forms/MorePanel';
 import { NOTES_MAX_LENGTH } from '../forms/formTokens';
-import { SessionDateControl } from '../forms/SessionDateControl';
 import { useExpansionController } from '../forms/ExpansionController';
 import { useNodeLock } from '../forms/LockController';
 import { StatusText } from '../StatusText';
+import { QbAddChildButton } from './QbAddChildButton';
 import { QbLayer } from './QbLayer';
-import { QbSectionCard } from './QbSectionCard';
+import { QbMadlibQueryFrame } from './QbMadlibQueryFrame';
+import { QbMadlibSubjectClause } from './QbMadlibSubjectClause';
 import { outlineQuery, type QbOutlineLabels } from './qbOutline';
 import { QB_LOCK_ROOT, QB_SECTION_ID } from './qbLockIds';
 import { qbFormKind } from './qbTokens';
 import type { SectionResult } from './engine';
-import type { QueryDraft, SectionNode } from './types';
+import {
+  emptySubject,
+  sectionChildKey,
+  sectionChildSubject,
+  type QueryDraft,
+  type SectionChild,
+  type SectionNode,
+} from './types';
 
 type Props = {
   draft: QueryDraft;
@@ -86,6 +94,27 @@ export function QbQueryCard({
   const nameRef = useRef<TextInput>(null);
 
   const setSection = (section: SectionNode) => onChange({ ...draft, section });
+
+  const updateChild = (index: number, next: SectionChild) => {
+    setSection({
+      ...draft.section,
+      children: draft.section.children.map((c, i) => (i === index ? next : c)),
+    });
+  };
+
+  const removeChild = (index: number) => {
+    setSection({
+      ...draft.section,
+      children: draft.section.children.filter((_, i) => i !== index),
+    });
+  };
+
+  const addSubjectClause = () => {
+    setSection({
+      ...draft.section,
+      children: [...draft.section.children, emptySubject()],
+    });
+  };
 
   const labels: QbOutlineLabels = {
     primaryGroups,
@@ -234,36 +263,16 @@ export function QbQueryCard({
               </View>
             </MorePanel>
 
-            <View style={styles.dateRow}>
-              <View style={styles.dateField}>
-                <Text style={styles.fieldLabel}>From</Text>
-                <SessionDateControl
-                  value={draft.window.fromDate}
-                  onChange={(fromDate) =>
-                    onChange({
-                      ...draft,
-                      window: { ...draft.window, fromDate },
-                    })
-                  }
-                  eyebrow="From date"
-                  fill
-                />
-              </View>
-              <View style={styles.dateField}>
-                <Text style={styles.fieldLabel}>To</Text>
-                <SessionDateControl
-                  value={draft.window.toDate}
-                  onChange={(toDate) =>
-                    onChange({
-                      ...draft,
-                      window: { ...draft.window, toDate },
-                    })
-                  }
-                  eyebrow="To date"
-                  fill
-                />
-              </View>
-            </View>
+            <QbMadlibQueryFrame
+              draft={draft}
+              onChange={onChange}
+              sessionLabels={sessionLabels}
+              onSessionLabelsChange={onSessionLabelsChange}
+              blockLabels={blockLabels}
+              onBlockLabelsChange={onBlockLabelsChange}
+              sequenceLabels={sequenceLabels}
+              onSequenceLabelsChange={onSequenceLabelsChange}
+            />
 
             {meta ? (
               <Text style={styles.meta}>
@@ -275,25 +284,34 @@ export function QbQueryCard({
 
             {error ? <StatusText tone="error">{error}</StatusText> : null}
 
-            <QbSectionCard
-              section={draft.section}
-              parentLockId={QB_LOCK_ROOT}
-              results={results}
-              primaryGroups={primaryGroups}
-              onPrimaryGroupsChange={onPrimaryGroupsChange}
-              sessionLabels={sessionLabels}
-              onSessionLabelsChange={onSessionLabelsChange}
-              blockLabels={blockLabels}
-              onBlockLabelsChange={onBlockLabelsChange}
-              sequenceLabels={sequenceLabels}
-              onSequenceLabelsChange={onSequenceLabelsChange}
-              variations={variations}
-              onVariationsChange={onVariationsChange}
-              tools={tools}
-              onToolsChange={onToolsChange}
-              suggestedByPg={suggestedByPg}
-              onChange={setSection}
-            />
+            <View style={styles.clauses}>
+              {draft.section.children.map((child, index) => (
+                <QbMadlibSubjectClause
+                  key={sectionChildKey(child)}
+                  child={child}
+                  result={results[sectionChildKey(child)] ?? null}
+                  primaryGroups={primaryGroups}
+                  onPrimaryGroupsChange={onPrimaryGroupsChange}
+                  variations={variations}
+                  onVariationsChange={onVariationsChange}
+                  tools={tools}
+                  onToolsChange={onToolsChange}
+                  suggestedIds={
+                    sectionChildSubject(child).pgId
+                      ? suggestedByPg[sectionChildSubject(child).pgId as string] ?? []
+                      : []
+                  }
+                  onChange={(next) => updateChild(index, next)}
+                  onRemove={() => removeChild(index)}
+                  canRemove={draft.section.children.length > 1}
+                />
+              ))}
+              <QbAddChildButton
+                childKind="subject"
+                parentTitle="Query"
+                onPress={addSubjectClause}
+              />
+            </View>
           </>
         )}
       </QbLayer>
@@ -364,14 +382,9 @@ const styles = StyleSheet.create({
   },
   notes: { minHeight: 64, textAlignVertical: 'top' },
   notesFocused: { borderColor: layer.session.chip.color },
-  dateRow: {
-    flexDirection: 'row',
+  clauses: {
     gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  dateField: {
-    flex: 1,
-    gap: 6,
+    marginTop: spacing.sm,
   },
   fieldLabel: {
     fontFamily: typography.fontSemiBold,

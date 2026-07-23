@@ -18,8 +18,9 @@ description: >-
 2. `docs/Template_Builders.md` — workout nest DNA for the **read** surface
    (collapse / lock → grammar / preview / save-reopen).
 3. `docs/references/workout-builder/` — workout nest gold — open every `.jpg`.
-4. `docs/references/query-builder/` — QB after-gallery (locked outline, preview,
-   unlocked Subject — protect read look).
+4. `docs/references/query-builder/` — QB after-gallery (madlib author empty/split,
+   locked outline, preview). Pre-madlib nest-shell shots:
+   `docs/references/archive/query-pre-madlib/`.
 5. `docs/Status.md` — what's shipped vs next (shipped-vs-next wins here; contract
    wins in doc 1).
 6. `docs/Database_Outline.md` — fact grain; `docs/Styling.md` — nest `layer` /
