@@ -15,7 +15,9 @@ ottolog-app/
 │   └── skills/             Repeatable workflows (SQL migrations, taxonomy labeling)
 ├── sql/                    Supabase migrations — greenfield/ (canonical 001–007); deprecated/ historical
 │   └── seeds/              Optional personal smoke scripts (not migrations)
-├── docs/                   Official project docs (this folder)
+├── docs/                   Official project docs — start at docs/README.md
+│   ├── references/         UI gold screenshots (workout-builder/, query-builder/)
+│   └── deprecated/         Historical only (ignored by .cursorignore)
 │   ├── Status.md           Living ops board (shipped / next / parked)
 │   ├── Analytics_Overhaul_Proposal.md  Insights product board (hub = Dashboard + Query builder)
 │   ├── Insights_Query_Builder.md       Query builder nest contract (Query→Section→Breakdown→Subject→Measure)
@@ -47,7 +49,7 @@ No React Navigation yet. **`HomeScreen`** holds five bottom tabs and a nested st
 | Tab | Hub | Live drill-in | Stubs |
 |-----|-----|---------------|-------|
 | **Home** | Dashboard | Quick actions → Create session builder / Library exercises / Account taxonomy | Week → sessions (Soon) |
-| **Insights** | Insights hub (card select) | **Dashboard** (per-PG facet readout; fast, unsaved) · **Query builder** (nested savable/lockable — nest + 1.5 chrome/feel parity shipped, ephemeral; next = condense + slice 2) | `src/lib/insights.ts`, `src/components/querybuilder/` |
+| **Insights** | Insights hub (card select) | **Dashboard** (per-PG facet readout; fast, unsaved) · **Query builder** (nested savable/lockable — slices 1–2 shipped, ephemeral; next = totals → save) | `src/lib/insights.ts`, `src/components/querybuilder/` |
 | **Create** | Create hub | Log from scratch / from template; Templates → Session / Block / Sequence / Exercise builders | AI-assisted log |
 | **Library** | Library hub | Templates → Sessions / Blocks / Sequences / Exercises; Logs → log editor (review mode) | — |
 | **Account** | Account hub | Taxonomy → lists; Settings → Danger zone | Profile, Preferences |

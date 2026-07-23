@@ -18,8 +18,8 @@
 > (the builder chrome this now clones), [`Database_Outline.md`](./Database_Outline.md)
 > (fact grain), [`Styling.md`](./Styling.md) (form chrome — QB reuses the same
 > nest `layer` / `override` accents by depth), [`Status.md`](./Status.md) (Next #1),
-> and **UI gold shots** under [`references/workout-builder/`](./references/workout-builder/)
-> (structure/feel target; content inside nodes stays analytics).
+> and **UI gold shots** under [`references/`](./references/)
+> (`workout-builder/` + `query-builder/` — open the `.jpg` files).
 >
 > **Ground truth today:** `src/lib/insights.ts` — `loadInsightQuery` +
 > `v_log_set_facts` (Dashboard read) **and** `loadQueryFacts` (raw scoped facts for
@@ -35,8 +35,9 @@
 > `CoordRow`, `LockController`, `ExpansionController`, `LockedOutline`,
 > `LockedPreviewModal`, `Disclosure`, `MorePanel`, `SearchableSelect`) —
 > DNA for structure/feel parity; grammar outline + preview = slice 2.
-> Gold: [`references/workout-builder/`](./references/workout-builder/);
-> before/after open: [`pool-query-insights/`](./references/pool-query-insights/).
+> Gold: [`references/workout-builder/`](./references/workout-builder/) +
+> [`references/query-builder/`](./references/query-builder/); open-state history:
+> [`references/archive/query-open-history/`](./references/archive/query-open-history/).
 
 ---
 
@@ -353,11 +354,11 @@ v1 flat shell has been **scrapped** and replaced by the nest skeleton below.
   Real nest + engine; shipped with provisional cool `queryLayer` (removed in 1.5).
 - **Slice 1.5 — chrome / feel parity. ✅ Shipped in tree (ephemeral).** Warm `layer`
   accents by depth via `qbTokens.ts` (`QB_TO_FORM`); CoordRow lock toggle + Query
-  More; no LockedOutline / preview yet. Before/after:
-  `docs/references/pool-query-insights/`.
-- **Slice 2 — lock + preview (next, after open-density/condense dogfood).**
-  LockedOutline grammar + `LockedPreviewModal`; Tools tray optional. Still
-  ephemeral. Condense polish can ride with this or a tiny pass first.
+  More. Open history: `docs/references/archive/query-open-history/`.
+- **Slice 2 — lock + preview. ✅ Shipped in tree (ephemeral).** `qbOutline.ts` →
+  `LockedOutline` when locked+expanded; maximize → `LockedPreviewModal`; Tools
+  **Unlock & Expand All**. Gold: `docs/references/query-builder/`. Still no
+  `saved_queries` / `008`.
 - **Slice 3 — Breakdown depth + totals polish.** Firm up the grouped sub-rows +
   totals rendering in-card and in the locked outline (credit-each safe).
 - **Slice 4 — save / reopen.** `saved_queries` (**ask first**), name + notes via

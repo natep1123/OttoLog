@@ -14,8 +14,8 @@ description: >-
 
 1. `docs/Insights_Query_Builder.md` — **the nest contract** (v2). Layer model §3, DNA reuse map §5, defaults §6, decisions §8 (esp. **Decision 12 palette/feel**), slices §9.
 2. `docs/Template_Builders.md` — the workout nest DNA the QB forks (collapse / lock → grammar / preview / save-reopen).
-3. `docs/references/workout-builder/` — **gold structure/feel shots** — open every `.jpg` with the Read tool (not only the README).
-4. `docs/references/pool-query-insights/` — before (cool palette) / after (warm rails) open-state shots for 1.5.
+3. `docs/references/workout-builder/` — workout nest gold — open every `.jpg` with the Read tool.
+4. `docs/references/query-builder/` — QB after-gallery (locked outline, preview, unlocked Subject).
 5. `docs/Status.md` — what's shipped vs next (shipped-vs-next wins here; nest shape wins in doc 1).
 6. `docs/Database_Outline.md` — fact grain; `docs/Styling.md` — nest `layer` / `override` accents (QB reuses by depth via `qbTokens`).
 
@@ -49,9 +49,10 @@ description: >-
 
 - **Slice 1 nest skeleton** = **shipped** (ephemeral).
 - **Slice 1.5 chrome/feel parity** = **shipped** (ephemeral): map to `layer`/`override`/set-chip by depth; CoordRow lock toggle + Query More. Decision 12 overturned provisional cool `queryLayer`.
-- **Next: open-density/condense + slice 2** lock grammar (`LockedOutline`) + `LockedPreviewModal` → **3** totals → **4** `saved_queries` (**ask first**) → **5** multi-Section / more dims/ops / seeds.
+- **Slice 2 lock grammar + preview** = **shipped** (ephemeral): `qbOutline` + LockedOutline; maximize → LockedPreviewModal; Tools Unlock & Expand All.
+- **Next: 3** totals polish → **4** `saved_queries` (**ask first**) → **5** multi-Section / more dims/ops / seeds.
 
-`query-builder/` after-gallery is still mostly empty (checklist only) — use workout-builder gold + `pool-query-insights/` until re-shot.
+Prefer `docs/references/query-builder/` + `workout-builder/` in kickoffs. Archive under `docs/references/archive/` is optional history.
 
 ## Do not
 

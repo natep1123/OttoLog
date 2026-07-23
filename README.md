@@ -11,14 +11,14 @@ Five tabs when signed in: **Home**, **Insights**, **Create**, **Library**, **Acc
 | Area | Today |
 |------|--------|
 | **Home** | Dashboard with quick actions and a week preview placeholder |
-| **Insights** | Card hub → **Dashboard** (PG facets, fast/unsaved) + **Query builder** (nest + 1.5 chrome/feel shipped — ephemeral; next = condense + slice 2 lock/preview) |
+| **Insights** | Card hub → **Dashboard** (PG facets, fast/unsaved) + **Query builder** (nest + 1.5 chrome + 2 lock grammar/preview shipped — ephemeral; next = totals → save) |
 | **Create** | Log a session (from scratch or from a session template); Session / Block / Sequence / Exercise template builders |
 | **Library** | Browse templates and session logs; open in review mode (locked + expanded outline) |
 | **Account** | Taxonomy (tools, primary groups, Variations, labels); Settings with account delete |
 
 Also in place: auth, global **No Tool**, and kind-named system null labels (**Session**, **Block**, **Sequence**), searchable taxonomy pickers in the exercise editor, unique active template names per user (per layer). Composition is Session → Block → Sequence → Exercise (JSON copy, no cross-template FKs). Sequences use rounds × per-round exercises with sparse overrides; soft archive preferred. Session logs denest into relational tables (`sql/greenfield/007`) via app-side save/load.
 
-**Next:** see living board [`docs/Status.md`](docs/Status.md) (Insights Query builder = condense + slice 2 lock/preview, then save; PG Counts as, Chat 6, …). Product board: [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md); Query builder nest contract: [`docs/Insights_Query_Builder.md`](docs/Insights_Query_Builder.md).
+**Next:** see living board [`docs/Status.md`](docs/Status.md) (Insights Query builder = dogfood slice 2 → totals → save; PG Counts as, Chat 6, …). Docs index: [`docs/README.md`](docs/README.md). Product board: [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md); Query builder nest contract: [`docs/Insights_Query_Builder.md`](docs/Insights_Query_Builder.md).
 
 ## Quick start
 
@@ -36,6 +36,7 @@ For a **fresh** Supabase project, run `sql/greenfield/001`–`007` in order (fac
 |-----|----------|
 | [`AGENTS.md`](AGENTS.md) | Short project map for AI agents; Cursor rules/skills under `.cursor/` |
 | [`docs/Status.md`](docs/Status.md) | Living ops board: shipped / next / parked / open questions |
+| [`docs/README.md`](docs/README.md) | Docs index (canonical vs deprecated vs UI references) |
 | [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md) | Insights product board: hub = Dashboard (shipped) + Query builder |
 | [`docs/Insights_Query_Builder.md`](docs/Insights_Query_Builder.md) | Insights Query builder nest contract (Query→Section→Breakdown→Subject→Measure) |
 | [`docs/Setup.md`](docs/Setup.md) | Env, migrations, run, verify |
@@ -47,7 +48,7 @@ For a **fresh** Supabase project, run `sql/greenfield/001`–`007` in order (fac
 | [`docs/Analytics_Labeling.md`](docs/Analytics_Labeling.md) | Primary Group vs Variations vs nest labels (best practices) |
 | [`docs/Styling.md`](docs/Styling.md) | Visual system and screen patterns |
 
-Older prototypes live in [`docs/deprecated/original-concept/`](docs/deprecated/original-concept/). They are background only; official docs above are the contract.
+Older prototypes live in [`docs/deprecated/`](docs/deprecated/). They are background only; official docs above are the contract. UI gold screenshots: [`docs/references/`](docs/references/).
 
 ## Project layout (short)
 

@@ -12,7 +12,7 @@ alwaysApply: false
 - **Product board:** `docs/Analytics_Overhaul_Proposal.md` — hub = Dashboard + Query builder (product framing only; nest detail defers to the doc above).
 - Grain / fact contract: `docs/Database_Outline.md`
 - Living board: `docs/Status.md`
-- **UI gold (structure/feel):** `docs/references/workout-builder/` — open every `.jpg` with the Read tool (not only README links). Before/after open: `docs/references/pool-query-insights/`.
+- **UI gold:** `docs/references/workout-builder/` + `docs/references/query-builder/` — open every `.jpg` with the Read tool (not only README links). Optional history: `docs/references/archive/`.
 - Implementation: `src/lib/insights.ts`, `src/screens/insights/`, `src/components/querybuilder/`
 
 ## Insights is a hub (two tools)
@@ -20,7 +20,7 @@ alwaysApply: false
 Insights tab = a **card hub** (like Library / Create). Routing: `InsightsStack` in `HomeScreen.tsx` (hub / dashboard / queryBuilder).
 
 - **Dashboard** (`InsightsDashboardScreen`) — the PG-first per-PG facet readout. A **fast, unsaved** look. **No saving here.** Do not grow it into the Query builder.
-- **Query builder** (`InsightsQueryBuilderScreen`) — the real bet: a **nested, savable, lockable** builder that mirrors the log/template builders. **Shipped:** slice 1 nest + **1.5 chrome/feel parity** (ephemeral; lock toggle without grammar/preview). **Next:** open-density/condense + **slice 2** LockedOutline + LockedPreviewModal → totals → `saved_queries` (**ask first**).
+- **Query builder** (`InsightsQueryBuilderScreen`) — the real bet: a **nested, savable, lockable** builder that mirrors the log/template builders. **Shipped:** slice 1 nest + **1.5** chrome/feel + **2** lock grammar/preview (ephemeral). **Next:** totals polish → `saved_queries` (**ask first**). Open gold JPEGs before UI work.
 
 ## Query builder = a nest (mirror the workout builder)
 

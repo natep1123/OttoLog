@@ -16,12 +16,13 @@
 > `sql/greenfield/007_session_logs.sql` (`v_log_set_facts`).
 > Phase **1a** was interim substrate. Phases **2–3a** shipped the **Dashboard**
 > (PG-first facets + per-PG scope cards). **Query builder** (nested, savable,
-> lockable) is the live product bet — **slice 1 nest + 1.5 chrome/feel parity
-> shipped** (`Qb*` + `qbTokens` warm rails by depth; ephemeral lock toggle).
-> **Next:** condense + slice 2 lock grammar/preview, then save. Nest shape owned
-> by [`Insights_Query_Builder.md`](./Insights_Query_Builder.md), not this board.
-> Gold: `docs/references/workout-builder/`; before/after open:
-> `pool-query-insights/`.
+> lockable) is the live product bet — **slices 1 nest + 1.5 chrome/feel + 2 lock
+> grammar/preview shipped** (`Qb*` + `qbTokens` warm rails; LockedOutline +
+> LockedPreviewModal; ephemeral). **Next:** totals polish → save (`saved_queries`,
+> ask first). Nest shape owned by [`Insights_Query_Builder.md`](./Insights_Query_Builder.md),
+> not this board. Gold: `docs/references/workout-builder/` +
+> `docs/references/query-builder/`. Open history (optional):
+> `docs/references/archive/query-open-history/`.
 >
 > **Jul 22 reframe (supersedes framing below where they conflict):** Insights is a
 > **card hub** (like Library / Create) with **two tools**:
@@ -362,8 +363,8 @@ PG, soft suggestions), shape-driven facets. Lives behind the Dashboard card.
 
 - [x] Insights card hub (`InsightsHubScreen`) → Dashboard + Query builder; routing in `HomeScreen`
 - [x] **Slice 1 — nest skeleton (shipped, ephemeral):** `src/components/querybuilder/` `Qb*` nest rendering Query → Section → (optional) Breakdown → Subject → Measure; collapse + `+ Add …`; client-side aggregate over `v_log_set_facts` (`loadQueryFacts` + `engine.ts`). Provisional cool `queryLayer` — superseded by Decision 12 overturn.
-- [x] **Slice 1.5 — chrome/feel parity (shipped, ephemeral):** reuse workout `layer`/`override`/set-chip by depth via `qbTokens`; CoordRow DNA (lock toggle, Query More); gold shots `docs/references/workout-builder/`; content stays analytics. Before/after: `pool-query-insights/`. Lock toggle present; LockedOutline/preview still slice 2.
-- [ ] **Slice 2 — lock + preview (+ open-density/condense):** LockedOutline grammar + **preview modal** (Locked Preview family); Tools tray optional; dogfood condense polish as needed. Still ephemeral.
+- [x] **Slice 1.5 — chrome/feel parity (shipped, ephemeral):** reuse workout `layer`/`override`/set-chip by depth via `qbTokens`; CoordRow DNA (lock toggle, Query More); gold shots `docs/references/workout-builder/`; content stays analytics. Open history: `docs/references/archive/query-open-history/`.
+- [x] **Slice 2 — lock + preview (shipped, ephemeral):** `qbOutline` + LockedOutline when locked+expanded; maximize → LockedPreviewModal; Tools Unlock & Expand All. Gold: `docs/references/query-builder/`.
 - [ ] **Slice 3 — Breakdown totals polish:** per-group sub-rows + totals in card and locked outline (credit-each safe)
 - [ ] **Slice 4 — save/reopen:** `saved_queries` persistence (`name`, `notes`, `definition jsonb`, …) — **ask before migrating**; list/picker (Library-like); reopen → OPEN + locked clean view; re-run live (or historic if pinned)
 - [ ] **Slice 5 — multi-Section + more dims/ops + seeds**
@@ -448,11 +449,11 @@ Still open: credit-each vs partition on balance saved views; builder lock/pills 
 ## 12. Implications for other docs / code
 
 - **`Insights_Query_Builder.md`:** the Query builder **nesting design contract** (v2 layer model, DNA reuse, `SavedQueryDefinition` shape, slices). §5–6 + §9 Phase 3b defer to it for nest shape.
-- **`Status.md`:** Next = QB condense + slice 2 lock/preview (then save); nest + 1.5 shipped; Dashboard (2–3a) = shipped; Insights = hub
+- **`Status.md`:** Next = QB dogfood/re-shoot → totals (3) → save (4, ask first); slices 1–2 shipped; Dashboard (2–3a) = shipped; Insights = hub
 - **`Analytics_Labeling.md`:** PG-first decision rule unchanged; de-emphasize “lens”
   language in UI copy when touched
 - **`Database_Outline.md`:** Insights query contract + `InsightQuery` (incl. per-PG maps) — keep in sync
-- **`.cursor/rules/insights.mdc` + QB skill:** hub + Dashboard shipped; QB nest + 1.5 shipped; next = slice 2; open gold JPEGs before UI work
+- **`.cursor/rules/insights.mdc` + QB skill:** hub + Dashboard shipped; QB nest + 1.5 + 2 shipped; next = totals / save; open gold JPEGs before UI work
 - **Chat 6:** still blocked until Counts as shape accepted (Phase 4)
 
 ---
