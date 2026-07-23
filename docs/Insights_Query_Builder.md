@@ -1,46 +1,23 @@
 # Insights Query Builder — nesting design (v2)
 
-> **Status:** Design contract — **layer AST + read chrome signed off (Jul 22);**
-> **author/read split decided (Jul 22 evening).** Replaces the v1 flat-subject
-> model (dead). Slices **1 nest + 1.5 warm chrome + 2 lock grammar/preview**
-> shipped (ephemeral). **Madlib author (2.5) + polish + WITH/SPLIT B+C** in tree.
-> **§11 (Jul 23, revised Jul 23):** author nest-chrome — **locks recorded and
-> promoted to build spike** (Query→WHERE→FOR ≈ Session→Block→Exercise; dusk
-> **Insight** cards hold WITH+SHOW under gold FOR; SPLIT≈Sequence; SPLIT mode
-> **C** + one-shot seed; `Subject.asks[]` AST lean; credit-each across
-> overlapping Insights). **Build spike implemented** (`QbWhereCard` /
-> `QbForCard` / `QbInsightCard` / `QbSplitWrapperCard`; ephemeral, **uncommitted
-> — awaiting Nate's dogfood/commit**). Nest-shell-only authoring remains
-> **parked**; §11 is a middle path, not an un-park. SHOW dropdown polish stays
-> parallel/follow-on.
-> **§12 (Jul 23, post-§11 dogfood ideation):** five follow-on locks sequenced
-> into two slices — **A** (WITH facet-split any/all + WHERE nested date
-> window) and **B** (per-layer lock/pills at WHERE+FOR + Insight
-> summary-row/editor) — **both implemented** (ephemeral, uncommitted).
-> Multi-WHERE side-by-side date-slice compare **deferred to Slice 5**, not
-> pulled forward. See §12. **Next** outside §12: SHOW dropdown polish →
-> totals (3) → `saved_queries` (ask first).
-> No `saved_queries` / `008` from this doc alone — ask at the save slice. Nate
-> owns the go and the commit gate.
+> **Status:** Design contract — **layer AST + read chrome signed off (Jul 22).**
+> Replaces the v1 flat-subject model (dead). Slices **1 nest + 1.5 warm chrome +
+> 2 lock grammar/preview** shipped (ephemeral). Author path evolved **2.5 madlib
+> → §11 nest chrome (WHERE/FOR/Insight) → §12 A/B** — **in tree**. **Author feel
+> unsigned-off (Jul 23):** Nate pausing to rethink before more chrome; agents
+> must not pile slices until he clarifies. Nest-shell-only authoring remains
+> **parked**. **Next after feel:** SHOW dropdown polish → totals (3) →
+> `saved_queries` (**ask first**). No `008` from this doc alone.
 >
-> **Author vs read:** unlocked = condensed madlib / clause compose; locked =
-> nest LockedOutline + maximize preview (workout chrome family). Definition +
-> engine stay nest-shaped. Full split: §2.
+> **Author vs read:** unlocked = nest-shaped madlib fields (Query → WHERE → FOR
+> → Insight / SPLIT); locked = nest LockedOutline + preview. Definition + engine
+> stay nest-shaped. §2 / §11–§12.
 >
-> **Read alongside:** [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md)
-> (product direction: hub = Dashboard + Query builder), [`Template_Builders.md`](./Template_Builders.md)
-> (builder chrome DNA for the **read** surface), [`Database_Outline.md`](./Database_Outline.md)
-> (fact grain), [`Styling.md`](./Styling.md) (nest `layer` / `override` accents),
-> [`Status.md`](./Status.md) (Next #1), and **UI gold** under [`references/`](./references/)
-> (`workout-builder/` + `query-builder/` — open the `.jpg` files).
+> **Read alongside:** proposal, Template_Builders, Database_Outline, Styling,
+> Status, gold under `references/` (open `.jpg`s — workout `08`/`09`, QB `08`).
 >
-> **Ground truth today:** `src/lib/insights.ts` (`loadInsightQuery` Dashboard;
-> `loadQueryFacts` QB); `InsightsQueryBuilderScreen` + `src/components/querybuilder/`
-> (`Qb*` nest chrome, `types.ts`, `engine.ts`, `qbOutline.ts`, `qbTokens.ts`).
-> Slice 2 read surface is the gold to protect. Madlib author UI **not shipped yet**.
-> Gold: [`references/workout-builder/`](./references/workout-builder/) +
-> [`references/query-builder/`](./references/query-builder/); open-state history:
-> [`references/archive/query-open-history/`](./references/archive/query-open-history/).
+> **Ground truth:** `insights.ts` + `querybuilder/` (`QbWhereCard`, `QbForCard`,
+> `QbInsightCard`, `QbSplitWrapperCard`, …). **Protect slice 2 read surface.**
 
 ---
 
@@ -64,34 +41,38 @@ scopes where, and how chrome forks the template/log builders.
   path (same rule as Dashboard).
 - Coach-plain voice. SQL is *taught by structure / grammar*, never shown by
   default; a "Show as SQL" reveal is a later optional stretch (§7), not v1.
-- **Do not force five nest shells as the only edit path.** Nest-shell authoring
-  is parked; madlib compose is the next bet.
+- **Do not force five nest shells as the only edit path.** Nest-shell-only
+  authoring is parked. Current author bet = nest-*shaped* madlib fields
+  (WHERE/FOR/Insight) — feel still unsigned-off.
 
 ---
 
-## 2. Core principle — author madlib, read nest (hide the SQL)
+## 2. Core principle — nest-shaped author, nest readout (hide the SQL)
 
 A SELECT still maps layer-for-layer onto the workout nest **in the definition and
-on the locked readout**. That is the unlock for *capability* and *share grammar*.
-It is **not** the unlock for *authoring*: coaches should not open a fake Session
-of shells to write an ask.
+on the locked readout**. Coaches should not open a fake Session of five edit
+shells to write an ask — but author chrome **may** reuse nest geometry with
+madlib fields inside the right-colored cards (§11).
 
 | Surface | Job |
 |---|---|
-| **Author (unlocked)** | Condensed **madlib / clause** compose — Query frame + repeatable Subject clause-blocks |
-| **Read (locked)** | Existing **LockedOutline** nest grammar + maximize → preview (workout chrome family) |
-| **Definition / engine** | Nest AST (`QueryDraft` / future `saved_queries` JSON) + client aggregate |
+| **Author (unlocked)** | Nest-shaped compose: Query (IN) → WHERE → FOR → Insight (WITH+SHOW); optional SPLIT |
+| **Read (locked)** | **LockedOutline** nest grammar + maximize → preview |
+| **Definition / engine** | Nest AST + client aggregate |
 
 | Workout builder | Query builder (AST + read) | SQL it (secretly) is |
 |---|---|---|
 | **Session** (the day) | **Query** (the report) | `FROM your logs` + date window |
-| **Block** (a section) | **Section** (a result table) | `SELECT … WHERE` scope |
-| **Sequence** (loops rounds) | **Breakdown** (“For each…”) | `GROUP BY` — the loop |
-| **Exercise** (a movement) | **Subject** (a Primary Group) | `WHERE primary_group = …` + identity |
+| **Block** (a section) | **Section / WHERE** | `SELECT … WHERE` scope |
+| **Sequence** (loops rounds) | **Breakdown / SPLIT** | `GROUP BY` — the loop |
+| **Exercise** (a movement) | **Subject / FOR** | `WHERE primary_group = …` |
+| **Override dusk** (workout word) | **Insight** (QB noun; dusk chrome) | identity filter + measures |
 | **Set** (reps × load) | **Measure** (op × field) | `SELECT MAX(reps)` — one column |
 
 **Read chrome stays:** rails, chevron, lock look, More, maximize → preview, warm
-`layer` accents by depth, dusk totals. **Authoring does not clone Session edit.**
+`layer` accents by depth, dusk totals. **Authoring does not clone Session edit
+shells** (parked). Insight borrows override *chrome*, never the product word
+“override.”
 
 **Naming is deliberately disjoint from the workout family** so a query **Section**
 never collides with a workout **Block**, and **Breakdown** never collides with
@@ -380,17 +361,13 @@ author/read decision.
 - **Slice 1.5 — chrome / feel parity. ✅ Shipped (ephemeral).** Warm `layer` by depth.
 - **Slice 2 — lock + preview. ✅ Shipped (ephemeral).** `qbOutline` → LockedOutline;
   maximize → LockedPreviewModal. **Protect this read surface.**
-- **Slice 2.5 — madlib authoring spike (ephemeral). ← Next.** Unlocked Query frame +
-  Subject clause-blocks; lock maps clauses → existing `QueryDraft` → existing
-  outline/preview. No save, no migration. Dogfood Murph asks A–C. If win: amend
-  UI; if fail: softened nest fallback (collapse Section shell only).
-- **Slice 3 — Breakdown depth + totals polish.** After 2.5 feels right (or in
-  parallel on read-only polish). Grouped sub-rows + totals (credit-each safe).
-- **Slice 4 — save / reopen.** `saved_queries` (**ask first**); persist nest JSON
-  (madlib = view over same definition); reopen → OPEN + locked; rolling vs pinned.
-- **Slice 5 — multi-Section + more dims/ops + seeds.** May re-expose Section in
-  author UI; `date bucket` / `nest label` SPLIT dims; `latest` / `count-distinct`;
-  seeded Queries (with Chat 6).
+- **Slice 2.5 — madlib authoring spike. ✅ Shipped** (evolved into §11).
+- **§11 — Insight nest chrome. ✅ In tree** (feel **unsigned-off** — pause).
+- **§12 A/B — facet-split, WHERE date, per-layer lock/pills, Insight editor. ✅ In tree.**
+- **Next (ops):** Nate author-feel rethink → SHOW dropdown polish →
+- **Slice 3 — Breakdown depth + totals polish.**
+- **Slice 4 — save / reopen.** `saved_queries` (**ask first**).
+- **Slice 5 — multi-Section + multi-WHERE compare + more dims/ops + seeds.**
 
 Coach-labeled clause power first (filters, multi-measure, date bucket). Multi-key
 GROUP BY / compare windows later — don’t redesign authoring around them.
@@ -442,40 +419,25 @@ GROUP BY / compare windows later — don’t redesign authoring around them.
 - **Per-Subject lock:** parked — whole-ask Query lock for v1.
 
 **Still open:**
+- **Author nest chrome (§11–§12) — in tree; feel unsigned-off.** See §11–§12.
+  Do not treat as signed chrome DNA until Nate’s rethink lands.
 - **SHOW chip interaction:** keep `op | field` look; prefer **dropdowns** on
-  each half instead of tap-to-cycle; fix truncation; wire `availableFields`.
-  *(Working tree may already hold a dropdown + `availableFields` polish —
-  confirm on dogfood / Status before treating as shipped.)*
-- **Save definition:** confirm nest JSON as canonical (madlib = view) before
-  `saved_queries`.
-- **Breakdown dimensions beyond variation/tool:** `date bucket` next capability
-  gap (slice 5 or sooner once authoring lands).
-- **Multi-key GROUP BY / compare windows:** deferred — don’t block madlib.
-- **Measure field availability:** `QbMeasureRow`’s `availableFields` prop
-  (shape-driven fields the Subject actually logged) is still unwired from the
-  Subject clause — cycling currently walks the full 5-field set regardless of
-  what's logged in-window. *(Same caveat as SHOW chip interaction above.)*
-- **Author nest chrome (Insight / WHERE / SPLIT) — build spike:** see **§11**.
-  Naming (**Insight**), AST lean (`Subject.asks[]`), SPLIT mode (**C** +
-  one-shot seed), and credit-each are locked; Nate promoted to Status Next.
-  SHOW dropdown polish stays parallel/follow-on.
+  each half; fix truncation; wire `availableFields`.
+- **Save definition:** confirm nest JSON as canonical before `saved_queries`.
+- **Breakdown dimensions beyond variation/tool:** `date bucket` (slice 5+).
+- **Multi-key GROUP BY / compare windows:** deferred (Slice 5 multi-WHERE).
 
 ---
 
-## 11. Author nest chrome (Jul 23, revised Jul 23) — **locks recorded · build spike**
+## 11. Author nest chrome (Jul 23) — **in tree · feel unsigned-off**
 
-> **Status:** Product ideation revised after Nate’s review pass, then **promoted
-> to a build spike**. The **naming** (product noun **Insight**), the **AST lean**
-> (`Subject.asks[]`), the **SPLIT mode** (**C** + optional one-shot seed), and
-> **credit-each across overlapping Insights** are **locked**. This is **not** a
-> signed §8 decision yet and does **not** un-park nest-shell-only authoring or
-> imply a migration. SHOW dropdown polish (§10) stays parallel/follow-on and
-> unblocked. Read alongside [`Template_Builders.md`](./Template_Builders.md) and
-> [`Styling.md`](./Styling.md) `layer` / `override` for the chrome DNA this forks.
+> **Status:** Built (`QbWhereCard` / `QbForCard` / `QbInsightCard` /
+> `QbSplitWrapperCard`). Locks below still hold as product intent. **Feel is
+> not signed off** — Nate pausing (Status Next #1). Do not pile more author
+> chrome until he clarifies. Does **not** un-park nest-shell-only authoring.
 >
-> **Lingo:** SQL-ish / technical nouns stay for agent clarity (form→SQL). A later
-> product-copy pass will clarify coach-facing labels once behavior is settled —
-> don’t invent a full glossary rename mid-spike.
+> **Lingo:** SQL-ish nouns stay for agents (form→SQL). Coach copy pass later.
+> UI never says “pink” or “override” for Insight cards.
 
 **Glossary — Insight:** a dusk-chrome card that holds one **WITH** identity
 combo (variations/tools, any/all) + one or more **SHOW** measures, nested

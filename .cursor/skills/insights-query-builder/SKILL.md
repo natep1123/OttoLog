@@ -1,95 +1,89 @@
 ---
 name: insights-query-builder
 description: >-
-  Build the OttoLog Insights Query builder: madlib author compose + nest AST /
-  locked outline readout (Query → Section → Breakdown → Subject → Measure). Use
-  when working on src/components/querybuilder/, InsightsQueryBuilderScreen, the
-  QB aggregate engine, or when the user mentions Query builder, QB nest, madlib,
-  Measure/op, Breakdown, or Insights_Query_Builder.
+  Build the OttoLog Insights Query builder: nest AST + locked outline readout,
+  author nest chrome (WHERE → FOR → Insight / SPLIT). Use when working on
+  src/components/querybuilder/, InsightsQueryBuilderScreen, the QB aggregate
+  engine, or when the user mentions Query builder, QB nest, Insight card,
+  madlib, Measure/op, Breakdown, SPLIT, or Insights_Query_Builder.
 ---
 
 # Insights Query builder
 
 ## Read first
 
-1. `docs/Insights_Query_Builder.md` — **the contract** (v2). Author/read split §2,
-   layer AST §3, DNA reuse §5, defaults §6, decisions §8 (esp. **12 palette**,
-   **16 author/read**, **17 nest-shell parked**), slices §9.
-2. `docs/Template_Builders.md` — workout nest DNA for the **read** surface
-   (collapse / lock → grammar / preview / save-reopen).
-3. `docs/references/workout-builder/` — workout nest gold — open every `.jpg`.
-4. `docs/references/query-builder/` — QB after-gallery (madlib author empty/split,
-   locked outline, preview). Pre-madlib nest-shell shots:
-   `docs/references/archive/query-pre-madlib/`.
-5. `docs/Status.md` — what's shipped vs next (shipped-vs-next wins here; contract
-   wins in doc 1).
-6. `docs/Database_Outline.md` — fact grain; `docs/Styling.md` — nest `layer` /
-   `override` accents (QB reuses by depth via `qbTokens`).
+1. `docs/Insights_Query_Builder.md` — **the contract** (v2). §2 author/read, §3
+   AST, §11–§12 author nest chrome + follow-ons, §8 decisions, §9 slices, §10.
+2. `docs/Status.md` — shipped vs next (**Status wins** for ops; contract wins for
+   product rules). Feel may be **unsigned-off** even when code is in tree.
+3. `docs/Template_Builders.md` — workout nest DNA (read + override dusk chrome).
+4. `docs/references/workout-builder/` — open every `.jpg` (esp. `08`/`09` for
+   Insight dusk DNA).
+5. `docs/references/query-builder/` — open every `.jpg` (esp. `01` lock, `08`
+   WHERE→FOR→Insight author).
+6. `docs/Database_Outline.md` — fact grain; `docs/Styling.md` — `layer` /
+   `override` via `qbTokens`.
 
-## Author vs read
+## Author vs read (current)
 
 | Surface | Model |
 |---|---|
-| **Author (unlocked)** | Madlib: Query frame (IN / WHERE) + Subject clause-blocks (FOR / WITH / SHOW / optional SPLIT) |
-| **Read (locked)** | Nest LockedOutline + maximize → preview (workout chrome family) |
+| **Author (unlocked)** | Nest-shaped madlib fields: **Query** (IN) → **WHERE** (Block-like) → **FOR** (gold PG) → dusk **Insight** cards (WITH + SHOW). Optional violet **SPLIT** wrapper (mode C + one-shot seed). |
+| **Read (locked)** | Nest `LockedOutline` + maximize → preview (workout chrome family). Protect slice 2. |
 | **Definition / engine** | Nest AST + client aggregate over `v_log_set_facts` |
 
-Section collapsed in author UI until multi-Section. Breakdown = SPLIT chip author /
-purple rail read. Whole-ask lock for v1 madlib. Nest-shell-only authoring **parked**.
+**Not** five Session-edit shells (parked). **Not** the old flat Subject
+clause-only author (`QbMadlibSubjectClause` deleted). **Not** signed-off feel —
+Nate is rethinking author UX; prefer Plan / discussion before large chrome
+rewrites.
 
 ## Layer map (AST = workout = hidden SQL)
 
-| Query builder | Workout | Hidden SQL | Accent source |
+| Query builder | Workout | Hidden SQL | Accent |
 |---|---|---|---|
 | **Query** | Session | `FROM logs` + date window | `layer.session` |
-| **Section** | Block | `WHERE` scope (one table; exactly one in v1) | `layer.block` |
-| **Breakdown** | Sequence | `GROUP BY` one dim (`variation`/`tool`); wraps Subjects, no nesting | `layer.cluster` |
-| **Subject** | Exercise | `WHERE pg = …` + soft identity (variations/tools) | `layer.exercise` |
-| **Measure** | Set | one aggregate column: op × field | set chip; extras under leaf → `override` |
+| **Section / WHERE** | Block | `WHERE` scope (+ optional section `dateWindow`) | `layer.block` |
+| **Breakdown / SPLIT** | Sequence | `GROUP BY` variation/tool | `layer.cluster` |
+| **Subject / FOR** | Exercise | `WHERE pg = …` | `layer.exercise` |
+| **Insight** (`asks[]`) | Set-depth cousin (dusk) | identity filter + measures | `override` dusk chrome — **never** call it “override” in UI |
+| **Measure** | Set leaf | `op × field` | set chip |
 
-**Ops (Measure leaf):** `sum · avg · max · min · count` × `reps · time · distance · load · sets`. "Most reps in one set" = `max × reps`.
+**Ops:** `sum · avg · max · min · count` × `reps · time · distance · load · sets`.
 
-## DNA shared vs different from the workout builder
-
-- **Shared (read):** nest depth, rail/chevron/lock look/More/`+ Add` geometry,
-  `LockedOutline` / `LockedPreviewModal`, **same nest accent family by depth**
-  (`qbTokens` → `QB_TO_FORM`).
-- **Different (author):** madlib / clause compose — not Session edit shells.
-  `Qb*` names; Subject = PG; Breakdown = dim / SPLIT; Measure = op×field.
-  Payload is analytics.
+**Identity:** per-Insight `variationMatch` / `toolMatch` (`any`|`all`). SPLIT with
+non-empty WITH → sibling co-tags (exclude WITH ids); empty WITH → peer SPLIT.
 
 ## Code touchpoints
 
-- Screen: `src/screens/insights/InsightsQueryBuilderScreen.tsx`
-- Chrome: `src/components/querybuilder/` — `QbLayer`, `QbCoordRow`, editors,
-  `qbOutline.ts`, accents via `qbTokens.ts`
-- Model: `querybuilder/types.ts`; Engine: `querybuilder/engine.ts`
-- Read: `src/lib/insights.ts` `loadQueryFacts` — **not** the Dashboard's
-  `loadInsightQuery`
+- Screen: `InsightsQueryBuilderScreen.tsx`
+- Author cards: `QbWhereCard`, `QbForCard`, `QbInsightCard`, `QbSplitWrapperCard`,
+  `QbQueryCard`, `QbMeasureRow`, `QbAddChildButton`
+- Model/engine: `types.ts` (`SubjectNode.asks` / `InsightNode`), `engine.ts`,
+  `qbOutline.ts`, `qbTokens.ts`, `qbLockIds.ts`
+- Facts: `insights.ts` `loadQueryFacts` — **not** Dashboard `loadInsightQuery`
 
-## Slice order
+## Slice order (ops)
 
-1 → **1.5** → 2 → **2.5 madlib spike** → 3 → 4 → 5.
+1 → 1.5 → 2 → 2.5 madlib → polish → WITH/SPLIT B+C → **§11 nest chrome** →
+**§12 A/B** → *(feel rethink — Nate)* → SHOW dropdown polish → **3** totals →
+**4** `saved_queries` (**ask first**) → **5**.
 
-- **Slice 1 nest skeleton** = **shipped** (ephemeral).
-- **Slice 1.5 chrome/feel parity** = **shipped** (ephemeral). Decision 12 warm
-  accents.
-- **Slice 2 lock grammar + preview** = **shipped** (ephemeral). Protect this read
-  surface.
-- **Next: 2.5** madlib authoring spike (ephemeral) → **3** totals → **4**
-  `saved_queries` (**ask first**) → **5** multi-Section / more dims/ops / seeds.
+Protect **read** chrome. Do not pile author chrome slices until Nate clarifies
+what’s wrong with current WHERE/FOR/Insight feel.
 
-Prefer `docs/references/query-builder/` + `workout-builder/` in kickoffs. Archive
-under `docs/references/archive/` is optional history.
+## Lingo
+
+SQL-ish nouns (WITH, SPLIT, FOR, Insight, asks[]) stay for agent clarity
+(form→SQL). Coach-facing copy pass later. UI: never “pink”; never “override”
+for Insight cards (workout-only word).
 
 ## Do not
 
-- **No flat rebuild.** The v1 flat Subject-card QB is dead.
-- **No nest-shell-only authoring as the main bet** — parked; madlib is next.
-- **No separate cool-only look** — Decision 12 overturned; reuse workout nest
-  accents by depth.
-- **No "Table" / "Group" names** ("Group" collides with Primary Group).
-- **No `saved_queries` / `008` / new fact columns** until Nate asks.
-- **No nested Breakdowns**, no multi-Section, no ops/dims beyond the v1 set until
-  their slice.
-- Don't merge Dashboard and QB IAs; don't touch the Dashboard here.
+- Rebuild v1 flat Subject-card QB.
+- Un-park nest-shell-only authoring as the main bet.
+- Invent cool-only palette (Decision 12: warm `layer` by depth).
+- Name layers “Table” / “Group”.
+- Add `saved_queries` / `008` / new fact columns until Nate asks.
+- Nested Breakdowns / multi-Section until their slice (multi-WHERE compare → 5).
+- Merge Dashboard and QB IAs.
+- Ship Chat 6 seeds from QB chats.

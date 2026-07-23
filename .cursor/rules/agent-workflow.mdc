@@ -52,7 +52,8 @@ Recommend **only** from this list (exact display names). Do not suggest models o
 |------------|--------|-----------------|
 | Orchestration, kickoffs, Status | **Auto** | Opus 4.8 for routine routing |
 | Hard product/UX judgment, ambiguous bugs, architecture | **Opus 4.8** | Composer 2.5 alone |
-| Scoped feature build (madlib spike, lock polish, screen work) | **Sonnet 5** (mid-range sweet spot); **Composer 2.5** if narrow + well-specified | Opus only if stuck / high-risk — but use it when justified |
+| Scoped feature build (QB Insight chrome, lock polish, screen work) | **Sonnet 5**; **Composer 2.5** if narrow + well-specified | Opus 4.8 unless stuck or high-risk |
+| Author feel rethink / open UX forks before code | **Plan** mode + Sonnet 5 or Opus 4.8 | Jumping straight to Agent chrome rewrites |
 | Fast mechanical edits, renames, small follow-ups | **Composer 2.5** | Opus 4.8 |
 | Alternate opinion / second pass on a stuck design | **GPT-5.6 Sol**, **GPT-5.6 Terra**, **Cursor Grok 4.5**, or **Fable 5** (once) — then converge | Running three models on the same trivial edit |
 

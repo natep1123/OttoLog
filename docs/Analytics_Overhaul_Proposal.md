@@ -14,24 +14,18 @@
 > **Ground truth today:** `src/lib/insights.ts`, `src/screens/insights/`
 > (`InsightsHubScreen`, `InsightsDashboardScreen`, `InsightsQueryBuilderScreen`),
 > `sql/greenfield/007_session_logs.sql` (`v_log_set_facts`).
-> Phase **1a** was interim substrate. Phases **2–3a** shipped the **Dashboard**
-> (PG-first facets + per-PG scope cards). **Query builder** (nest AST + madlib
-> author / locked nest readout, eventually savable) is the live product bet —
-> **slices 1 nest + 1.5 chrome/feel + 2 lock grammar/preview shipped**
-> (ephemeral); **author/read split decided (docs)**. **Next:** madlib spike →
-> totals → save (`saved_queries`, ask first). Nest/author contract:
-> [`Insights_Query_Builder.md`](./Insights_Query_Builder.md). Gold:
-> `docs/references/workout-builder/` + `docs/references/query-builder/`.
+> Phase **1a** was interim substrate. Phases **2–3a** shipped the **Dashboard**.
+> **Query builder:** nest AST + locked nest readout + nest-shaped author
+> (WHERE/FOR/Insight, §11–§12) **in tree**; **author feel unsigned-off** (Nate
+> rethink pause). **Next:** feel rethink → SHOW polish → totals →
+> `saved_queries` (**ask first**). Contract:
+> [`Insights_Query_Builder.md`](./Insights_Query_Builder.md). Gold under
+> `docs/references/`.
 >
-> **Jul 22 reframe (supersedes framing below where they conflict):** Insights is a
-> **card hub** (like Library / Create) with **two tools**:
-> 1. **Dashboard** — the PG-first facet readout built in Phases 2–3a (per-PG scope
->    cards, shape-driven facets). A **fast, unsaved** look. **No saving here.**
-> 2. **Query builder** — structured, eventually savable asks. **Author:** condensed
->    madlib / clause compose. **Read:** locked nest outline + preview (workout
->    chrome family). Nest AST + client engine stay. Save like a template; reopen
->    OPEN + locked. **Capability first**, then friendliness.
->
+> **Hub:** (1) **Dashboard** — fast unsaved. (2) **Query builder** — structured,
+> eventually savable. Author = nest-shaped madlib fields; read = LockedOutline.
+> Capability first; feel must earn sign-off before more chrome.
+
 > So "Saved Insights + lock" is **not** a light add-on to the draft form — it is a
 > separate builder-grade screen. The per-PG card work is the Dashboard.
 
@@ -362,10 +356,12 @@ PG, soft suggestions), shape-driven facets. Lives behind the Dashboard card.
 - [x] **Slice 1 — nest skeleton (shipped, ephemeral):** `Qb*` + `engine.ts` over `v_log_set_facts`
 - [x] **Slice 1.5 — chrome/feel parity (shipped, ephemeral):** warm `qbTokens` / workout `layer` by depth
 - [x] **Slice 2 — lock + preview (shipped, ephemeral):** `qbOutline` + LockedOutline + LockedPreviewModal. Gold: `docs/references/query-builder/`
-- [x] **Author/read split (docs, Jul 22):** madlib compose / nest readout; Decisions 16–17 in nest contract
-- [ ] **Slice 2.5 — madlib authoring spike (ephemeral):** unlock = clauses; lock → existing outline/preview
+- [x] **Author/read split (docs, Jul 22):** nest-shaped author / nest readout; Decisions 16–17
+- [x] **Slice 2.5 → §11 nest chrome + §12 A/B (in tree):** WHERE/FOR/Insight; feel **unsigned-off**
+- [ ] **Author feel rethink (Nate)** — pause chrome pile-on until clarified
+- [ ] **SHOW dropdown polish** — after feel (or if Nate greenlights parallel)
 - [ ] **Slice 3 — Breakdown totals polish:** per-group sub-rows + totals (credit-each safe)
-- [ ] **Slice 4 — save/reopen:** `saved_queries` — **ask before migrating**; nest JSON behind madlib view
+- [ ] **Slice 4 — save/reopen:** `saved_queries` — **ask before migrating**; nest JSON
 - [ ] **Slice 5 — multi-Section + more dims/ops + seeds**
 - [ ] Dynamic (rolling) vs static (pinned) date windows in definition
 - [ ] 1–2 default saved asks for new users (optional, with Chat 6)

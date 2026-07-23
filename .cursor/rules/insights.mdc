@@ -1,5 +1,5 @@
 ---
-description: Insights hub — Dashboard (shipped) + Query builder (madlib author / nest readout); grain, credit rules, guardrails
+description: Insights hub — Dashboard (shipped) + Query builder (nest author chrome / nest readout); grain, credit rules, guardrails
 globs: src/lib/insights.ts,src/screens/insights/**,src/components/querybuilder/**
 alwaysApply: false
 ---
@@ -8,52 +8,44 @@ alwaysApply: false
 
 ## Source of truth
 
-- **Query builder contract (canonical):** `docs/Insights_Query_Builder.md` — nest AST, **author/read split**, DNA reuse, slices. Open this before any Query builder work.
-- **Product board:** `docs/Analytics_Overhaul_Proposal.md` — hub = Dashboard + Query builder (product framing only; nest/author detail defers to the doc above).
-- Grain / fact contract: `docs/Database_Outline.md`
-- Living board: `docs/Status.md`
-- **UI gold:** `docs/references/workout-builder/` + `docs/references/query-builder/` — open every `.jpg` with the Read tool (not only README links). Optional history: `docs/references/archive/`.
-- Implementation: `src/lib/insights.ts`, `src/screens/insights/`, `src/components/querybuilder/`
+- **Query builder contract:** `docs/Insights_Query_Builder.md` — nest AST, author/read, §11–§12. Open before QB work.
+- **Product board:** `docs/Analytics_Overhaul_Proposal.md` — hub framing only.
+- Grain: `docs/Database_Outline.md` · Ops board: `docs/Status.md`
+- **UI gold:** `docs/references/workout-builder/` + `docs/references/query-builder/` — open every `.jpg` (workout `08`/`09` = Insight dusk DNA; QB `08` = WHERE→FOR→Insight).
+- Skill: `.cursor/skills/insights-query-builder/SKILL.md`
+- Code: `src/lib/insights.ts`, `src/screens/insights/`, `src/components/querybuilder/`
 
 ## Insights is a hub (two tools)
 
-Insights tab = a **card hub** (like Library / Create). Routing: `InsightsStack` in `HomeScreen.tsx` (hub / dashboard / queryBuilder).
+- **Dashboard** — fast unsaved PG facets. **No saving.** Do not grow into QB.
+- **Query builder** — structured, eventually savable. **In tree:** nest AST + lock/preview + §11 WHERE/FOR/Insight author + §12 A/B. **Feel unsigned-off** — Nate pausing to rethink author UX; don’t pile chrome until he clarifies. **Next capability after feel:** SHOW dropdown polish → totals → `saved_queries` (**ask first**).
 
-- **Dashboard** (`InsightsDashboardScreen`) — the PG-first per-PG facet readout. A **fast, unsaved** look. **No saving here.** Do not grow it into the Query builder.
-- **Query builder** (`InsightsQueryBuilderScreen`) — structured, eventually savable. **Shipped:** slice 1 nest + **1.5** chrome/feel + **2** lock grammar/preview (ephemeral) + **author/read split (docs)**. **Next:** madlib authoring spike → totals → `saved_queries` (**ask first**). Open gold JPEGs before UI work.
+## Query builder — author nest chrome, read nest
 
-## Query builder — author madlib, read nest
+**AST:** Query → Section → Breakdown → Subject → Measure (+ `Subject.asks` = **Insight** nodes).
 
-**AST + read layers** (= workout nest depth, own product nouns):
+| Author chrome | Role |
+|---|---|
+| **Query** | IN window, name/notes, whole-ask tools |
+| **WHERE** | Block-like scope container (nest labels, set policy, optional date) |
+| **SPLIT** | Violet Sequence wrapper (mode C; one-shot `+ Split into Insights`) |
+| **FOR** | Gold PG-only Subject |
+| **Insight** | Dusk WITH + SHOW card under FOR (`asks[]`) |
 
-**Query → Section → Breakdown → Subject → Measure** = Session → Block → Sequence → Exercise → Set.
+- **Read (locked):** rails, LockedOutline, preview — **protect**. Warm `qbTokens` by depth.
+- **Locks:** Query + WHERE/FOR per-layer (§12); Insight has no own lock.
+- Engine: client aggregate over `v_log_set_facts`; credit-each; sibling SPLIT when WITH set.
+- **Nest-shell-only authoring parked** — five Session-edit shells are not the bet. §11 is nest-*shaped* madlib fields, not that un-park.
 
-- **Author (unlocked):** condensed madlib — Query frame (IN / WHERE) + repeatable Subject clause-blocks (FOR / WITH / SHOW / optional SPLIT). Collapse Section in UI until multi-Section. Breakdown = SPLIT chip while authoring.
-- **Read (locked):** workout-family chrome — rails, lock look, More, maximize → preview; `qbOutline` LockedOutline (purple Breakdown rail, dusk totals). Warm `layer` accents by depth via `qbTokens.ts`.
-- **Lock (v1 madlib):** whole-ask compose ↔ grammar (looks like workout lock). Per-layer lock later if needed — don’t force five locks on the sentence editor.
-- Every layer has a **hidden SQL meaning** in the AST. Ops at Measure leaf: `sum · avg · max · min · count` × `reps · time · distance · load · sets`.
-- v1 AST: **exactly one auto Section**; Breakdown wraps Subjects with **no nested Breakdowns**; dims `variation`/`tool`; **one PG per Subject**; soft identity. Engine = client aggregate over `v_log_set_facts`.
-- **Nest-shell-only authoring is parked** — do not keep forcing five edit shells as the main bet.
+## Dashboard (locked)
 
-## Dashboard direction (locked)
-
-- **Subject first:** Primary Group(s) required; **facets** are shape-driven atomic fields (reps / time / distance / load / set count) — show what was logged, never sum unlike units.
-- **Scope:** nest labels + set type = query-global WHERE; **variations / tools = per-PG** (soft, never enforced). Not rival lenses.
-- **Multi-PG:** one editable card per selected PG. **Category** = PG metadata for balance **saved views**, not a home-screen lens.
-- **Read source:** `v_log_set_facts`; credit-each under the hood; complete logs only.
-
-## Code map
-
-- `src/lib/insights.ts` — two reads over `v_log_set_facts`: `loadInsightQuery` (Dashboard per-PG panels) and `loadQueryFacts` (raw scoped facts for the QB to aggregate). Shared `mapFactRow` / `passesScope` / `passesPgIdentity` / credit-each.
-- `src/components/querybuilder/` — `Qb*` nest chrome (forks `forms/` geometry; palette maps to `layer` by depth via `qbTokens`), `types.ts`, `engine.ts`, `qbOutline.ts`.
+Subject-first PG cards; per-PG soft variations/tools; credit-each; complete logs only.
 
 ## Do not
 
-- **Do not rebuild the v1 flat Subject-card QB** (flat subjects + one optional "Group"). It is dead — it read as "Dashboard in builder skin."
-- **Do not force nest-shell-only authoring** — madlib compose is the next bet; protect slice 2 read chrome.
-- **Do not invent a separate cool-only QB look** — Decision 12 overturned; match workout nest feel via `layer`/`override` by depth (keep `Qb*` nouns).
-- Do not name QB layers "Table" or "Group" ("Group" collides with Primary Group).
-- Do not merge the Dashboard and Query builder IAs.
-- Do not add `saved_queries` / any `008` migration, or new fact columns, until Nate asks (save slice).
-- Do not implement v1 Hybrid Simple+Power cube / lens×metric home from `docs/deprecated/`.
-- Do not ship Chat 6 seed dumps from Insights UI chats. Do not paste design docs into rules — open them.
+- Rebuild v1 flat Subject-card QB.
+- Force nest-shell-only authoring as the main edit path.
+- Call Insight cards “override” or “pink” in UI (dusk chrome only).
+- Cool-only QB palette; “Table”/“Group” layer names.
+- Merge Dashboard + QB; `008` / `saved_queries` until Nate asks.
+- Paste design docs into rules — open them.
