@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors, measureChip, radii, spacing, typography } from '../../theme/tokens';
+import { colors, radii, spacing, typography } from '../../theme/tokens';
 import { ToggleChip } from '../forms/ToggleChip';
+import { qbMeasureChip } from './qbTokens';
 import { measureToken, type MeasureResult } from './engine';
 import {
   defaultOpForField,
@@ -29,9 +30,9 @@ const OP_LABEL: Record<MeasureOp, string> = {
 };
 
 const measureAccent = {
-  color: measureChip.color,
-  border: measureChip.border,
-  background: measureChip.background,
+  color: qbMeasureChip.color,
+  border: qbMeasureChip.border,
+  background: qbMeasureChip.background,
 };
 
 type Props = {
@@ -45,9 +46,9 @@ type Props = {
 };
 
 /**
- * Measure leaf — op × field. The home of operations. Renders a cool value token
- * (the Set-analog chip) once a field is chosen and data exists; a placeholder
- * before that. NULL discipline: no fake zero — shows an empty note instead.
+ * Measure leaf — op × field. The home of operations. Renders a set-chip value
+ * token once a field is chosen and data exists; a placeholder before that.
+ * NULL discipline: no fake zero — shows an empty note instead.
  */
 export function QbMeasureRow({
   measure,
@@ -160,7 +161,7 @@ const styles = StyleSheet.create({
   leafBullet: {
     fontFamily: typography.fontMedium,
     fontSize: 14,
-    color: measureChip.color,
+    color: qbMeasureChip.color,
     width: 14,
     textAlign: 'center',
   },
@@ -170,14 +171,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderWidth: 1,
     borderRadius: radii.sm,
-    borderColor: measureChip.border,
-    backgroundColor: measureChip.background,
+    borderColor: qbMeasureChip.border,
+    backgroundColor: qbMeasureChip.background,
   },
   tokenText: {
     fontFamily: typography.fontSemiBold,
     fontSize: 12,
     letterSpacing: 0.3,
-    color: measureChip.color,
+    color: qbMeasureChip.color,
   },
   placeholder: {
     flex: 1,

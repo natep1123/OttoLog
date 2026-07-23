@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { LockControllerProvider } from '../../components/forms/LockController';
 import { QbQueryCard } from '../../components/querybuilder/QbQueryCard';
 import { evaluateSection, type SectionResult } from '../../components/querybuilder/engine';
 import {
@@ -40,13 +41,14 @@ function collectPgIds(draft: QueryDraft): string[] {
 }
 
 /**
- * Insights Query builder — v2 slice 1 (nest skeleton, ephemeral).
+ * Insights Query builder — v2 slice 1.5 (chrome/feel parity, ephemeral).
  *
  * A full nested builder mirroring the log/template builders: Query → Section →
  * (optional) Breakdown → Subject → Measure, with hidden SQL meaning per layer.
- * Cool analytics palette (`querybuilder/` `Qb*` chrome). Results are computed
- * client-side over `v_log_set_facts`. No lock/preview (slice 2), no save
- * (slice 4). Draft is lost on reload — expected this slice.
+ * `Qb*` chrome reuses the workout nest accents by depth (`layer`/`override`/set
+ * chip). Results are computed client-side over `v_log_set_facts`. Lock is a
+ * working ephemeral affordance (toggle + ancestor-force); locked grammar /
+ * preview and save land in later slices. Draft is lost on reload this slice.
  */
 export function InsightsQueryBuilderScreen({ onBrandPress, onBack }: Props) {
   const [draft, setDraft] = useState<QueryDraft>(() => defaultQueryDraft());
@@ -164,27 +166,29 @@ export function InsightsQueryBuilderScreen({ onBrandPress, onBack }: Props) {
         onBrandPress={onBrandPress}
       />
 
-      <QbQueryCard
-        draft={draft}
-        results={results}
-        meta={meta}
-        loading={loading}
-        error={error}
-        primaryGroups={primaryGroups}
-        onPrimaryGroupsChange={setPrimaryGroups}
-        sessionLabels={sessionLabels}
-        onSessionLabelsChange={setSessionLabels}
-        blockLabels={blockLabels}
-        onBlockLabelsChange={setBlockLabels}
-        sequenceLabels={sequenceLabels}
-        onSequenceLabelsChange={setSequenceLabels}
-        variations={variations}
-        onVariationsChange={setVariations}
-        tools={tools}
-        onToolsChange={setTools}
-        suggestedByPg={suggestedByPg}
-        onChange={setDraft}
-      />
+      <LockControllerProvider>
+        <QbQueryCard
+          draft={draft}
+          results={results}
+          meta={meta}
+          loading={loading}
+          error={error}
+          primaryGroups={primaryGroups}
+          onPrimaryGroupsChange={setPrimaryGroups}
+          sessionLabels={sessionLabels}
+          onSessionLabelsChange={setSessionLabels}
+          blockLabels={blockLabels}
+          onBlockLabelsChange={setBlockLabels}
+          sequenceLabels={sequenceLabels}
+          onSequenceLabelsChange={setSequenceLabels}
+          variations={variations}
+          onVariationsChange={setVariations}
+          tools={tools}
+          onToolsChange={setTools}
+          suggestedByPg={suggestedByPg}
+          onChange={setDraft}
+        />
+      </LockControllerProvider>
 
       <Pressable
         onPress={() => setDraft(defaultQueryDraft())}

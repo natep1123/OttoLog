@@ -1,10 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { TaxonomyOption } from '../../lib/taxonomy';
-import { colors, queryLayer, spacing, typography } from '../../theme/tokens';
+import { colors, spacing, typography } from '../../theme/tokens';
 import { SearchableSelect } from '../forms/SearchableSelect';
+import { useNodeLock } from '../forms/LockController';
 import { QbAddChildButton } from './QbAddChildButton';
 import { QbLayer } from './QbLayer';
 import { QbMeasureRow } from './QbMeasureRow';
+import { qbLayerToken, qbLeafOverride } from './qbTokens';
 import { measureToken, type SubjectResult } from './engine';
 import {
   emptyMeasure,
@@ -12,14 +14,17 @@ import {
   type SubjectNode,
 } from './types';
 
+const subjectToken = qbLayerToken('subject');
 const subjectAccent = {
-  color: queryLayer.subject.chip.color,
-  border: queryLayer.subject.border,
-  background: queryLayer.subject.chip.background,
+  color: subjectToken.chip.color,
+  border: subjectToken.border,
+  background: subjectToken.chip.background,
 };
 
 type Props = {
   subject: SubjectNode;
+  /** Lock-tree parent (the Section or a Breakdown). */
+  parentLockId: string;
   result: SubjectResult | null;
   primaryGroups: TaxonomyOption[];
   onPrimaryGroupsChange: (next: TaxonomyOption[]) => void;
@@ -46,6 +51,7 @@ function labelFor(options: TaxonomyOption[], id: string): string {
  */
 export function QbSubjectCard({
   subject,
+  parentLockId,
   result,
   primaryGroups,
   onPrimaryGroupsChange,
@@ -58,6 +64,10 @@ export function QbSubjectCard({
   onRemove,
   canRemove,
 }: Props) {
+  const { locked, forcedByAncestor, canToggle, toggle } = useNodeLock(
+    subject.id,
+    parentLockId,
+  );
   const pgName =
     (subject.pgId ? labelFor(primaryGroups, subject.pgId) : null) ?? subject.pgId;
 
@@ -91,26 +101,35 @@ export function QbSubjectCard({
     <QbLayer
       layer="subject"
       metaChips={grammarChips}
+      locked={locked}
+      onToggleLock={canToggle || forcedByAncestor ? toggle : undefined}
+      lockDisabled={forcedByAncestor}
       label={
-        <SearchableSelect
-          mode="single"
-          options={primaryGroups}
-          onOptionsChange={onPrimaryGroupsChange}
-          value={subject.pgId}
-          onChange={(pgId) => onChange({ ...subject, pgId })}
-          accent={subjectAccent}
-          onCreate={async () => ({
-            data: null,
-            error: 'Create Primary Groups under Account → Taxonomy.',
-          })}
-          placeholder="Pick a Primary Group…"
-          emptyLabel="Pick a Primary Group"
-          fill
-          accessibilityLabel="Subject Primary Group"
-        />
+        locked ? (
+          <Text style={styles.lockedLabel} numberOfLines={1}>
+            {pgName ?? 'Subject'}
+          </Text>
+        ) : (
+          <SearchableSelect
+            mode="single"
+            options={primaryGroups}
+            onOptionsChange={onPrimaryGroupsChange}
+            value={subject.pgId}
+            onChange={(pgId) => onChange({ ...subject, pgId })}
+            accent={subjectAccent}
+            onCreate={async () => ({
+              data: null,
+              error: 'Create Primary Groups under Account → Taxonomy.',
+            })}
+            placeholder="Pick a Primary Group…"
+            emptyLabel="Pick a Primary Group"
+            fill
+            accessibilityLabel="Subject Primary Group"
+          />
+        )
       }
       trailing={
-        canRemove ? (
+        !locked && canRemove ? (
           <Pressable
             onPress={onRemove}
             accessibilityRole="button"
@@ -178,16 +197,18 @@ export function QbSubjectCard({
             canRemove={subject.measures.length > 1}
           />
         ))}
-        <QbAddChildButton
-          childKind="measure"
-          parentTitle={pgName ?? 'Subject'}
-          onPress={addMeasure}
-        />
+        {locked ? null : (
+          <QbAddChildButton
+            childKind="measure"
+            parentTitle={pgName ?? 'Subject'}
+            onPress={addMeasure}
+          />
+        )}
       </View>
 
       {result?.groups && result.groups.length > 0 ? (
         <View style={styles.groupsBlock}>
-          <Text style={styles.fieldLabel}>
+          <Text style={styles.forEachLabel}>
             For each {result.breakdownDimension}
           </Text>
           {result.groups.map((group) => {
@@ -220,6 +241,11 @@ export function QbSubjectCard({
 }
 
 const styles = StyleSheet.create({
+  lockedLabel: {
+    fontFamily: typography.fontMedium,
+    fontSize: 15,
+    color: colors.text,
+  },
   filterField: {
     gap: 6,
   },
@@ -230,6 +256,13 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: colors.textDim,
   },
+  forEachLabel: {
+    fontFamily: typography.fontSemiBold,
+    fontSize: 11,
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+    color: qbLeafOverride.color,
+  },
   measuresBlock: {
     gap: spacing.xs,
     marginTop: spacing.xs,
@@ -239,7 +272,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: qbLeafOverride.borderSoft,
   },
   groupRow: {
     flexDirection: 'row',
@@ -265,13 +298,13 @@ const styles = StyleSheet.create({
   totalsName: {
     fontFamily: typography.fontSemiBold,
     fontSize: 13,
-    color: queryLayer.subject.chip.color,
+    color: qbLeafOverride.color,
   },
   totalsValue: {
     flexShrink: 1,
     fontFamily: typography.fontMedium,
     fontSize: 13,
-    color: queryLayer.subject.chip.color,
+    color: qbLeafOverride.color,
     textAlign: 'right',
   },
   removeBtn: {

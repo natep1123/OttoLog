@@ -7,19 +7,13 @@ import {
   View,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import {
-  colors,
-  measureChip,
-  queryLayer,
-  radii,
-  typography,
-} from '../../theme/tokens';
+import { radii, typography } from '../../theme/tokens';
 import { FormArrow } from '../forms/FormArrow';
 import {
   formChevron,
   layerHeaderLeadingWidth,
 } from '../forms/formTokens';
-import type { QbLayerKind } from './qbTokens';
+import { qbLayerToken, qbMeasureChip, type QbLayerKind } from './qbTokens';
 
 export type QbChipKind = QbLayerKind | 'measure';
 
@@ -47,12 +41,12 @@ type Props = {
 function chipColors(kind: QbChipKind) {
   if (kind === 'measure') {
     return {
-      border: measureChip.border,
-      background: measureChip.background,
-      color: measureChip.color,
+      border: qbMeasureChip.border,
+      background: qbMeasureChip.background,
+      color: qbMeasureChip.color,
     };
   }
-  const token = queryLayer[kind];
+  const token = qbLayerToken(kind);
   return {
     border: token.border,
     background: token.chip.background,
@@ -61,7 +55,7 @@ function chipColors(kind: QbChipKind) {
 }
 
 /**
- * Query builder card header — cool-palette fork of `CoordRow`:
+ * Query builder card header — fork of `CoordRow` (workout accents by depth):
  * 1. chevron · (lock) · label|title · trailing
  * 2. scrollable chips (measure/breakdown grammar)
  */
@@ -88,7 +82,7 @@ export function QbCoordRow({
   const collapsible = typeof onToggleExpand === 'function';
   const lockable = typeof onToggleLock === 'function';
   const isExpanded = expanded !== false;
-  const token = queryLayer[layer];
+  const token = qbLayerToken(layer);
 
   return (
     <View style={styles.stack}>

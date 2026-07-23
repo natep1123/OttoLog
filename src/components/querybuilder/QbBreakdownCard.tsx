@@ -1,10 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { TaxonomyOption } from '../../lib/taxonomy';
-import { colors, queryLayer, spacing, typography } from '../../theme/tokens';
+import { colors, spacing, typography } from '../../theme/tokens';
 import { ToggleChip } from '../forms/ToggleChip';
+import { useNodeLock } from '../forms/LockController';
 import { QbAddChildButton } from './QbAddChildButton';
 import { QbLayer } from './QbLayer';
 import { QbSubjectCard } from './QbSubjectCard';
+import { qbLayerToken } from './qbTokens';
 import type { SectionResult } from './engine';
 import {
   emptySubject,
@@ -13,10 +15,11 @@ import {
   type SubjectNode,
 } from './types';
 
+const breakdownToken = qbLayerToken('breakdown');
 const breakdownAccent = {
-  color: queryLayer.breakdown.chip.color,
-  border: queryLayer.breakdown.border,
-  background: queryLayer.breakdown.chip.background,
+  color: breakdownToken.chip.color,
+  border: breakdownToken.border,
+  background: breakdownToken.chip.background,
 };
 
 const DIMENSIONS: { id: BreakdownDimension; label: string }[] = [
@@ -26,6 +29,8 @@ const DIMENSIONS: { id: BreakdownDimension; label: string }[] = [
 
 type Props = {
   breakdown: BreakdownNode;
+  /** Lock-tree parent (the Section). */
+  parentLockId: string;
   results: SectionResult;
   primaryGroups: TaxonomyOption[];
   onPrimaryGroupsChange: (next: TaxonomyOption[]) => void;
@@ -44,6 +49,7 @@ type Props = {
  */
 export function QbBreakdownCard({
   breakdown,
+  parentLockId,
   results,
   primaryGroups,
   onPrimaryGroupsChange,
@@ -55,6 +61,12 @@ export function QbBreakdownCard({
   onChange,
   onRemove,
 }: Props) {
+  const { locked, forcedByAncestor, canToggle, toggle } = useNodeLock(
+    breakdown.id,
+    parentLockId,
+    () => breakdown.subjects.map((s) => s.id),
+  );
+
   const updateSubject = (index: number, next: SubjectNode) => {
     onChange({
       ...breakdown,
@@ -77,31 +89,42 @@ export function QbBreakdownCard({
   return (
     <QbLayer
       layer="breakdown"
+      locked={locked}
+      onToggleLock={canToggle || forcedByAncestor ? toggle : undefined}
+      lockDisabled={forcedByAncestor}
       label={
-        <View style={styles.dimRow}>
-          <Text style={styles.forEach}>For each</Text>
-          {DIMENSIONS.map((d) => (
-            <ToggleChip
-              key={d.id}
-              label={d.label}
-              active={breakdown.dimension === d.id}
-              onPress={() => onChange({ ...breakdown, dimension: d.id })}
-              size="compact"
-              accent={breakdownAccent}
-            />
-          ))}
-        </View>
+        locked ? (
+          <Text style={styles.lockedLabel} numberOfLines={1}>
+            For each {breakdown.dimension}
+          </Text>
+        ) : (
+          <View style={styles.dimRow}>
+            <Text style={styles.forEach}>For each</Text>
+            {DIMENSIONS.map((d) => (
+              <ToggleChip
+                key={d.id}
+                label={d.label}
+                active={breakdown.dimension === d.id}
+                onPress={() => onChange({ ...breakdown, dimension: d.id })}
+                size="compact"
+                accent={breakdownAccent}
+              />
+            ))}
+          </View>
+        )
       }
       trailing={
-        <Pressable
-          onPress={onRemove}
-          accessibilityRole="button"
-          accessibilityLabel="Remove breakdown"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={({ pressed }) => [styles.removeBtn, pressed && styles.pressed]}
-        >
-          <Text style={styles.removeText}>Remove</Text>
-        </Pressable>
+        locked ? null : (
+          <Pressable
+            onPress={onRemove}
+            accessibilityRole="button"
+            accessibilityLabel="Remove breakdown"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={({ pressed }) => [styles.removeBtn, pressed && styles.pressed]}
+          >
+            <Text style={styles.removeText}>Remove</Text>
+          </Pressable>
+        )
       }
     >
       <View style={styles.subjects}>
@@ -109,6 +132,7 @@ export function QbBreakdownCard({
           <QbSubjectCard
             key={subject.id}
             subject={subject}
+            parentLockId={breakdown.id}
             result={results[subject.id] ?? null}
             primaryGroups={primaryGroups}
             onPrimaryGroupsChange={onPrimaryGroupsChange}
@@ -122,17 +146,24 @@ export function QbBreakdownCard({
             canRemove={breakdown.subjects.length > 1}
           />
         ))}
-        <QbAddChildButton
-          childKind="subject"
-          parentTitle={`For each ${breakdown.dimension}`}
-          onPress={addSubject}
-        />
+        {locked ? null : (
+          <QbAddChildButton
+            childKind="subject"
+            parentTitle={`For each ${breakdown.dimension}`}
+            onPress={addSubject}
+          />
+        )}
       </View>
     </QbLayer>
   );
 }
 
 const styles = StyleSheet.create({
+  lockedLabel: {
+    fontFamily: typography.fontMedium,
+    fontSize: 15,
+    color: colors.text,
+  },
   dimRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -142,7 +173,7 @@ const styles = StyleSheet.create({
   forEach: {
     fontFamily: typography.fontSemiBold,
     fontSize: 13,
-    color: queryLayer.breakdown.chip.color,
+    color: breakdownToken.chip.color,
   },
   subjects: {
     gap: spacing.sm,

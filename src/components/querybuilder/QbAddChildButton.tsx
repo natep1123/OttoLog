@@ -10,7 +10,7 @@ import { colors, radii, typography } from '../../theme/tokens';
 import { FormArrow } from '../forms/FormArrow';
 import { qbAddButtonColors, qbMeasureColors } from './qbTokens';
 
-/** What the add control creates. `measure` uses the cool Set-analog chip token. */
+/** What the add control creates. `measure` uses the amber Set-analog chip token. */
 export type QbAddKind = 'breakdown' | 'subject' | 'measure';
 
 const CHILD_LABEL: Record<QbAddKind, string> = {
@@ -28,8 +28,8 @@ type Props = {
 };
 
 /**
- * Cool-palette fork of `AddChildButton`. Three bands: action · arrow ·
- * destination, so arrows stack vertically across sibling add buttons.
+ * Fork of `AddChildButton` (workout accents by depth). Three bands: action ·
+ * arrow · destination, so arrows stack vertically across sibling add buttons.
  */
 export function QbAddChildButton({
   childKind,

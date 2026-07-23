@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
-import { queryLayer, spacing } from '../../theme/tokens';
+import { spacing } from '../../theme/tokens';
 import { nodeBorderWidth, nodePaddingX } from '../forms/formTokens';
 import { QbCoordRow, type QbCoordChip } from './QbCoordRow';
-import type { QbLayerKind } from './qbTokens';
+import { qbLayerToken, type QbLayerKind } from './qbTokens';
 
 type ExpandApi = {
   expanded: boolean;
@@ -34,9 +34,9 @@ type Props = {
 };
 
 /**
- * Shared query builder chrome — cool-palette fork of `NestedLayer`:
- * monotonic bg, tinted border, left rail + bottom-left corner, per-layer radius,
- * optional collapse. Same geometry as the workout nest; different (cool) palette.
+ * Shared query builder chrome — fork of `NestedLayer`: monotonic bg, tinted
+ * border, left rail + bottom-left corner, per-layer radius, optional collapse.
+ * Same geometry AND accents as the workout nest (mapped by depth in `qbTokens`).
  */
 export function QbLayer({
   layer,
@@ -54,7 +54,7 @@ export function QbLayer({
   children,
   style,
 }: Props) {
-  const token = queryLayer[layer];
+  const token = qbLayerToken(layer);
   const [internalExpanded, setInternalExpanded] = useState(!defaultCollapsed);
   const isControlled = controlledExpanded !== undefined;
   const expanded = isControlled ? controlledExpanded : internalExpanded;

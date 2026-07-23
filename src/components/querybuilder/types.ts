@@ -75,9 +75,11 @@ export type SectionNode = {
   children: SectionChild[];
 };
 
-/** The whole report: date window + name + one Section. */
+/** The whole report: date window + name/notes + one Section. */
 export type QueryDraft = {
   name: string;
+  /** Free-text notes (behind the More panel). Null when unset. */
+  notes: string | null;
   window: { fromDate: string; toDate: string };
   section: SectionNode;
 };
@@ -137,6 +139,7 @@ export function emptyBreakdown(): BreakdownNode {
 export function defaultQueryDraft(): QueryDraft {
   return {
     name: '',
+    notes: null,
     window: { fromDate: daysAgoKey(6), toDate: todayDateKey() },
     section: {
       scope: { sessionCategoryIds: [], blockLabelIds: [], sequenceLabelIds: [] },

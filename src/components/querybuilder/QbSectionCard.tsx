@@ -3,14 +3,17 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { TaxonomyOption } from '../../lib/taxonomy';
 import type { SetType } from '../../lib/insights';
 import { SET_TYPE_OPTIONS } from '../../constants/setTypes';
-import { colors, queryLayer, spacing, typography } from '../../theme/tokens';
+import { colors, spacing, typography } from '../../theme/tokens';
 import { Disclosure } from '../forms/Disclosure';
 import { SearchableSelect } from '../forms/SearchableSelect';
 import { ToggleChip } from '../forms/ToggleChip';
+import { useNodeLock } from '../forms/LockController';
 import { QbAddChildButton } from './QbAddChildButton';
 import { QbBreakdownCard } from './QbBreakdownCard';
 import { QbLayer } from './QbLayer';
 import { QbSubjectCard } from './QbSubjectCard';
+import { QB_SECTION_ID } from './qbLockIds';
+import { qbLayerToken } from './qbTokens';
 import type { SectionResult } from './engine';
 import {
   emptyBreakdown,
@@ -27,6 +30,8 @@ const SET_TYPE_FILTER_OPTIONS: TaxonomyOption[] = SET_TYPE_OPTIONS.map((o) => ({
 
 type Props = {
   section: SectionNode;
+  /** Lock-tree parent (the Query root). */
+  parentLockId: string;
   results: SectionResult;
   primaryGroups: TaxonomyOption[];
   onPrimaryGroupsChange: (next: TaxonomyOption[]) => void;
@@ -66,6 +71,7 @@ function setPolicyCount(section: SectionNode): number {
  */
 export function QbSectionCard({
   section,
+  parentLockId,
   results,
   primaryGroups,
   onPrimaryGroupsChange,
@@ -84,6 +90,13 @@ export function QbSectionCard({
 }: Props) {
   const [scopeOpen, setScopeOpen] = useState(false);
   const [setPolicyOpen, setSetPolicyOpen] = useState(false);
+
+  const { locked, forcedByAncestor, canToggle, toggle } = useNodeLock(
+    QB_SECTION_ID,
+    parentLockId,
+    () => section.children.map((c) => c.id),
+  );
+  const sectionAccent = qbLayerToken('section').chip.color;
 
   const patchScope = (patch: Partial<SectionNode['scope']>) => {
     onChange({ ...section, scope: { ...section.scope, ...patch } });
@@ -136,13 +149,16 @@ export function QbSectionCard({
       layer="section"
       title={<Text style={styles.sectionTitle}>Section</Text>}
       metaChips={scopeN + policyN > 0 ? [scopeLabel, policyLabel] : undefined}
+      locked={locked}
+      onToggleLock={canToggle || forcedByAncestor ? toggle : undefined}
+      lockDisabled={forcedByAncestor}
     >
       <Disclosure
         label={scopeLabel}
         open={scopeOpen}
         onToggle={() => setScopeOpen((o) => !o)}
         hint="Narrow where the work happened: session / block / sequence labels."
-        accentColor={queryLayer.section.chip.color}
+        accentColor={sectionAccent}
       >
         <View style={styles.filterField}>
           <Text style={styles.fieldLabel}>Session label</Text>
@@ -205,7 +221,7 @@ export function QbSectionCard({
         open={setPolicyOpen}
         onToggle={() => setSetPolicyOpen((o) => !o)}
         hint="Which sets count. Working only by default."
-        accentColor={queryLayer.section.chip.color}
+        accentColor={sectionAccent}
       >
         <View style={styles.filterField}>
           <Text style={styles.fieldLabel}>Set type</Text>
@@ -244,6 +260,7 @@ export function QbSectionCard({
             <QbBreakdownCard
               key={child.id}
               breakdown={child}
+              parentLockId={QB_SECTION_ID}
               results={results}
               primaryGroups={primaryGroups}
               onPrimaryGroupsChange={onPrimaryGroupsChange}
@@ -259,6 +276,7 @@ export function QbSectionCard({
             <QbSubjectCard
               key={child.id}
               subject={child}
+              parentLockId={QB_SECTION_ID}
               result={results[child.id] ?? null}
               primaryGroups={primaryGroups}
               onPrimaryGroupsChange={onPrimaryGroupsChange}
@@ -274,16 +292,20 @@ export function QbSectionCard({
           ),
         )}
 
-        <QbAddChildButton
-          childKind="subject"
-          parentTitle="Section"
-          onPress={addSubject}
-        />
-        <QbAddChildButton
-          childKind="breakdown"
-          parentTitle="Section"
-          onPress={addBreakdown}
-        />
+        {locked ? null : (
+          <>
+            <QbAddChildButton
+              childKind="subject"
+              parentTitle="Section"
+              onPress={addSubject}
+            />
+            <QbAddChildButton
+              childKind="breakdown"
+              parentTitle="Section"
+              onPress={addBreakdown}
+            />
+          </>
+        )}
       </View>
     </QbLayer>
   );
