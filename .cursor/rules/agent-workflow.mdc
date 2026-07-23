@@ -5,7 +5,9 @@ alwaysApply: true
 
 # Agent workflow (OttoLog)
 
-Nate has Cursor Pro and wants **high quality with efficient tokens** — not defaulting to one model forever, not burning tokens for sport.
+Nate has **Cursor Pro+** (no on-demand spend) and wants **high quality with efficient tokens** — not defaulting to one model forever, not burning tokens for sport.
+
+**Scoped chats:** open [`.cursor/skills/scoped-execution-chats/SKILL.md`](../skills/scoped-execution-chats/SKILL.md) when starting a slice, drafting a kickoff, or when a chat is getting long.
 
 ## Orchestrator vs execution
 

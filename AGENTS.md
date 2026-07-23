@@ -40,8 +40,9 @@ Expo ~57 · React Native · TypeScript · Supabase (Auth + Postgres + RLS)
 ## Orchestrator / execution / models
 
 - Full habit: [`.cursor/rules/agent-workflow.mdc`](.cursor/rules/agent-workflow.mdc) (always on).
+- **Token / chat scope:** [`.cursor/skills/scoped-execution-chats/SKILL.md`](.cursor/skills/scoped-execution-chats/SKILL.md) — one slice per execution chat; Pro+ included pools only (no on-demand).
 - **Orchestrator chat** (this role): direction, kickoffs, reviews, Status — default **Auto**. Thin chat; don’t implement large slices here.
-- **Execution chats**: scoped builds/spikes — orchestrator (or Nate) picks a model; **recommend regularly** (quality fit + cheaper fallback). Nate has Pro and wants max quality when it matters, without wasting tokens.
+- **Execution chats**: scoped builds/spikes — orchestrator (or Nate) picks a model; **recommend regularly** (quality fit + cheaper fallback). Nate has Pro+ and wants max quality when it matters, without wasting tokens.
 - **Allowed models only:** Auto (default), Composer 2.5, Sonnet 5, Opus 4.8, Fable 5, GPT-5.6 Sol, GPT-5.6 Terra, Cursor Grok 4.5 — see workflow rule for fit. Don’t suggest anything else.
 - Don’t default every hard task to Opus 4.8; don’t default every build to Auto-only either — match the task.
 - When drafting kickoffs: put **suggested model** (+ cheaper fallback) **below** the pasteable prompt for Nate — not inside the prompt the execution agent sees — unless Nate already chose one.
