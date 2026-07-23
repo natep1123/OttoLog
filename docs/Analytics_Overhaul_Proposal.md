@@ -15,29 +15,25 @@
 > (`InsightsHubScreen`, `InsightsDashboardScreen`, `InsightsQueryBuilderScreen`),
 > `sql/greenfield/007_session_logs.sql` (`v_log_set_facts`).
 > Phase **1a** was interim substrate. Phases **2–3a** shipped the **Dashboard**
-> (PG-first facets + per-PG scope cards). **Query builder** (nested, savable,
-> lockable) is the live product bet — **slices 1 nest + 1.5 chrome/feel + 2 lock
-> grammar/preview shipped** (`Qb*` + `qbTokens` warm rails; LockedOutline +
-> LockedPreviewModal; ephemeral). **Next:** totals polish → save (`saved_queries`,
-> ask first). Nest shape owned by [`Insights_Query_Builder.md`](./Insights_Query_Builder.md),
-> not this board. Gold: `docs/references/workout-builder/` +
-> `docs/references/query-builder/`. Open history (optional):
-> `docs/references/archive/query-open-history/`.
+> (PG-first facets + per-PG scope cards). **Query builder** (nest AST + madlib
+> author / locked nest readout, eventually savable) is the live product bet —
+> **slices 1 nest + 1.5 chrome/feel + 2 lock grammar/preview shipped**
+> (ephemeral); **author/read split decided (docs)**. **Next:** madlib spike →
+> totals → save (`saved_queries`, ask first). Nest/author contract:
+> [`Insights_Query_Builder.md`](./Insights_Query_Builder.md). Gold:
+> `docs/references/workout-builder/` + `docs/references/query-builder/`.
 >
 > **Jul 22 reframe (supersedes framing below where they conflict):** Insights is a
 > **card hub** (like Library / Create) with **two tools**:
 > 1. **Dashboard** — the PG-first facet readout built in Phases 2–3a (per-PG scope
 >    cards, shape-driven facets). A **fast, unsaved** look. **No saving here.**
-> 2. **Query builder** — the real product bet: a **nested query form** that mirrors
->    the log/template builders. Collapsing dropdowns per layer, **lock per layer**
->    to a grammar-condensed line (expand to edit), a **preview modal** for the
->    expanded locked outline, and **savable/reusable** asks (save like a template;
->    reopen to the OPEN + locked clean view; re-run live). Each exercise query
->    subdivides into modifiers / loads / variations across the data, then a totals
->    line. **Capability first**, then friendliness.
+> 2. **Query builder** — structured, eventually savable asks. **Author:** condensed
+>    madlib / clause compose. **Read:** locked nest outline + preview (workout
+>    chrome family). Nest AST + client engine stay. Save like a template; reopen
+>    OPEN + locked. **Capability first**, then friendliness.
 >
 > So "Saved Insights + lock" is **not** a light add-on to the draft form — it is a
-> separate, builder-grade nested screen. The per-PG card work is the Dashboard.
+> separate builder-grade screen. The per-PG card work is the Dashboard.
 
 ---
 
@@ -72,8 +68,9 @@ secondary strip, not the home screen.
 
 Phase **1a** made numbers honest (multi-metric, `v_log_set_facts`). **Phases 2–3a**
 shipped the **Dashboard** (draft form → per-PG scope cards). **Phase 3b+** is the
-**nested Query builder** (save + lock) — a separate builder-grade screen, not an
-add-on to the Dashboard. Old “Power cube” and “Simple card stack” are **parked**.
+**Query builder** (nest AST + madlib author / locked readout; save + lock) — a
+separate builder-grade screen, not an add-on to the Dashboard. Old “Power cube”
+and “Simple card stack” are **parked**.
 
 ---
 
@@ -101,9 +98,10 @@ care about. That’s simpler *and* more capable than a metric selector.
 
 > **Scope note:** §3 is the shared PG-first vocabulary (subject → facets → scope →
 > window) — the flat mental model the **Dashboard** shipped. The **Query builder**
-> arranges these same concepts into the **v2 nest** (Query → Section → Breakdown →
-> Subject → Measure), where facets become **Measures** (op × field) and scope/window
-> live on Section/Query. This layer list is **not** the QB structure — that is
+> uses the same concepts: **author** as madlib clauses; **definition/read** as the
+> v2 nest (Query → Section → Breakdown → Subject → Measure). Facets become
+> **Measures** (op × field); scope/window live on Section/Query in AST (Query frame
+> in author UI). Nest/author detail:
 > [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
 
 An **Insight** is a **saved (or draft) query** over complete session logs. Mental
@@ -203,10 +201,11 @@ Nest labels are **WHERE**, not rival subjects. No “lens” vocabulary in the U
 | Save template | **Save Query** (`saved_queries` — ask first) |
 | Review mode + lock → clean outline | **Lock Query** → paginated grammar / screenshot |
 
-**Same nest depth, own chrome.** The QB clones the builder *DNA* (collapse / lock →
-grammar / preview / save-reopen) with its own `Qb*` nodes; structure/feel ≈ workout
-nest (`layer` accents by depth). Full nest
-contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
+**Same nest AST depth; madlib author; workout-family read chrome.** The QB keeps
+builder *DNA* on the **read** surface (lock → grammar / preview / save-reopen) with
+`Qb*` nodes and warm `layer` accents by depth. **Authoring** is condensed clause
+compose — not five Session edit shells. Full contract:
+[`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
 
 Engineers may notice the SQL shape; users see **“what / how / where / when.”**
 
@@ -340,11 +339,11 @@ loader live on in Phase 2.
 
 **Out of scope (still):** lock mode, saved templates table, trends/time buckets, derived calcs UI
 
-### Phase 3 — Insights hub + nested Query builder (Jul 22 reframe)
+### Phase 3 — Insights hub + Query builder (Jul 22 reframe; author/read Jul 22 evening)
 
 **Goal:** Insights is a card hub. **Dashboard** is the fast unsaved look
-(Phases 2–3a, done). The **Query builder** is a builder-grade **nested query
-form** — the same product family as the log/template builders — with save + lock.
+(Phases 2–3a, done). The **Query builder** is builder-grade — nest AST + client
+engine, **madlib author**, **locked nest readout**, then save + lock reopen.
 
 **3a — Dashboard (done):** hub + per-PG scope cards (variations/tools scoped per
 PG, soft suggestions), shape-driven facets. Lives behind the Dashboard card.
@@ -352,26 +351,27 @@ PG, soft suggestions), shape-driven facets. Lives behind the Dashboard card.
 
 **3b — Query builder (in progress):**
 
-> **Nesting design contract:** [`Insights_Query_Builder.md`](./Insights_Query_Builder.md)
-> — the **v2 layer model**, builder DNA reuse map, and phased slices. Read it before
-> any Query builder UI work; it owns the nest shape (this board defers).
-> The QB **mirrors the workout nest depth**: **Query → Section → Breakdown →
-> Subject → Measure** (= Session → Block → Sequence → Exercise → Set), each layer a
-> hidden SQL clause, ops at the **Measure** leaf (op × field). The old v1 flat
-> Subject-card model (flat subjects + one optional "Group") is **dead** — don't
-> rebuild it.
+> **Contract:** [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) — nest AST,
+> author/read split, DNA reuse, slices. Read it before any Query builder UI work.
+> **Author:** madlib (Query frame + Subject clause-blocks). **Read:** LockedOutline
+> nest grammar + preview. **AST:** Query → Section → Breakdown → Subject → Measure
+> (Section collapsed in author UI until multi-Section). Nest-shell-only edit path
+> is **parked**. v1 flat Subject-card model is **dead**.
 
 - [x] Insights card hub (`InsightsHubScreen`) → Dashboard + Query builder; routing in `HomeScreen`
-- [x] **Slice 1 — nest skeleton (shipped, ephemeral):** `src/components/querybuilder/` `Qb*` nest rendering Query → Section → (optional) Breakdown → Subject → Measure; collapse + `+ Add …`; client-side aggregate over `v_log_set_facts` (`loadQueryFacts` + `engine.ts`). Provisional cool `queryLayer` — superseded by Decision 12 overturn.
-- [x] **Slice 1.5 — chrome/feel parity (shipped, ephemeral):** reuse workout `layer`/`override`/set-chip by depth via `qbTokens`; CoordRow DNA (lock toggle, Query More); gold shots `docs/references/workout-builder/`; content stays analytics. Open history: `docs/references/archive/query-open-history/`.
-- [x] **Slice 2 — lock + preview (shipped, ephemeral):** `qbOutline` + LockedOutline when locked+expanded; maximize → LockedPreviewModal; Tools Unlock & Expand All. Gold: `docs/references/query-builder/`.
-- [ ] **Slice 3 — Breakdown totals polish:** per-group sub-rows + totals in card and locked outline (credit-each safe)
-- [ ] **Slice 4 — save/reopen:** `saved_queries` persistence (`name`, `notes`, `definition jsonb`, …) — **ask before migrating**; list/picker (Library-like); reopen → OPEN + locked clean view; re-run live (or historic if pinned)
+- [x] **Slice 1 — nest skeleton (shipped, ephemeral):** `Qb*` + `engine.ts` over `v_log_set_facts`
+- [x] **Slice 1.5 — chrome/feel parity (shipped, ephemeral):** warm `qbTokens` / workout `layer` by depth
+- [x] **Slice 2 — lock + preview (shipped, ephemeral):** `qbOutline` + LockedOutline + LockedPreviewModal. Gold: `docs/references/query-builder/`
+- [x] **Author/read split (docs, Jul 22):** madlib compose / nest readout; Decisions 16–17 in nest contract
+- [ ] **Slice 2.5 — madlib authoring spike (ephemeral):** unlock = clauses; lock → existing outline/preview
+- [ ] **Slice 3 — Breakdown totals polish:** per-group sub-rows + totals (credit-each safe)
+- [ ] **Slice 4 — save/reopen:** `saved_queries` — **ask before migrating**; nest JSON behind madlib view
 - [ ] **Slice 5 — multi-Section + more dims/ops + seeds**
 - [ ] Dynamic (rolling) vs static (pinned) date windows in definition
 - [ ] 1–2 default saved asks for new users (optional, with Chat 6)
 
-Capability first; friendliness (madlib polish) once the nested form + save/lock hold.
+Capability first; madlib authoring is the friendliness bet **before** save — not
+polish after nest-shell edit.
 
 ### Phase 4 — Taxonomy + seeds
 
@@ -435,25 +435,29 @@ fake combined total.
 
 | # | Topic | Direction |
 |---|--------|-----------|
-| 7 | Insights = two tools | **Dashboard** = fast unsaved look (done). **Query builder** = nested savable/lockable builder (in progress). |
+| 7 | Insights = two tools | **Dashboard** = fast unsaved look (done). **Query builder** = madlib author + nest readout; eventually savable (in progress). |
 | 8 | Per-PG filters (Dashboard) | **Shipped on Dashboard:** one card per PG; variations/tools per PG (soft suggestions). |
-| 9 | Query builder lock | Lock **per layer** → grammar-condensed line; preview modal = Locked Preview family |
+| 9 | Query builder lock | **Whole-ask** compose ↔ grammar for v1 madlib (workout lock *look* + preview). Per-layer lock later if needed. |
 | 10 | Date saves | Support **dynamic** (rolling) and **static** (pinned range) in saved definitions |
 | 11 | Name + notes | First-class on saved asks (builder More DNA) |
 | 12 | Query builder home | Saved-list / picker / blank draft — TBD in Query builder design pass |
+| 13 | Author vs read | **Madlib author / nest LockedOutline read** (Jul 22). Nest-shell-only authoring parked. |
 
-Still open: credit-each vs partition on balance saved views; builder lock/pills mirror on nest editors. (Query builder nest depth / ops = **signed off** in [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §8.)
+Still open: credit-each vs partition on balance saved views; builder lock/pills mirror on nest editors; madlib chrome density (see nest contract §10). (QB AST + ops signed off; authoring path updated in [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §8.)
 
 ---
 
 ## 12. Implications for other docs / code
 
-- **`Insights_Query_Builder.md`:** the Query builder **nesting design contract** (v2 layer model, DNA reuse, `SavedQueryDefinition` shape, slices). §5–6 + §9 Phase 3b defer to it for nest shape.
-- **`Status.md`:** Next = QB dogfood/re-shoot → totals (3) → save (4, ask first); slices 1–2 shipped; Dashboard (2–3a) = shipped; Insights = hub
+- **`Insights_Query_Builder.md`:** Query builder **contract** (nest AST, author/read
+  split, DNA reuse, `SavedQueryDefinition` shape, slices). §5–6 + §9 Phase 3b defer
+  to it.
+- **`Status.md`:** Next = madlib spike → totals (3) → save (4, ask first); slices 1–2
+  + author/read decision shipped (docs); Dashboard (2–3a) = shipped; Insights = hub
 - **`Analytics_Labeling.md`:** PG-first decision rule unchanged; de-emphasize “lens”
   language in UI copy when touched
 - **`Database_Outline.md`:** Insights query contract + `InsightQuery` (incl. per-PG maps) — keep in sync
-- **`.cursor/rules/insights.mdc` + QB skill:** hub + Dashboard shipped; QB nest + 1.5 + 2 shipped; next = totals / save; open gold JPEGs before UI work
+- **`.cursor/rules/insights.mdc` + QB skill:** hub + Dashboard shipped; QB nest + 1.5 + 2 shipped; next = madlib spike; open gold JPEGs before UI work
 - **Chat 6:** still blocked until Counts as shape accepted (Phase 4)
 
 ---

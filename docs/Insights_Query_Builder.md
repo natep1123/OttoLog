@@ -1,40 +1,28 @@
 # Insights Query Builder — nesting design (v2)
 
-> **Status:** Design contract — **layer model v2 signed off (Jul 22).** This
-> **replaces** the v1 flat-subject model (flat Subject cards + one optional Group).
-> v1 is dead: it read as "Dashboard in builder skin" because the old §8 mandated
-> flat subjects and argued *against* the 4-level tree. We are overturning that.
+> **Status:** Design contract — **layer AST + read chrome signed off (Jul 22);**
+> **author/read split decided (Jul 22 evening).** Replaces the v1 flat-subject
+> model (dead). Slices **1 nest + 1.5 warm chrome + 2 lock grammar/preview**
+> shipped (ephemeral). **Next:** madlib authoring spike (ephemeral) before
+> totals (3) / save (4). Nest-shell-only authoring is **parked** — do not keep
+> forcing five edit shells. No `saved_queries` / `008` from this doc alone —
+> ask at the save slice. Nate owns the go and the commit gate.
 >
-> **New direction:** the Query builder mirrors the **log / template builders** —
-> same nest depth, same chrome, same collapse / lock → grammar / preview /
-> save-reopen DNA — with a real **SQL meaning at every layer, hidden** behind
-> friendly nodes. **Slice 1 nest + 1.5 chrome/feel parity shipped**
-> (ephemeral; lock toggle without grammar/preview). No `saved_queries`
-> migration from this doc alone — ask at the save slice. Nate owns the go
-> and the commit gate.
+> **Author vs read:** unlocked = condensed madlib / clause compose; locked =
+> nest LockedOutline + maximize preview (workout chrome family). Definition +
+> engine stay nest-shaped. Full split: §2.
 >
 > **Read alongside:** [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md)
 > (product direction: hub = Dashboard + Query builder), [`Template_Builders.md`](./Template_Builders.md)
-> (the builder chrome this now clones), [`Database_Outline.md`](./Database_Outline.md)
-> (fact grain), [`Styling.md`](./Styling.md) (form chrome — QB reuses the same
-> nest `layer` / `override` accents by depth), [`Status.md`](./Status.md) (Next #1),
-> and **UI gold shots** under [`references/`](./references/)
+> (builder chrome DNA for the **read** surface), [`Database_Outline.md`](./Database_Outline.md)
+> (fact grain), [`Styling.md`](./Styling.md) (nest `layer` / `override` accents),
+> [`Status.md`](./Status.md) (Next #1), and **UI gold** under [`references/`](./references/)
 > (`workout-builder/` + `query-builder/` — open the `.jpg` files).
 >
-> **Ground truth today:** `src/lib/insights.ts` — `loadInsightQuery` +
-> `v_log_set_facts` (Dashboard read) **and** `loadQueryFacts` (raw scoped facts for
-> the QB); `src/screens/insights/InsightsDashboardScreen.tsx` (the *fast unsaved*
-> look — **not** the Query builder target IA); `src/screens/insights/InsightsQueryBuilderScreen.tsx`
-> (**slice 1 + 1.5 — shipped, ephemeral**); `src/components/querybuilder/`
-> — the live `Qb*` nest chrome (`QbLayer`, `QbCoordRow`, `QbAddChildButton`,
-> `Qb{Query,Section,Breakdown,Subject}Card`, `QbMeasureRow`), `types.ts` draft
-> model, `engine.ts` client-side aggregate, `qbTokens.ts` (`QB_TO_FORM`).
-> **Palette (Decision 12 overturned):** reuse workout `layer` / `override` /
-> set-chip by depth (Query=Session … Measure=Set) — provisional cool
-> `queryLayer` removed. Forked from `src/components/forms/` (`NestedLayer`,
-> `CoordRow`, `LockController`, `ExpansionController`, `LockedOutline`,
-> `LockedPreviewModal`, `Disclosure`, `MorePanel`, `SearchableSelect`) —
-> DNA for structure/feel parity; grammar outline + preview = slice 2.
+> **Ground truth today:** `src/lib/insights.ts` (`loadInsightQuery` Dashboard;
+> `loadQueryFacts` QB); `InsightsQueryBuilderScreen` + `src/components/querybuilder/`
+> (`Qb*` nest chrome, `types.ts`, `engine.ts`, `qbOutline.ts`, `qbTokens.ts`).
+> Slice 2 read surface is the gold to protect. Madlib author UI **not shipped yet**.
 > Gold: [`references/workout-builder/`](./references/workout-builder/) +
 > [`references/query-builder/`](./references/query-builder/); open-state history:
 > [`references/archive/query-open-history/`](./references/archive/query-open-history/).
@@ -43,33 +31,43 @@
 
 ## 1. Status / non-goals
 
-**In scope (this doc):** how the Query builder nests — the layers, what each one
-*means in SQL* (hidden), what collapses, what locks to grammar, what is scoped
-where, and how it forks the template/log builder chrome.
+**In scope (this doc):** the Query builder **definition** (nest AST + SQL meaning
+per layer), the **read surface** (locked outline / preview chrome), and the
+**author surface** (madlib / clause compose → same AST). Also: what locks, what
+scopes where, and how chrome forks the template/log builders.
 
 **Non-goals / guardrails:**
 
 - **Dashboard is out of scope.** `InsightsDashboardScreen` stays the fast, unsaved
-  PG facet look. The Query builder is the *second* tool in the hub — a full nested
-  builder, not a Dashboard variant. **Do not borrow the Dashboard readout layout.**
+  PG facet look. The Query builder is the *second* tool in the hub — not a
+  Dashboard variant. **Do not borrow the Dashboard readout layout.**
 - **No new fact schema.** Reuse `v_log_set_facts` and the `insights.ts`
   aggregation. One `log_sets` row = one fact. Grouping + aggregate ops are computed
   **client-side** over the existing view for capability-first. **No migration**
   (no `saved_queries`, no `008`) until Nate asks at the save slice.
 - **No derived facets by default.** Tonnage / e1RM stay advanced, off the critical
   path (same rule as Dashboard).
-- Coach-plain voice. SQL is *taught by structure*, never shown by default; a
-  "Show as SQL" reveal is a later optional stretch (§7), not v1.
+- Coach-plain voice. SQL is *taught by structure / grammar*, never shown by
+  default; a "Show as SQL" reveal is a later optional stretch (§7), not v1.
+- **Do not force five nest shells as the only edit path.** Nest-shell authoring
+  is parked; madlib compose is the next bet.
 
 ---
 
-## 2. Core principle — a query IS a nest (hide the SQL)
+## 2. Core principle — author madlib, read nest (hide the SQL)
 
-A SELECT statement nests almost 1:1 with the workout builder. That is the unlock:
-we don't back off SQL, we **hide** it. Building a Query feels exactly like building
-a Session; underneath, each layer is a SQL clause.
+A SELECT still maps layer-for-layer onto the workout nest **in the definition and
+on the locked readout**. That is the unlock for *capability* and *share grammar*.
+It is **not** the unlock for *authoring*: coaches should not open a fake Session
+of shells to write an ask.
 
-| Workout builder | Query builder | SQL it (secretly) is |
+| Surface | Job |
+|---|---|
+| **Author (unlocked)** | Condensed **madlib / clause** compose — Query frame + repeatable Subject clause-blocks |
+| **Read (locked)** | Existing **LockedOutline** nest grammar + maximize → preview (workout chrome family) |
+| **Definition / engine** | Nest AST (`QueryDraft` / future `saved_queries` JSON) + client aggregate |
+
+| Workout builder | Query builder (AST + read) | SQL it (secretly) is |
 |---|---|---|
 | **Session** (the day) | **Query** (the report) | `FROM your logs` + date window |
 | **Block** (a section) | **Section** (a result table) | `SELECT … WHERE` scope |
@@ -77,9 +75,8 @@ a Session; underneath, each layer is a SQL clause.
 | **Exercise** (a movement) | **Subject** (a Primary Group) | `WHERE primary_group = …` + identity |
 | **Set** (reps × load) | **Measure** (op × field) | `SELECT MAX(reps)` — one column |
 
-Same depth (5 layers). Same chrome (rails, collapse chevron, lock → grammar, meta
-chips, `+ Add …` controls). The depth is **earned** — every layer carries genuine
-SQL meaning, so nothing is ceremony.
+**Read chrome stays:** rails, chevron, lock look, More, maximize → preview, warm
+`layer` accents by depth, dusk totals. **Authoring does not clone Session edit.**
 
 **Naming is deliberately disjoint from the workout family** so a query **Section**
 never collides with a workout **Block**, and **Breakdown** never collides with
@@ -87,9 +84,26 @@ never collides with a workout **Block**, and **Breakdown** never collides with
 namespace (`src/components/querybuilder/`, `Qb*`) with **no** legacy aliases like
 `cluster = sequence`.
 
+### 2.1 Author surface — clause vocabulary (sketch)
+
+```
+Query frame
+  IN     [last 7 | last 28 | this week | pinned range]
+  WHERE  [nest labels…] · [Working | +warmups]     ← Query-level until multi-Section
+
+Subject clause-block  (repeat; Murph = three)
+  FOR    [Primary Group]
+  WITH   [variations…] · [tools…]                  ← soft identity
+  SHOW   [op × field]…                             ← multi-measure OK
+  SPLIT  [for each variation | tool]               ← optional; later date bucket
+```
+
+Unlock = madlib. Lock = outline (not both always-on). Whole-ask lock for v1 madlib
+(chrome *looks* like workout lock); per-layer lock later if needed.
+
 ---
 
-## 3. Layer model (top-down: Query → Section → Breakdown → Subject → Measure)
+## 3. Layer model (AST + read — Query → Section → Breakdown → Subject → Measure)
 
 ```
 Query        the report      FROM logs · date window · name/notes · lock/preview
@@ -99,69 +113,64 @@ Query        the report      FROM logs · date window · name/notes · lock/prev
         Measure  op × field     SELECT sum|avg|max|min|count (reps|time|distance|load|sets)
 ```
 
-Read it as a workout would read: a **Query** is the day, a **Section** is a block
-of it, a **Breakdown** loops like a sequence, a **Subject** is the movement, a
-**Measure** is one set-target. Subjects can sit directly in the Section (ungrouped)
-or inside a Breakdown (grouped) — exactly like exercises sit directly in a block or
-inside a sequence.
+**UI until multi-Section:** collapse **Section** into the Query frame (scope chips).
+Keep Section in the definition for later multi-table reports — do not make coaches
+open a fake Block just for WHERE.
+
+**Breakdown:** author as a **SPLIT chip/clause** on the Subject block; paint the
+purple Breakdown rail on the **read** surface only (lock/preview).
+
+Subjects sit ungrouped under the Section (no SPLIT) or wrapped by a Breakdown
+(SPLIT set) — same AST as today.
 
 ### Query (root · = Session)
 
-The whole report. Opening it feels like opening a Session card.
+The whole report. **Author:** Query frame (window + scope chips + name/notes).
+**Read:** outline root with warm Query rail (Session accent).
 
-- **Holds:** the data source (your complete session logs), the **date window**
-  (rolling preset `last 7 / 28 / this week`, or pinned `from`/`to`), and
-  **name + notes** (via `MorePanel` DNA). One Section beneath it.
+- **Holds:** complete-logs source, **date window** (rolling `last 7 / 28 / this
+  week`, or pinned `from`/`to`), **name + notes** (`MorePanel` DNA), and (in AST)
+  exactly one Section until multi-Section.
 - **SQL:** `FROM training_log WHERE session_date IN window` (+ complete-only).
-- **Collapses to:** name + window + Section summary grammar line.
-- **Locks to:** the paginated grammar outline root (`LockedPreviewModal` family)
-  for screenshot/share.
+- **Locks to:** paginated grammar outline root (`LockedPreviewModal` family).
 
-### Section (= Block) — **exactly one in v1**
+### Section (= Block) — **exactly one in AST (v1); collapsed in author UI**
 
-One result **table**. Auto-created inside every new Query; the user does not add or
-remove it in v1. Multi-Section (a mini-report with several tables) is **later**.
+One result **table** in the definition. Auto-created; user does not add/remove in
+v1. **Author UI:** fold scope into the Query frame — no fake Block shell.
+Multi-Section (mini-report with several tables) is **later** and may re-expose
+Section as an author slot.
 
-- **Holds:** the **scope WHERE** for this table — nest labels (session / block /
-  sequence any-of) and **set policy** (set types + Working/warmups). Its children:
-  an ordered list of Subjects and/or Breakdowns.
+- **Holds (AST):** **scope WHERE** — nest labels + **set policy**; children =
+  Subjects and/or Breakdowns.
 - **SQL:** one `SELECT … WHERE <scope> GROUP BY <breakdowns>` statement.
-- **v1 note:** because there is exactly one Section, its scope reads as the
-  query-global WHERE. When multi-Section lands, each table gets its own scope.
-- **Collapses to:** scope grammar + child summary.
-- **Locks to:** the outline header line (window + scope).
+- **Read:** scope grammar on the outline header line (window + scope).
 
 ### Breakdown (“For each …” · = Sequence) — optional, **no nesting**
 
-The looping mechanism. A Breakdown is `GROUP BY`: it wraps 1+ Subjects and fans
-each one out into per-group rows plus a **totals line**. This is the workout
-builder's sequence → rounds → performed-sets denest, made structural.
+`GROUP BY`: wraps 1+ Subjects → per-group rows + **totals line**.
 
-- **Holds:** one **dimension** to group by, and the Subjects grouped under it.
-- **v1 dimensions:** **`variation` · `tool`** (reuse the existing per-PG data;
-  credit-each safe). `date bucket` (day/week/month) and `nest label` are the first
-  **later** additions (see Open decisions). **PG is never a Breakdown dimension** —
-  Subjects already *are* the PG axis.
-- **Depth cap:** **no Breakdown inside a Breakdown** in v1 — sequences don't nest
-  sequences, so we don't invent deeper nesting than the workout builder. (Multi-key
-  `GROUP BY a, b` is deferred with multi-Section.)
+- **Author:** **SPLIT** chip/clause on a Subject block (`for each variation|tool`).
+  Not a separate unlockable Breakdown card in the madlib path.
+- **Read:** purple Breakdown rail + grouped sub-rows + dusk totals (`LockedOutline`).
+- **v1 dimensions:** **`variation` · `tool`**. `date bucket` / `nest label` later.
+  **PG is never a Breakdown dimension.**
+- **Depth cap:** **no Breakdown inside a Breakdown** in v1. Multi-key `GROUP BY`
+  deferred (don’t redesign authoring around it yet).
 - **SQL:** `GROUP BY <dimension>` with a rollup/totals row.
-- **Collapses to:** `For each <dimension>` + a member chip row.
-- **Locks to:** grammar; locked+expanded renders the grouped sub-rows + totals as a
-  `LockedOutline`-style block.
 
 ### Subject (= Exercise) — one Primary Group
 
-The chart noun. The PG sits in the **name slot** (where the exercise-name typeahead
-lives); identity pickers sit where the exercise's do.
+The chart noun. **Author:** one repeatable clause-block (`FOR` / `WITH` / `SHOW` /
+optional `SPLIT`). **Read:** gold Subject rail + measure tokens.
 
-- **Holds:** **one PG** (never multi-PG-in-one-card — complexes credit-each under
-  the hood), **identity any-of** (variations, tools — soft `suggestedIds`, **never
-  enforced**, no `008`), and its **Measures**.
+- **Holds:** **one PG**, **identity any-of** (variations, tools — soft, **never
+  enforced**, no `008`), and its **Measures**. Soft filter is enough for v1
+  (“Pullups · variations: Weighted”); first-class “Weighted Pullups” noun = later
+  display sugar, not a new identity model.
 - **SQL:** `WHERE primary_group = :pg [AND variation IN … AND tool IN …]`.
-- **Collapses to:** `Pullups · max 24 reps · avg 20 lb` (PG + its measure tokens).
-- **Locks to:** grammar; unlocked = editable body (PG swap, identity pickers, its
-  Measures). Inside a Breakdown, its Measures render per-group sub-rows + totals.
+- **Read:** `Pullups · max 24 reps · avg 20 lb`; inside a Breakdown, per-group
+  sub-rows + totals.
 
 ### Measure (leaf · = Set) — operation × field
 
@@ -188,27 +197,29 @@ column: an **op** applied to a **field**.
 
 ## 4. What collapses / locks / scopes — quick matrix
 
-| Layer | Collapses to | Locks to | Editable when unlocked | Scope it owns |
-|---|---|---|---|---|
-| **Query** | name + window + section grammar | outline root (paginated) | window, name, notes | date window (global) |
-| **Section** | scope grammar + child summary | outline header line | nest labels, set policy | `WHERE` scope (one table) |
-| **Breakdown** | `For each <dim>` + member chips | grammar (+ grouped sub-rows/totals if expanded) | dimension, members | `GROUP BY` dimension |
-| **Subject** | PG + measure tokens | grammar (+ per-group breakdown if inside one) | PG, identity pickers, measures | `WHERE pg =` + identity |
-| **Measure** | a value token | same token | op + field | the aggregate column |
+| Layer | Author (madlib) | Read (locked outline) | Scope it owns |
+|---|---|---|---|
+| **Query** | frame: IN window · WHERE scope · name/notes | outline root (paginated) | date window (global) |
+| **Section** | **collapsed into Query frame** until multi-Section | outline header (scope line) | `WHERE` scope (one table in AST) |
+| **Breakdown** | **SPLIT chip** on Subject clause | purple rail + groups + dusk totals | `GROUP BY` dimension |
+| **Subject** | clause-block: FOR / WITH / SHOW [/ SPLIT] | gold rail + measure tokens | `WHERE pg =` + identity |
+| **Measure** | SHOW chips (op × field) | value token | the aggregate column |
 
-Lock granularity = **full tree** (Query / Section / Breakdown / Subject / Measure),
-reusing `LockController` ancestor-forcing + unlock-own-locks-children, with a new
-`query` root id. Collapse and lock stay orthogonal axes, same as the workout family.
+**Lock (v1 madlib):** **whole-ask** compose ↔ grammar readout — chrome that *looks*
+like workout lock (rail, icon, maximize → preview). Do **not** force five per-layer
+locks on the sentence editor. Per-layer lock (full `LockController` tree) stays
+available later if needed; today’s nest UI may still use it until the madlib spike
+lands. Collapse and lock stay orthogonal on the **read** surface.
 
 ---
 
 ## 5. Builder DNA reuse map + definition shape
 
-Fork the chrome, don't reinvent it. New code under `src/components/querybuilder/`
-with `Qb*` names. **Structure and feel ≈ workout nest** (rails, chevron, lock,
-More, pills, `+ Add → parent`, locked outline / preview). **Content inside nodes
-differs** (PG / dims / ops × fields — not sets / tools / shapes). Not a pixel-1:1
-clone of Session copy — same chrome family, analytics payload.
+Fork the chrome, don't reinvent it. Code under `src/components/querybuilder/` with
+`Qb*` names. **Read surface ≈ workout nest** (rails, chevron, lock look, More,
+maximize → preview, warm `layer` accents by depth). **Author surface = madlib**
+(clause chips / Subject blocks) — not a pixel-1:1 Session edit clone. Content is
+always analytics (PG / dims / ops × fields).
 
 | Builder chrome (`src/components/forms/`) | Query builder (`src/components/querybuilder/`) | Notes / departure |
 |---|---|---|
@@ -245,22 +256,22 @@ that migration.**
 
 ---
 
-## 6. Defaults — a new Query is never five empty shells
+## 6. Defaults — madlib path (not five empty shells)
 
-Opening a fresh Query pre-seeds the common path so simple asks are one or two taps:
+Opening a fresh Query should feel like one short ask, not a nest of empty cards:
 
 ```
-Query  (rolling · last 7 days, unnamed)
-  Section  (no scope — all complete sessions)
-    Subject  (empty PG — pick one)
-      Measure (empty — pick op × field, smart default once field known)
+Query frame   IN last 7 · WHERE (none — all complete) · unnamed
+  Subject block   FOR ▢ · WITH (all) · SHOW ▢          ← one empty clause
 ```
 
-No Breakdown by default (it's optional, like a sequence). The user picks a PG in the
-Subject, picks a field for the Measure (op smart-defaults), and already has a
-result. Adding a Breakdown, more Subjects, or more Measures scales up from there via
-`+ Add Breakdown` / `+ Add Subject` / `+ Add Measure` — mirroring the workout
-add-buttons.
+AST still has the auto Section + empty Subject + empty Measure under the hood.
+No SPLIT/Breakdown by default. User picks PG + field (op smart-defaults) and has
+a result. Add Subject blocks, SHOW chips, or SPLIT as needed — not
+`+ Add Breakdown` as a separate shell on the author path.
+
+*(Shipped nest UI still opens Query → Section → Subject → Measure shells until
+the madlib spike replaces that edit path.)*
 
 ---
 
@@ -268,17 +279,16 @@ add-buttons.
 
 ### A — Murph weighted work (three subjects, no breakdown)
 
-Authored (unlocked):
+Authored (unlocked madlib):
 
 ```
-Query  "Murph — weighted work"    rolling · last 7 days
-  Section   scope: Block = Challenge · Working only
-    Subject  Pullups   measures: sum reps · avg load
-    Subject  Pushups   measures: sum reps
-    Subject  Squats    measures: sum reps · avg load
+IN last 7 · WHERE Challenge · Working
+FOR Pullups · WITH Weighted · SHOW sum reps · avg load
+FOR Pushups · SHOW sum reps
+FOR Squats · SHOW sum reps · avg load
 ```
 
-Locked grammar (reads like an English SELECT):
+Locked grammar (nest readout — protect this look):
 
 ```
 Murph — weighted work
@@ -289,19 +299,18 @@ Challenge · last 7 days · Working
 ```
 
 No total across Pullups/Pushups/Squats — unlike measures, credit-each.
+`WITH Weighted` = soft identity filter (not a new noun type).
 
-### B — A Breakdown (the loop) — Pullups by variation, with a max
+### B — Breakdown via SPLIT — Pullups by variation, with a max
 
 Authored:
 
 ```
-Query  "Pullup PRs"    rolling · last 28 days
-  Section   (all sessions)
-    Breakdown  "For each variation"
-      Subject  Pullups   measures: max reps · avg load
+IN last 28
+FOR Pullups · SHOW max reps · avg load · SPLIT for each variation
 ```
 
-Locked grammar (per-group sub-rows + totals):
+Locked grammar (purple Breakdown rail + dusk totals):
 
 ```
 Pullup PRs
@@ -312,76 +321,77 @@ last 28 days
     └ total       max 18 reps
 ```
 
-`max × reps` is the "most reps in one set" ask. The Breakdown is the sequence-
-expansion analog: one authored Subject, many computed rows + a totals line.
+`max × reps` = "most reps in one set." One Subject clause → many computed rows.
 
-Secret SQL (never shown by default; the "Show as SQL" later stretch):
+Secret SQL (never shown by default; "Show as SQL" later stretch):
 `SELECT variation, MAX(reps), AVG(load) FROM facts WHERE pg='Pullups' AND date>=… GROUP BY variation`.
 
 ---
 
-## 8. Decisions (v2 — signed off Jul 22)
+## 8. Decisions (v2 — signed off Jul 22; author/read split Jul 22 evening)
 
 Supersedes the v1 §8 table. Build to these.
 
-| # | Decision | Ruling (v1 of the new model) |
+| # | Decision | Ruling |
 |---|---|---|
-| 1 | Layers | **Query → Section → Breakdown → Subject → Measure.** Mirror the workout nest depth. |
-| 2 | Sections | **Exactly one Section**, auto-created under Query. Multi-Section later. |
-| 3 | Breakdown | **Wraps Subjects. No nested Breakdowns** (don't out-nest the workout builder). |
+| 1 | Layers (AST + read) | **Query → Section → Breakdown → Subject → Measure.** SQL meaning per layer unchanged. |
+| 2 | Sections | **Exactly one Section in AST**, auto-created. **Author UI:** collapse into Query-level scope until multi-Section is real. |
+| 3 | Breakdown | **AST wraps Subjects; no nested Breakdowns.** **Author:** SPLIT chip on Subject. **Read:** purple rail + totals. |
 | 4 | Breakdown dims | **`variation` + `tool`** for v1. `date bucket` / `nest label` later. **PG is never a dim.** |
 | 5 | Ops (Measure) | **`sum · avg · max · min · count`** only. `latest` / `count-distinct` later. |
 | 6 | Fields | `reps · time · distance · load · sets` (existing `InsightFacetId`). NULL discipline. |
-| 7 | One PG per Subject | **Confirmed.** Complexes credit-each under the hood; never multi-PG-in-one-card. |
+| 7 | One PG per Subject | **Confirmed.** Complexes credit-each; never multi-PG-in-one-card. Soft identity enough for “weighted” v1. |
 | 8 | Identity scope | Per-Subject variations/tools, **soft/never enforced** (no `008`). |
-| 9 | Set policy + nest scope | **Section-level (WHERE).** With one Section this reads query-global. |
-| 10 | Lock granularity | **Full tree** (Query / Section / Breakdown / Subject / Measure) via `LockController`. |
-| 11 | Naming / code | Product: Query/Section/Breakdown/Subject/Measure. Code: `src/components/querybuilder/`, `Qb*`, **no** legacy aliases. Saved artifact = **Query**. |
-| 12 | Palette / feel | **Overturned Jul 22 evening; landed in slice 1.5.** Reuse workout nest accents by depth (`layer` + `override` + set chip via `qbTokens`) so structure/feel match Session→…→Set. Keep `Qb*` nouns. Content inside nodes stays analytics — not a Session clone. Gold shots: `docs/references/workout-builder/`. |
-| 13 | Defaults | New Query opens **Query → Section → empty Subject → empty Measure** (no Breakdown). |
-| 14 | Engine | **Client-side group/aggregate** over `v_log_set_facts`. **No migration** until Nate asks. |
-| 15 | SQL teaching | English-SELECT grammar is enough. **"Show as SQL" is a later optional stretch.** |
+| 9 | Set policy + nest scope | **Section-level in AST.** Author/read as **Query-level WHERE** while one Section. |
+| 10 | Lock granularity | **Whole-ask** compose ↔ grammar for v1 madlib (workout lock *look*). Per-layer tree lock later if needed. |
+| 11 | Naming / code | Product: Query/Section/Breakdown/Subject/Measure. Code: `Qb*`, **no** legacy aliases. Saved artifact = **Query**. |
+| 12 | Palette / feel | **Warm nest accents by depth** (`qbTokens` → `layer`/`override`/set-chip). Keep `Qb*` nouns. Cool `queryLayer` dead. |
+| 13 | Defaults | New Query: **madlib** Query frame + one empty Subject clause (AST still has Section/Subject/Measure). No SPLIT by default. |
+| 14 | Engine | **Client-side** group/aggregate over `v_log_set_facts`. **No migration** until Nate asks. |
+| 15 | SQL teaching | English-SELECT **locked grammar** is enough. **"Show as SQL"** later optional. |
+| 16 | Author vs read | **Madlib author / nest readout.** Unlock = clauses; lock = outline (+ preview). Not both always-on. |
+| 17 | Nest-shell authoring | **Parked** as the main edit bet. Softened-nest (hide Section only) is fallback if madlib spike fails — not the default plan. |
 
 ---
 
 ## 9. Phased build slices (capability first)
 
-Each slice is small and leaves the Dashboard untouched. No commit without Nate. The
-v1 flat shell has been **scrapped** and replaced by the nest skeleton below.
+Each slice leaves the Dashboard untouched. No commit without Nate. The v1 flat
+shell is **scrapped**. Nest-shell-only authoring is **parked** after the
+author/read decision.
 
-- **Slice 0 — this doc (v2 layer model).** Contract + definition shape. No code. **Done.**
-- **Slice 1 — nest skeleton (no persistence). ✅ Shipped in tree (ephemeral).**
-  Real nest + engine; shipped with provisional cool `queryLayer` (removed in 1.5).
-- **Slice 1.5 — chrome / feel parity. ✅ Shipped in tree (ephemeral).** Warm `layer`
-  accents by depth via `qbTokens.ts` (`QB_TO_FORM`); CoordRow lock toggle + Query
-  More. Open history: `docs/references/archive/query-open-history/`.
-- **Slice 2 — lock + preview. ✅ Shipped in tree (ephemeral).** `qbOutline.ts` →
-  `LockedOutline` when locked+expanded; maximize → `LockedPreviewModal`; Tools
-  **Unlock & Expand All**. Gold: `docs/references/query-builder/`. Still no
-  `saved_queries` / `008`.
-- **Slice 3 — Breakdown depth + totals polish.** Firm up the grouped sub-rows +
-  totals rendering in-card and in the locked outline (credit-each safe).
-- **Slice 4 — save / reopen.** `saved_queries` (**ask first**), name + notes via
-  `MorePanel`, Library-like list/picker, rolling-vs-pinned window persisted, reopen
-  → OPEN + locked, re-run live (or historic if pinned).
-- **Slice 5 — multi-Section + more dims/ops + seeds.** Multiple Sections (mini-
-  report), `date bucket` / `nest label` breakdown dims, `latest` / `count-distinct`
-  ops, 1–2 seeded default Queries for new accounts (with Chat 6).
+- **Slice 0 — this doc (v2 layer model).** Contract + definition shape. **Done.**
+- **Slice 1 — nest skeleton (no persistence). ✅ Shipped (ephemeral).**
+- **Slice 1.5 — chrome / feel parity. ✅ Shipped (ephemeral).** Warm `layer` by depth.
+- **Slice 2 — lock + preview. ✅ Shipped (ephemeral).** `qbOutline` → LockedOutline;
+  maximize → LockedPreviewModal. **Protect this read surface.**
+- **Slice 2.5 — madlib authoring spike (ephemeral). ← Next.** Unlocked Query frame +
+  Subject clause-blocks; lock maps clauses → existing `QueryDraft` → existing
+  outline/preview. No save, no migration. Dogfood Murph asks A–C. If win: amend
+  UI; if fail: softened nest fallback (collapse Section shell only).
+- **Slice 3 — Breakdown depth + totals polish.** After 2.5 feels right (or in
+  parallel on read-only polish). Grouped sub-rows + totals (credit-each safe).
+- **Slice 4 — save / reopen.** `saved_queries` (**ask first**); persist nest JSON
+  (madlib = view over same definition); reopen → OPEN + locked; rolling vs pinned.
+- **Slice 5 — multi-Section + more dims/ops + seeds.** May re-expose Section in
+  author UI; `date bucket` / `nest label` SPLIT dims; `latest` / `count-distinct`;
+  seeded Queries (with Chat 6).
 
-Polish (madlib phrasing, chip grammar, "Show as SQL") rides on top once the nested
-form + save/lock hold.
+Coach-labeled clause power first (filters, multi-measure, date bucket). Multi-key
+GROUP BY / compare windows later — don’t redesign authoring around them.
 
 ---
 
-## 10. Open decisions (not blocking slice 2)
+## 10. Open decisions
 
-- **Breakdown dimensions beyond variation/tool:** `date bucket` (day/week/month) is
-  the obvious next and unlocks trend asks — promote in slice 5 or sooner?
-- **Multi-key GROUP BY:** deferred with multi-Section; revisit only if a real ask
-  needs two grouping keys at once.
-- **Where "add Subject/Measure" affordances live** when locked vs unlocked — follow
-  the workout builder's resolution once chrome parity + lock are on device.
-- **Date-bucket Breakdown dim:** promote after lock (+ ideally save); first major
-  capability gap after the builder feels lockable (see Status / ideation).
-- **Empty Measure display:** how an unfilled Measure reads before op×field is chosen
-  (placeholder token vs hidden until valid).
+- **Madlib chrome density:** single Query card with clause rows vs short chip
+  “sentence” rails — spike decides.
+- **Empty Subject block:** placeholder `FOR ▢ · SHOW ▢` vs hide until PG picked.
+- **SPLIT + one Subject:** locked outline always purple “For each…”, or flatten
+  when trivial?
+- **Save definition:** confirm nest JSON as canonical (madlib = view) before
+  `saved_queries`.
+- **Breakdown dimensions beyond variation/tool:** `date bucket` next capability
+  gap (slice 5 or sooner once authoring lands).
+- **Multi-key GROUP BY / compare windows:** deferred — don’t block madlib.
+- **Empty Measure display** on author SHOW chips before op×field chosen.

@@ -26,7 +26,7 @@ Expo ~57 · React Native · TypeScript · Supabase (Auth + Postgres + RLS)
 | [`docs/Status.md`](docs/Status.md) | Living ops board: shipped / next / parked / open questions |
 | [`docs/README.md`](docs/README.md) | Docs index (canonical vs deprecated vs references) |
 | [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md) | Insights **product board**: hub = Dashboard (shipped) + Query builder |
-| [`docs/Insights_Query_Builder.md`](docs/Insights_Query_Builder.md) | Insights **Query builder nest contract** (Query→Section→Breakdown→Subject→Measure) |
+| [`docs/Insights_Query_Builder.md`](docs/Insights_Query_Builder.md) | Insights **Query builder contract** (nest AST + madlib author / locked nest readout) |
 | [`docs/references/`](docs/references/) | UI gold shots — open the `.jpg` files |
 | [`docs/Project_Structure.md`](docs/Project_Structure.md) | Folders, tabs, data flow, lib map |
 | [`docs/Setup.md`](docs/Setup.md) | Env, migration order, smoke test |
@@ -43,7 +43,7 @@ Expo ~57 · React Native · TypeScript · Supabase (Auth + Postgres + RLS)
 - Naming: follow the glossary in `Database_Outline.md` (no synonym invention).
 - Legacy internal name **cluster** = product **Sequence** (`ClusterEditor`, `cluster_templates`, …).
 - Templates nest Session → Block → Sequence → Exercise; logs denest/renest via `src/lib/sessionLogs.ts`.
-- Insights = **card hub** → **Dashboard** (fast unsaved PG facets) + **Query builder** (nested savable/lockable). QB **mirrors the workout nest** — Query → Section → Breakdown → Subject → Measure — with `src/components/querybuilder/` `Qb*` chrome. **Structure/feel ≈ Session→…→Set** (same `layer`/`override` accents by depth via `qbTokens`); content inside nodes is analytics. **Shipped:** nest + **1.5** chrome/feel + **2** lock grammar/preview (ephemeral). **Next:** totals polish → `saved_queries` (slice 4 — **ask first**). Nest shape = `docs/Insights_Query_Builder.md`. Gold UI: open every `.jpg` under `docs/references/query-builder/` and `docs/references/workout-builder/` with Read (not only README). The v1 flat Subject-card QB is **dead** — don't rebuild it.
+- Insights = **card hub** → **Dashboard** (fast unsaved PG facets) + **Query builder** (eventually savable). QB keeps a **nest AST** (Query → Section → Breakdown → Subject → Measure) + **workout-family read chrome** (`Qb*`, warm `qbTokens` by depth, LockedOutline / preview). **Authoring** = **madlib / clause compose** (not five Session edit shells). **Shipped:** nest + **1.5** chrome/feel + **2** lock grammar/preview (ephemeral) + **author/read split (docs)**. **Next:** madlib authoring spike → totals → `saved_queries` (slice 4 — **ask first**). Contract: `docs/Insights_Query_Builder.md`. Gold UI: open every `.jpg` under `docs/references/query-builder/` and `docs/references/workout-builder/` with Read (not only README). The v1 flat Subject-card QB is **dead**; nest-shell-only authoring is **parked**.
 - Cursor rules under `.cursor/rules/` point at these docs by scope — open matching files so the right rule attaches.
 - When a feature/phase chat closes, update `docs/Status.md` (Shipped / Next / Parked / Open questions) — do not paste that board into always-on rules.
 

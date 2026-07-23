@@ -1,5 +1,5 @@
 ---
-description: Insights hub — Dashboard (shipped) + Query builder v2 nest; grain, credit rules, guardrails
+description: Insights hub — Dashboard (shipped) + Query builder (madlib author / nest readout); grain, credit rules, guardrails
 globs: src/lib/insights.ts,src/screens/insights/**,src/components/querybuilder/**
 alwaysApply: false
 ---
@@ -8,8 +8,8 @@ alwaysApply: false
 
 ## Source of truth
 
-- **Query builder nest contract (canonical):** `docs/Insights_Query_Builder.md` — v2 layer model, DNA reuse map, slices. Open this before any Query builder work.
-- **Product board:** `docs/Analytics_Overhaul_Proposal.md` — hub = Dashboard + Query builder (product framing only; nest detail defers to the doc above).
+- **Query builder contract (canonical):** `docs/Insights_Query_Builder.md` — nest AST, **author/read split**, DNA reuse, slices. Open this before any Query builder work.
+- **Product board:** `docs/Analytics_Overhaul_Proposal.md` — hub = Dashboard + Query builder (product framing only; nest/author detail defers to the doc above).
 - Grain / fact contract: `docs/Database_Outline.md`
 - Living board: `docs/Status.md`
 - **UI gold:** `docs/references/workout-builder/` + `docs/references/query-builder/` — open every `.jpg` with the Read tool (not only README links). Optional history: `docs/references/archive/`.
@@ -20,19 +20,20 @@ alwaysApply: false
 Insights tab = a **card hub** (like Library / Create). Routing: `InsightsStack` in `HomeScreen.tsx` (hub / dashboard / queryBuilder).
 
 - **Dashboard** (`InsightsDashboardScreen`) — the PG-first per-PG facet readout. A **fast, unsaved** look. **No saving here.** Do not grow it into the Query builder.
-- **Query builder** (`InsightsQueryBuilderScreen`) — the real bet: a **nested, savable, lockable** builder that mirrors the log/template builders. **Shipped:** slice 1 nest + **1.5** chrome/feel + **2** lock grammar/preview (ephemeral). **Next:** totals polish → `saved_queries` (**ask first**). Open gold JPEGs before UI work.
+- **Query builder** (`InsightsQueryBuilderScreen`) — structured, eventually savable. **Shipped:** slice 1 nest + **1.5** chrome/feel + **2** lock grammar/preview (ephemeral) + **author/read split (docs)**. **Next:** madlib authoring spike → totals → `saved_queries` (**ask first**). Open gold JPEGs before UI work.
 
-## Query builder = a nest (mirror the workout builder)
+## Query builder — author madlib, read nest
 
-Layers, top-down (= workout nest, own product nouns):
+**AST + read layers** (= workout nest depth, own product nouns):
 
 **Query → Section → Breakdown → Subject → Measure** = Session → Block → Sequence → Exercise → Set.
 
-- **Structure/feel ≈ workout nest** — same rails/chevrons/lock/More/`+ Add` DNA; accents from workout `layer` / `override` / set chip **by depth** via `qbTokens.ts` (`QB_TO_FORM`). Content inside nodes is analytics (not a Session field clone). Decision 12 overturned the provisional cool `queryLayer`.
-- Every layer has a **hidden SQL meaning** (Query = FROM+window, Section = WHERE scope, Breakdown = GROUP BY, Subject = one PG + identity, Measure = op × field). SQL is taught by structure, never shown by default.
-- **Ops live at the Measure leaf:** `sum · avg · max · min · count` × `reps · time · distance · load · sets`. e.g. "most reps in one set" = `max × reps`.
-- v1 shape: **exactly one auto Section**; Breakdown wraps Subjects with **no nested Breakdowns**; Breakdown dims = `variation`/`tool`; **one PG per Subject** (complexes credit-each); per-Subject variations/tools are **soft, never enforced**.
-- Engine is **client-side** group/aggregate over `v_log_set_facts` — no new fact schema, no `saved_queries`/`008` until Nate asks.
+- **Author (unlocked):** condensed madlib — Query frame (IN / WHERE) + repeatable Subject clause-blocks (FOR / WITH / SHOW / optional SPLIT). Collapse Section in UI until multi-Section. Breakdown = SPLIT chip while authoring.
+- **Read (locked):** workout-family chrome — rails, lock look, More, maximize → preview; `qbOutline` LockedOutline (purple Breakdown rail, dusk totals). Warm `layer` accents by depth via `qbTokens.ts`.
+- **Lock (v1 madlib):** whole-ask compose ↔ grammar (looks like workout lock). Per-layer lock later if needed — don’t force five locks on the sentence editor.
+- Every layer has a **hidden SQL meaning** in the AST. Ops at Measure leaf: `sum · avg · max · min · count` × `reps · time · distance · load · sets`.
+- v1 AST: **exactly one auto Section**; Breakdown wraps Subjects with **no nested Breakdowns**; dims `variation`/`tool`; **one PG per Subject**; soft identity. Engine = client aggregate over `v_log_set_facts`.
+- **Nest-shell-only authoring is parked** — do not keep forcing five edit shells as the main bet.
 
 ## Dashboard direction (locked)
 
@@ -44,11 +45,12 @@ Layers, top-down (= workout nest, own product nouns):
 ## Code map
 
 - `src/lib/insights.ts` — two reads over `v_log_set_facts`: `loadInsightQuery` (Dashboard per-PG panels) and `loadQueryFacts` (raw scoped facts for the QB to aggregate). Shared `mapFactRow` / `passesScope` / `passesPgIdentity` / credit-each.
-- `src/components/querybuilder/` — `Qb*` nest chrome (forks `forms/` geometry; palette maps to `layer` by depth via `qbTokens`), `types.ts`, `engine.ts`.
+- `src/components/querybuilder/` — `Qb*` nest chrome (forks `forms/` geometry; palette maps to `layer` by depth via `qbTokens`), `types.ts`, `engine.ts`, `qbOutline.ts`.
 
 ## Do not
 
-- **Do not rebuild the v1 flat Subject-card QB** (flat subjects + one optional "Group"). It is dead — it read as "Dashboard in builder skin." QB is the full nest above.
+- **Do not rebuild the v1 flat Subject-card QB** (flat subjects + one optional "Group"). It is dead — it read as "Dashboard in builder skin."
+- **Do not force nest-shell-only authoring** — madlib compose is the next bet; protect slice 2 read chrome.
 - **Do not invent a separate cool-only QB look** — Decision 12 overturned; match workout nest feel via `layer`/`override` by depth (keep `Qb*` nouns).
 - Do not name QB layers "Table" or "Group" ("Group" collides with Primary Group).
 - Do not merge the Dashboard and Query builder IAs.

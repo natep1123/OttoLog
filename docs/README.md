@@ -17,7 +17,7 @@ Canonical design lives here. **Ignore** [`deprecated/`](./deprecated/) unless yo
 | Doc | Role |
 |-----|------|
 | [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md) | Insights product board (hub = Dashboard + Query builder) |
-| [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) | Query builder nest contract |
+| [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) | Query builder contract (nest AST + madlib author / locked nest readout) |
 | [`Analytics_Labeling.md`](./Analytics_Labeling.md) | PG vs Variations vs muscles vs tools |
 | [`Label_Library.md`](./Label_Library.md) | Seed vocabulary (short) |
 | [`New_User_Seeds.md`](./New_User_Seeds.md) | Full new-account seed catalog |
