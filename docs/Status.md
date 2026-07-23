@@ -6,22 +6,23 @@
 ## Canonical docs (do not paste wholesale)
 
 - [`Setup.md`](./Setup.md), [`Project_Structure.md`](./Project_Structure.md), [`Database_Outline.md`](./Database_Outline.md), [`Template_Builders.md`](./Template_Builders.md), [`Styling.md`](./Styling.md), [`Label_Library.md`](./Label_Library.md), [`New_User_Seeds.md`](./New_User_Seeds.md), [`Analytics_Labeling.md`](./Analytics_Labeling.md)
-- Insights: [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md) (product board) + [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) (Query builder nest contract) + [`references/workout-builder/`](./references/workout-builder/) (UI gold)
+- Insights: [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md) (product board) + [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) (Query builder nest contract) + [`references/workout-builder/`](./references/workout-builder/) (UI gold) + [`references/pool-query-insights/`](./references/pool-query-insights/) (QB before/after open)
 
 ## Current baseline
 
 - Stack / greenfield path: `sql/greenfield/001`–`007` (facts view in `007`; no `008`)
 - Live smoke DB: **OttoLog** Supabase (greenfield; email/password; confirm-email OFF for smoke)
-- App: Insights is now a **card hub** (like Library / Create) → **Dashboard** (the shipped PG-first facet readout; fast, not saved) + **Query builder** (v2 **nest skeleton shipped**: Query → Section → Breakdown → Subject → Measure, ephemeral). **Next:** chrome/feel parity with workout nest (reuse `layer` accents by depth), then lock/preview + save. Nest contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md). UI gold: [`references/workout-builder/`](./references/workout-builder/)
+- App: Insights is now a **card hub** (like Library / Create) → **Dashboard** (the shipped PG-first facet readout; fast, not saved) + **Query builder** (v2 nest + **slice 1.5 chrome/feel parity in tree**: same `layer` accents by depth, CoordRow lock toggle, More on Query; ephemeral). **Next:** condense open density + **slice 2** lock grammar/preview, then save. Nest contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md). UI gold: [`references/workout-builder/`](./references/workout-builder/)
 - **Analytics direction (locked, Jul 22 reframe):** Insights = **two tools**. **Dashboard** = quick unsaved PG/facet look. **Query builder** = the real product bet: a **nested query form** that mirrors the log/template builders — collapsing dropdowns per layer, lockability + grammar-condensed locked view + preview modal, and **savable/reusable** asks (save like a template, reopen to the OPEN + locked clean view). See [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md). v1 Hybrid/cube doc archived under `docs/deprecated/`
 - Seeds: `sql/seeds/murph_personal_seed.sql` applied on `n8.perry` (personal smoke only; not Chat 6)
 - Living board: this file (linked from AGENTS / README / Project_Structure)
 
 ## Shipped recently (newest first)
 
-- **UI reference galleries + QB feel overturn (Jul 22 evening)** — Added `docs/references/` with workout-builder gold shots (Murph Session: locked outline, preview p1/p2, mixed collapse, unlocked exercise, More, add cascade) + pool/optionals + `pool-query-insights/001.jpg` (QB open “before”). **Decision 12 overturned:** QB should match workout nest **structure/feel** (same `layer`/`override` accents by depth); content inside nodes stays analytics. Cool `queryLayer` was provisional in slice 1 — replace in slice 1.5. Contract + Styling + agent rules/skill updated.
-- **Insights Query builder — v2 slice 1: nest skeleton (Jul 22)** — scrapped the flat shell and rebuilt `InsightsQueryBuilderScreen` as the real nest: **Query → Section → (optional) Breakdown → Subject → Measure**, mirroring log/template builder **geometry** (provisional cool `queryLayer` — superseded by feel overturn above). New code under `src/components/querybuilder/` (`Qb*`). Defaults per §6. Client-side aggregate over `v_log_set_facts` via `loadQueryFacts` + `engine.ts`. Ephemeral. **No lock/preview, no save/`saved_queries`, no migration.** Dashboard + hub untouched. Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §9.
-- **Insights Query builder — v2 layer model signed off (Jul 22)** — **overturned the v1 flat design.** New contract: Query builder mirrors log/template builders — Query → Section → Breakdown → Subject → Measure (= Session → Block → Sequence → Exercise → Set); ops at Measure leaf; one auto Section; Breakdown wraps Subjects (no nesting); dims variation/tool; client-side aggregate; `Qb*` + cool palette; saved artifact = **Query**. Full contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
+- **Insights Query builder — slice 1.5 chrome/feel parity (Jul 22)** — QB nest reuses workout `layer`/`override`/set-chip by depth via `qbTokens.ts` (`QB_TO_FORM`); removed provisional cool `queryLayer`/`measureChip` from `tokens.ts`. CoordRow DNA: chevron · lock · label · trailing; Query name/notes in `MorePanel` + `IconButton`s; `LockControllerProvider` + `useNodeLock` (ephemeral toggle, ancestor-force; no LockedOutline/preview yet). Subject “For each…”/totals use dusk override. Engine/`loadQueryFacts` untouched. Still ephemeral. **Stopgaps for slice 2:** locked body still editable form (no grammar outline), no maximize/preview, no Tools tray. Refs: [`references/workout-builder/`](./references/workout-builder/).
+- **UI reference galleries + QB feel overturn (Jul 22 evening)** — Added `docs/references/` with workout-builder gold shots + pools; Decision 12 overturned (structure/feel ≈ workout nest). Contract + Styling + agent rules/skill updated ahead of 1.5.
+- **Insights Query builder — v2 slice 1: nest skeleton (Jul 22)** — scrapped the flat shell and rebuilt `InsightsQueryBuilderScreen` as the real nest: **Query → Section → (optional) Breakdown → Subject → Measure**. Provisional cool `queryLayer` (replaced in 1.5). Client-side aggregate over `v_log_set_facts`. Ephemeral. Dashboard + hub untouched. Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §9.
+- **Insights Query builder — v2 layer model signed off (Jul 22)** — **overturned the v1 flat design.** New contract: Query builder mirrors log/template builders — Query → Section → Breakdown → Subject → Measure (= Session → Block → Sequence → Exercise → Set); ops at Measure leaf; one auto Section; Breakdown wraps Subjects (no nesting); dims variation/tool; client-side aggregate; `Qb*` chrome; saved artifact = **Query**. (Decision 12 later overturned cool-only palette → reuse workout `layer` by depth.) Full contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
 - **Insights Query builder — slice 1 flat shell (Jul 22 — SCRAPPED)** — flat “Dashboard in builder skin” form removed when the v2 nest landed. Dashboard still uses `loadInsightQuery`/`buildPanel`.
 - **Insights reframed to a card hub (Jul 22)** — Insights tab is a hub (`InsightsHubScreen`) like Library / Create, with **Query builder** + **Dashboard** cards. Routing via `InsightsStack` in `HomeScreen.tsx` (hub / dashboard / queryBuilder). Old `InsightsScreen.tsx` → `InsightsDashboardScreen.tsx`. Saving is not on the Dashboard.
 - **Insights Phase 3 slice A (per-PG scope cards)** — *(now the Dashboard)* selecting Primary Groups spawns one editable card per PG. Each card holds its own Variations + Tools pickers (scoped to that PG only, soft — never enforced) above that PG's facet results. Variations picker wires `suggestedIds` from `listPrimaryGroupSuggestedTagIds(pgId)` (Show all still reaches the full pool). `InsightQuery` identity filters are now per-PG maps (`variationIdsByPg` / `toolIdsByPg`); aggregation applies each PG's filters to its own panel (credit-each unchanged). Nest labels + set type + dates + Working/warmups stay query-global in the Scope disclosure. Single global Variations/Tools filters removed (no rival UI). Category browse chips unchanged. No `008`. *(Save + lock superseded by the v2 Query builder slices — table is now `saved_queries` at slice 4; still ask before migrating.)*
@@ -39,7 +40,7 @@
 
 ## Next (priority order)
 
-1. **Insights Query builder — slice 1.5 chrome/feel parity, then 2+ (lock/preview, save)** — Nest skeleton shipped (ephemeral). **Next: 1.5** — structure/feel match workout gold shots (`docs/references/workout-builder/`): reuse `layer`/`override`/set-chip by depth; CoordRow DNA (lock control, More/trailing, label-first where it fits); keep analytics content. Then **slice 2** lock + preview → totals (3) → `saved_queries` (4 — **ask before migrating**) → multi-Section/dims/ops (5; date-bucket after lock/save). Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §9. Dashboard stays the fast unsaved look.
+1. **Insights Query builder — condense + slice 2 lock/preview, then save** — **1.5 chrome/feel parity in tree** (warm rails by depth, lock toggle, Query More). **Next:** open-state density/condense polish (dogfood), then **slice 2** LockedOutline grammar + LockedPreviewModal → totals (3) → `saved_queries` (4 — **ask before migrating**) → multi-Section/dims/ops (5; date-bucket after lock/save). Re-shoot `docs/references/query-builder/` after dogfood. Contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md) §9. Dashboard stays the fast unsaved look.
 2. **Identity conviction** — PG + Variations + muscles (+ tools + nest labels); category stays PG metadata for balance **saved views**; Counts as = default facet (Phase 4)
 3. **PG Counts as + Chat 6 (Phase 4)** — `natural_metric` on PGs; Account edit; New User Seeds dump
 4. **Exercise lock ↔ pills scroll** — exercise form correctly hides the pills scroller when lock=ON and dropdown=OPEN, and shows it when lock=OFF or lock=ON + dropdown=COLLAPSED. Explore mirror on Sequence / Block / Session builders
@@ -47,7 +48,7 @@
 6. **Auth / landing UI** — restyle landing, sign-in, and create-account screens to match current [`Styling.md`](./Styling.md) / app chrome
 7. **Prod hardening (when keeping OttoLog)** — Auth email confirm / SMTP; key rotation; backups / PITR; never ship `service_role` in app
 
-## Query builder direction (v2 — pick up at slice 1.5)
+## Query builder direction (v2 — pick up at slice 2 / condense)
 
 Insights is a **card hub**. Per-PG cards + soft suggestions shipped as the
 **Dashboard** (fast, unsaved). The **Query builder** is a **nested** builder that
@@ -57,7 +58,7 @@ Measure**, ops at the Measure leaf (op × field), own `Qb*` chrome. **Structure/
 Full nest contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md).
 Gold shots: [`references/workout-builder/`](./references/workout-builder/).
 
-- **Shipped:** slice 1 nest skeleton (ephemeral; provisional cool palette). **Next:** 1.5 chrome/feel parity → 2 lock + preview → totals → save/reopen (`saved_queries`, **ask first**) → multi-Section + more dims/ops + seeds (date-bucket after lock/save).
+- **Shipped:** slice 1 nest + **1.5 chrome/feel parity** (ephemeral; lock toggle without grammar/preview). **Next:** condense open density → 2 lock + preview → totals → save/reopen (`saved_queries`, **ask first**) → multi-Section + more dims/ops + seeds (date-bucket after lock/save).
 - **Save ≈ templates/logs (later):** nameable + notes; reopen → OPEN + locked clean view; re-run live (rolling) or historic (pinned window).
 - **v1 flat Subject-card QB is dead** — do not rebuild it. Dashboard keeps category browse + per-PG soft suggestions as the quick path.
 
@@ -114,5 +115,5 @@ Rough priority bands only; not sequenced against Phase 3. Ideas stay ideas until
 - Pull-to-refresh: global rule vs per-tab
 - Brand: logo / slogan / icon timing vs Auth landing restyle
 
-Dashboard (Phases 2–3a) lean locks applied; Query builder **v2 slice 1 nest skeleton shipped** ([`Insights_Query_Builder.md`](./Insights_Query_Builder.md), Jul 22) — ephemeral; cool palette provisional. **Next: slice 1.5 chrome/feel parity** (workout gold shots), then slice 2 lock + preview; `saved_queries` is slice 4 (ask before that migration). Refs: `docs/references/workout-builder/`.
+Dashboard (Phases 2–3a) lean locks applied; Query builder **slice 1 + 1.5 in tree** ([`Insights_Query_Builder.md`](./Insights_Query_Builder.md)) — nest + warm chrome/feel parity, ephemeral lock toggle. **Next: condense open density + slice 2 lock grammar/preview**; `saved_queries` is slice 4 (ask before that migration). Refs: `docs/references/workout-builder/` + `pool-query-insights/` before/after.
 

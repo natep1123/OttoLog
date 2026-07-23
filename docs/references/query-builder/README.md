@@ -1,13 +1,16 @@
 # Query builder — reference shots (after)
 
-Target look once **slice 1.5 chrome/feel parity** (+ later lock/preview) lands.
+**Mostly empty today** (checklist only). Slice **1.5 chrome/feel parity** is in
+the tree; lean after-gallery wait until dogfood / **slice 2** lock+preview.
+
 Until then, use [`../workout-builder/`](../workout-builder/) for structure/feel and
-[`../pool-query-insights/`](../pool-query-insights/) for the “before” open state.
+[`../pool-query-insights/`](../pool-query-insights/) for before/after open state
+(`before-open-cool-palette.jpg`, `after-open-warm-rails.jpg`).
 
 Same lean checklist as workout-builder (composite nest, not lock×expand×More matrix).
 Reuse workout nest accents by depth; content inside = analytics.
 
-## Checklist (fill after parity)
+## Checklist (fill after dogfood / slice 2)
 
 | File | Capture |
 |------|---------|
@@ -21,5 +24,6 @@ Reuse workout nest accents by depth; content inside = analytics.
 
 ## Kickoff line
 
-> Read `docs/references/query-builder/README.md`, then open every image in that folder.
-> If empty, open `docs/references/workout-builder/` for feel + `pool-query-insights/` for before.
+> Read `docs/references/query-builder/README.md`. If no images yet, open every
+> `.jpg` under `docs/references/workout-builder/` plus `pool-query-insights/`
+> before/after with the Read tool. Do not invent missing after-shots.

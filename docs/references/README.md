@@ -9,15 +9,16 @@ pasting the same images into every chat (paste still works for one-off critiques
 |--------|-----|
 | [`workout-builder/`](./workout-builder/) | **Gold DNA** (7 keepers): Session → Block → Sequence → Exercise (+ locked preview). Structure/feel target for QB too. |
 | [`pool-template-log-builder/`](./pool-template-log-builder/) | Raw dump + optionals (same keeper names; plus override/More extras). |
-| [`pool-query-insights/`](./pool-query-insights/) | QB “before” shots (e.g. open state with provisional cool palette). |
-| [`query-builder/`](./query-builder/) | QB “after” gallery — fill after chrome/feel parity (+ lock/preview). Same lean checklist as workout-builder. |
+| [`pool-query-insights/`](./pool-query-insights/) | QB before/after open: cool palette (slice 1) → warm rails (slice 1.5). |
+| [`query-builder/`](./query-builder/) | QB “after” gallery — **mostly empty** (checklist only). Fill after dogfood / slice 2 lock+preview. Same lean checklist as workout-builder. |
 
 ## How agents should use these
 
 In kickoffs, say explicitly:
 
-> Open every image under `docs/references/workout-builder/` with the Read tool before UI work.
-> Also read that folder’s README. For QB parity work, also open `pool-query-insights/` before-shots.
+> Open every `.jpg` under `docs/references/workout-builder/` with the Read tool before UI work.
+> Also read that folder’s README. For QB work, also open `pool-query-insights/` before + after shots.
+> Do not invent files under `query-builder/` — that after-gallery is still checklist-only.
 
 Reading a markdown `![](...)` link alone does **not** load pixels — open the `.jpg` / `.png` / `.webp` file.
 

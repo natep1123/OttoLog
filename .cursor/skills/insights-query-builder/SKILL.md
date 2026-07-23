@@ -15,8 +15,9 @@ description: >-
 1. `docs/Insights_Query_Builder.md` — **the nest contract** (v2). Layer model §3, DNA reuse map §5, defaults §6, decisions §8 (esp. **Decision 12 palette/feel**), slices §9.
 2. `docs/Template_Builders.md` — the workout nest DNA the QB forks (collapse / lock → grammar / preview / save-reopen).
 3. `docs/references/workout-builder/` — **gold structure/feel shots** — open every `.jpg` with the Read tool (not only the README).
-4. `docs/Status.md` — what's shipped vs next (shipped-vs-next wins here; nest shape wins in doc 1).
-5. `docs/Database_Outline.md` — fact grain; `docs/Styling.md` — nest `layer` / `override` accents (QB reuses by depth).
+4. `docs/references/pool-query-insights/` — before (cool palette) / after (warm rails) open-state shots for 1.5.
+5. `docs/Status.md` — what's shipped vs next (shipped-vs-next wins here; nest shape wins in doc 1).
+6. `docs/Database_Outline.md` — fact grain; `docs/Styling.md` — nest `layer` / `override` accents (QB reuses by depth via `qbTokens`).
 
 ## Layer map (product = workout = hidden SQL)
 
@@ -32,19 +33,25 @@ description: >-
 
 ## DNA shared vs different from the workout builder
 
-- **Shared:** nest depth, rail/chevron/lock/More/`+ Add` geometry, collapse ↔ lock orthogonal, `LockController`, `LockedOutline` / `LockedPreviewModal`, **same nest accent family by depth**.
+- **Shared:** nest depth, rail/chevron/lock/More/`+ Add` geometry, collapse ↔ lock orthogonal, `LockController`, `LockedOutline` / `LockedPreviewModal`, **same nest accent family by depth** (`qbTokens` → `QB_TO_FORM`).
 - **Different:** `src/components/querybuilder/` `Qb*` names (no `cluster=sequence` aliases); Subject = PG picker in name slot; Breakdown = dimension picker; Measure = op×field chip (not set prescription rows). Payload is analytics.
 
 ## Code touchpoints
 
 - Screen: `src/screens/insights/InsightsQueryBuilderScreen.tsx`
-- Chrome: `src/components/querybuilder/` — `QbLayer`, `QbCoordRow`, `QbAddChildButton`, editors `Qb{Query,Section,Breakdown,Subject}Card` + `QbMeasureRow`
+- Chrome: `src/components/querybuilder/` — `QbLayer`, `QbCoordRow`, `QbAddChildButton`, editors `Qb{Query,Section,Breakdown,Subject}Card` + `QbMeasureRow`, accents via `qbTokens.ts`
 - Model: `querybuilder/types.ts`; Engine: `querybuilder/engine.ts`
 - Read: `src/lib/insights.ts` `loadQueryFacts` — **not** the Dashboard's `loadInsightQuery`
 
 ## Slice order
 
-Slice 1 nest skeleton = **shipped** (ephemeral; provisional cool `queryLayer`). **Next: 1.5** chrome/feel parity (map to `layer`/`override`, CoordRow DNA) → **2** lock + preview → **3** totals → **4** `saved_queries` (**ask first**) → **5** multi-Section / more dims/ops / seeds.
+1 → **1.5** → 2 → 3 → 4 → 5.
+
+- **Slice 1 nest skeleton** = **shipped** (ephemeral).
+- **Slice 1.5 chrome/feel parity** = **shipped** (ephemeral): map to `layer`/`override`/set-chip by depth; CoordRow lock toggle + Query More. Decision 12 overturned provisional cool `queryLayer`.
+- **Next: open-density/condense + slice 2** lock grammar (`LockedOutline`) + `LockedPreviewModal` → **3** totals → **4** `saved_queries` (**ask first**) → **5** multi-Section / more dims/ops / seeds.
+
+`query-builder/` after-gallery is still mostly empty (checklist only) — use workout-builder gold + `pool-query-insights/` until re-shot.
 
 ## Do not
 

@@ -23,6 +23,7 @@ Expo ~57 / React Native / TypeScript / Supabase. Before Expo APIs: https://docs.
 | Shipped / next / parked | `docs/Status.md` |
 | Insights product board (hub = Dashboard + QB) | `docs/Analytics_Overhaul_Proposal.md` |
 | Insights Query builder nest contract | `docs/Insights_Query_Builder.md` |
+| QB / builder UI gold shots | `docs/references/workout-builder/` (open `.jpg`s) |
 | Folders / nav / data flow | `docs/Project_Structure.md` |
 | Local run / migration order | `docs/Setup.md` |
 | Schema / RLS / naming | `docs/Database_Outline.md` |

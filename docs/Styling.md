@@ -370,7 +370,7 @@ Insights is a **card hub** (`InsightsHubScreen`, `HubAction` rows like Library /
 
 `InsightsDashboardScreen` — PG-first facet readout (fast, unsaved): Primary Group multiselect first (with category browse chips), one editable card per PG (per-PG Variations / Tools with soft `suggestedIds` + facet results), global Scope disclosure (session / block / sequence labels + set type), date window + Working/warmups. Data via `src/lib/insights.ts` on `v_log_set_facts`.
 
-`InsightsQueryBuilderScreen` — the nested Query builder (Query → Section → Breakdown → Subject → Measure). `Qb*` chrome forks workout `NestedLayer`/`CoordRow` **geometry and feel**: same nest accents by depth from `layer` / `override` / set chip (Query=Session … Subject=Exercise; Measure=Set). Content inside nodes is analytics (PG, dims, op×field), not workout fields. v2 nest skeleton shipped (ephemeral; provisional cool `queryLayer` to be replaced). Lock/preview + save later. Nest contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md). Gold shots: [`references/workout-builder/`](./references/workout-builder/).
+`InsightsQueryBuilderScreen` — the nested Query builder (Query → Section → Breakdown → Subject → Measure). `Qb*` chrome forks workout `NestedLayer`/`CoordRow` **geometry and feel**: same nest accents by depth from `layer` / `override` / set chip via `qbTokens.ts` (`QB_TO_FORM`; Query=Session … Subject=Exercise; Measure=Set). Content inside nodes is analytics (PG, dims, op×field), not workout fields. Slice 1 nest + **1.5 chrome/feel parity** shipped (ephemeral; lock toggle present, LockedOutline/preview = slice 2). Nest contract: [`Insights_Query_Builder.md`](./Insights_Query_Builder.md). Gold shots: [`references/workout-builder/`](./references/workout-builder/); before/after open: [`pool-query-insights/`](./references/pool-query-insights/).
 
 ### Account
 
@@ -406,12 +406,10 @@ hardcoding per-component colors.
 
 The **Query builder** nest uses the **same** `layer` / `override` / set-chip family
 by depth (Query→session, Section→block, Breakdown→cluster, Subject→exercise;
-Measure leaf = set chip). Keep `Qb*` code + product nouns. Structure/feel match
-the workout nest; payload differs. See [`Insights_Query_Builder.md`](./Insights_Query_Builder.md)
-Decision 12 (overturned Jul 22 evening) and [`references/workout-builder/`](./references/workout-builder/).
-
-*(Code may still expose a provisional cool `queryLayer` block from slice 1 —
-replace/alias onto `layer` in slice 1.5.)*
+Measure leaf = set chip) via `qbTokens.ts`. Keep `Qb*` code + product nouns.
+Structure/feel match the workout nest; payload differs. See
+[`Insights_Query_Builder.md`](./Insights_Query_Builder.md) Decision 12 and
+[`references/workout-builder/`](./references/workout-builder/).
 
 The backgrounds are solid and progress monotonically from Session to Exercise;
 card borders are 1-point outlines at 12% of the layer color. Every nested card

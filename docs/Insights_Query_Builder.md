@@ -8,9 +8,10 @@
 > **New direction:** the Query builder mirrors the **log / template builders** —
 > same nest depth, same chrome, same collapse / lock → grammar / preview /
 > save-reopen DNA — with a real **SQL meaning at every layer, hidden** behind
-> friendly nodes. **Slice 1 (nest skeleton, no persistence) shipped**
-> (ephemeral). No `saved_queries` migration from this doc alone —
-> ask at the save slice. Nate owns the go and the commit gate.
+> friendly nodes. **Slice 1 nest + 1.5 chrome/feel parity shipped**
+> (ephemeral; lock toggle without grammar/preview). No `saved_queries`
+> migration from this doc alone — ask at the save slice. Nate owns the go
+> and the commit gate.
 >
 > **Read alongside:** [`Analytics_Overhaul_Proposal.md`](./Analytics_Overhaul_Proposal.md)
 > (product direction: hub = Dashboard + Query builder), [`Template_Builders.md`](./Template_Builders.md)
@@ -24,16 +25,18 @@
 > `v_log_set_facts` (Dashboard read) **and** `loadQueryFacts` (raw scoped facts for
 > the QB); `src/screens/insights/InsightsDashboardScreen.tsx` (the *fast unsaved*
 > look — **not** the Query builder target IA); `src/screens/insights/InsightsQueryBuilderScreen.tsx`
-> (**slice 1 nest skeleton — shipped, ephemeral**); `src/components/querybuilder/`
+> (**slice 1 + 1.5 — shipped, ephemeral**); `src/components/querybuilder/`
 > — the live `Qb*` nest chrome (`QbLayer`, `QbCoordRow`, `QbAddChildButton`,
 > `Qb{Query,Section,Breakdown,Subject}Card`, `QbMeasureRow`), `types.ts` draft
-> model, `engine.ts` client-side aggregate. **Palette note (Jul 22 evening):** slice 1
-> shipped a provisional cool `queryLayer` ramp — **overturned.** Next chrome pass
-> reuses workout `layer` / `override` / set-chip accents by depth (Query=Session,
-> Section=Block, Breakdown=Sequence, Subject=Exercise, Measure=Set). Forked from
-> `src/components/forms/` (`NestedLayer`, `CoordRow`, `LockController`,
-> `ExpansionController`, `LockedOutline`, `LockedPreviewModal`, `Disclosure`,
-> `MorePanel`, `SearchableSelect`) — DNA for structure/feel parity + lock/preview.
+> model, `engine.ts` client-side aggregate, `qbTokens.ts` (`QB_TO_FORM`).
+> **Palette (Decision 12 overturned):** reuse workout `layer` / `override` /
+> set-chip by depth (Query=Session … Measure=Set) — provisional cool
+> `queryLayer` removed. Forked from `src/components/forms/` (`NestedLayer`,
+> `CoordRow`, `LockController`, `ExpansionController`, `LockedOutline`,
+> `LockedPreviewModal`, `Disclosure`, `MorePanel`, `SearchableSelect`) —
+> DNA for structure/feel parity; grammar outline + preview = slice 2.
+> Gold: [`references/workout-builder/`](./references/workout-builder/);
+> before/after open: [`pool-query-insights/`](./references/pool-query-insights/).
 
 ---
 
@@ -333,7 +336,7 @@ Supersedes the v1 §8 table. Build to these.
 | 9 | Set policy + nest scope | **Section-level (WHERE).** With one Section this reads query-global. |
 | 10 | Lock granularity | **Full tree** (Query / Section / Breakdown / Subject / Measure) via `LockController`. |
 | 11 | Naming / code | Product: Query/Section/Breakdown/Subject/Measure. Code: `src/components/querybuilder/`, `Qb*`, **no** legacy aliases. Saved artifact = **Query**. |
-| 12 | Palette / feel | **Overturned Jul 22 evening.** Reuse workout nest accents by depth (`layer` + `override` + set chip) so structure/feel match Session→…→Set. Keep `Qb*` nouns. Content inside nodes stays analytics — not a Session clone. Gold shots: `docs/references/workout-builder/`. |
+| 12 | Palette / feel | **Overturned Jul 22 evening; landed in slice 1.5.** Reuse workout nest accents by depth (`layer` + `override` + set chip via `qbTokens`) so structure/feel match Session→…→Set. Keep `Qb*` nouns. Content inside nodes stays analytics — not a Session clone. Gold shots: `docs/references/workout-builder/`. |
 | 13 | Defaults | New Query opens **Query → Section → empty Subject → empty Measure** (no Breakdown). |
 | 14 | Engine | **Client-side group/aggregate** over `v_log_set_facts`. **No migration** until Nate asks. |
 | 15 | SQL teaching | English-SELECT grammar is enough. **"Show as SQL" is a later optional stretch.** |
@@ -347,15 +350,14 @@ v1 flat shell has been **scrapped** and replaced by the nest skeleton below.
 
 - **Slice 0 — this doc (v2 layer model).** Contract + definition shape. No code. **Done.**
 - **Slice 1 — nest skeleton (no persistence). ✅ Shipped in tree (ephemeral).**
-  Real nest + engine; provisional cool `queryLayer` (to be replaced in 1.5).
-- **Slice 1.5 — chrome / feel parity (next).** Make QB structure/feel match the
-  workout nest gold shots: map rails/chips to `layer`/`override` by depth; CoordRow
-  DNA (lock control visible, More / trailing IconButtons, label-first headers where
-  it fits); keep analytics content. Still ephemeral. **No** `saved_queries` / `008`.
-  Refs: `docs/references/workout-builder/` (+ `pool-query-insights/001.jpg` = before).
-- **Slice 2 — lock + preview.** Wire `LockController` (full tree) → grammar lines;
-  `LockedOutline` for expanded-locked Breakdowns/Subjects; `LockedPreviewModal` for
-  share. Still ephemeral. Can land tightly after or with 1.5 once chrome matches.
+  Real nest + engine; shipped with provisional cool `queryLayer` (removed in 1.5).
+- **Slice 1.5 — chrome / feel parity. ✅ Shipped in tree (ephemeral).** Warm `layer`
+  accents by depth via `qbTokens.ts` (`QB_TO_FORM`); CoordRow lock toggle + Query
+  More; no LockedOutline / preview yet. Before/after:
+  `docs/references/pool-query-insights/`.
+- **Slice 2 — lock + preview (next, after open-density/condense dogfood).**
+  LockedOutline grammar + `LockedPreviewModal`; Tools tray optional. Still
+  ephemeral. Condense polish can ride with this or a tiny pass first.
 - **Slice 3 — Breakdown depth + totals polish.** Firm up the grouped sub-rows +
   totals rendering in-card and in the locked outline (credit-each safe).
 - **Slice 4 — save / reopen.** `saved_queries` (**ask first**), name + notes via
@@ -370,7 +372,7 @@ form + save/lock hold.
 
 ---
 
-## 10. Open decisions (not blocking slice 1)
+## 10. Open decisions (not blocking slice 2)
 
 - **Breakdown dimensions beyond variation/tool:** `date bucket` (day/week/month) is
   the obvious next and unlocks trend asks — promote in slice 5 or sooner?

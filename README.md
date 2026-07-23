@@ -11,14 +11,14 @@ Five tabs when signed in: **Home**, **Insights**, **Create**, **Library**, **Acc
 | Area | Today |
 |------|--------|
 | **Home** | Dashboard with quick actions and a week preview placeholder |
-| **Insights** | Card hub → **Dashboard** (PG facets, fast/unsaved) + **Query builder** (v2 nest skeleton shipped — ephemeral; lock/save next) |
+| **Insights** | Card hub → **Dashboard** (PG facets, fast/unsaved) + **Query builder** (nest + 1.5 chrome/feel shipped — ephemeral; next = condense + slice 2 lock/preview) |
 | **Create** | Log a session (from scratch or from a session template); Session / Block / Sequence / Exercise template builders |
 | **Library** | Browse templates and session logs; open in review mode (locked + expanded outline) |
 | **Account** | Taxonomy (tools, primary groups, Variations, labels); Settings with account delete |
 
 Also in place: auth, global **No Tool**, and kind-named system null labels (**Session**, **Block**, **Sequence**), searchable taxonomy pickers in the exercise editor, unique active template names per user (per layer). Composition is Session → Block → Sequence → Exercise (JSON copy, no cross-template FKs). Sequences use rounds × per-round exercises with sparse overrides; soft archive preferred. Session logs denest into relational tables (`sql/greenfield/007`) via app-side save/load.
 
-**Next:** see living board [`docs/Status.md`](docs/Status.md) (Insights Query builder slice 2 = lock/preview, PG Counts as, Chat 6, …). Product board: [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md); Query builder nest contract: [`docs/Insights_Query_Builder.md`](docs/Insights_Query_Builder.md).
+**Next:** see living board [`docs/Status.md`](docs/Status.md) (Insights Query builder = condense + slice 2 lock/preview, then save; PG Counts as, Chat 6, …). Product board: [`docs/Analytics_Overhaul_Proposal.md`](docs/Analytics_Overhaul_Proposal.md); Query builder nest contract: [`docs/Insights_Query_Builder.md`](docs/Insights_Query_Builder.md).
 
 ## Quick start
 

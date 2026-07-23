@@ -47,7 +47,7 @@ No React Navigation yet. **`HomeScreen`** holds five bottom tabs and a nested st
 | Tab | Hub | Live drill-in | Stubs |
 |-----|-----|---------------|-------|
 | **Home** | Dashboard | Quick actions → Create session builder / Library exercises / Account taxonomy | Week → sessions (Soon) |
-| **Insights** | Insights hub (card select) | **Dashboard** (per-PG facet readout; fast, unsaved) · **Query builder** (nested savable/lockable — v2 nest skeleton shipped, ephemeral) | `src/lib/insights.ts`, `src/components/querybuilder/` |
+| **Insights** | Insights hub (card select) | **Dashboard** (per-PG facet readout; fast, unsaved) · **Query builder** (nested savable/lockable — nest + 1.5 chrome/feel parity shipped, ephemeral; next = condense + slice 2) | `src/lib/insights.ts`, `src/components/querybuilder/` |
 | **Create** | Create hub | Log from scratch / from template; Templates → Session / Block / Sequence / Exercise builders | AI-assisted log |
 | **Library** | Library hub | Templates → Sessions / Blocks / Sequences / Exercises; Logs → log editor (review mode) | — |
 | **Account** | Account hub | Taxonomy → lists; Settings → Danger zone | Profile, Preferences |
@@ -96,8 +96,8 @@ Shared chrome: `Screen`, `ScreenHeader`, `HubAction`, `Button`, `TextField`, `Co
 | `home/HomeDashboardScreen.tsx` | Home tab UI |
 | `insights/InsightsHubScreen.tsx` | Insights hub — card select (Dashboard / Query builder) |
 | `insights/InsightsDashboardScreen.tsx` | Dashboard — PG-first per-PG facet readout (fast, unsaved) |
-| `insights/InsightsQueryBuilderScreen.tsx` | Query builder — nested builder (Query→Section→Breakdown→Subject→Measure); v2 nest skeleton shipped (ephemeral) |
-| `components/querybuilder/` | `Qb*` nest chrome + `types.ts` draft model + `engine.ts` client-side aggregate (cool `queryLayer` palette; forks `forms/` builder DNA) |
+| `insights/InsightsQueryBuilderScreen.tsx` | Query builder — nested builder (Query→Section→Breakdown→Subject→Measure); nest + 1.5 chrome/feel parity shipped (ephemeral) |
+| `components/querybuilder/` | `Qb*` nest chrome + `qbTokens.ts` (maps to workout `layer` by depth) + `types.ts` + `engine.ts` client-side aggregate (forks `forms/` builder DNA) |
 | `create/` | Create hub, template hub, session / block / sequence / exercise builders, session log builder, log-from-template picker |
 | `library/` | Library hub, templates hub, session / block / sequence / exercise lists, logs list |
 | `account/` | Account hub, settings, danger zone, taxonomy hub and lists |

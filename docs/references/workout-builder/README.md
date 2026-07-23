@@ -2,7 +2,9 @@
 
 **Source:** Library → Templates → Sessions → **Murph — Full Session**
 
-Gold DNA for nested form chrome. QB should reuse geometry with its own cool palette.
+Gold DNA for nested form chrome. QB reuses this structure/feel — **same
+`layer`/`override` accents by depth** (Decision 12); content inside QB nodes
+stays analytics.
 
 ## Gallery (keepers)
 
