@@ -15,6 +15,14 @@ import { todayDateKey } from './localTime';
 /** Atomic facet shown per Primary Group panel. */
 export type InsightFacetId = 'reps' | 'time' | 'distance' | 'load' | 'sets';
 
+/**
+ * Soft identity match mode for a Subject's WITH filters (variations/tools).
+ * `'any'` = today's OR (has at least one selected id). `'all'` = intersection
+ * (must have every selected id). Default `'any'`. See
+ * `docs/Insights_Query_Builder.md` §10 (SPLIT/WITH, Option B).
+ */
+export type IdentityMatch = 'any' | 'all';
+
 /** Draft query definition (Phase 3 — not persisted yet). */
 export type InsightQuery = {
   /** Required subject — empty = no results. */
@@ -238,18 +246,30 @@ function passesScope(
 
 /**
  * Per-PG identity gate (soft scope): a fact counts toward a PG's panel only if it
- * matches that PG's variation/tool any-of filters. Empty filters = pass.
+ * matches that PG's variation/tool filters. Empty filters = pass. `identityMatch`
+ * (default `'any'`) governs both sets: `'any'` = at least one selected id present;
+ * `'all'` = every selected id present (intersection). Dashboard call sites don't
+ * pass a mode and keep today's any-of behavior.
  */
 function passesPgIdentity(
   fact: Fact,
   variationIds: string[],
   toolIds: string[],
+  identityMatch: IdentityMatch = 'any',
 ): boolean {
   if (variationIds.length > 0) {
-    if (!variationIds.some((id) => fact.tagIds.includes(id))) return false;
+    const matches =
+      identityMatch === 'all'
+        ? variationIds.every((id) => fact.tagIds.includes(id))
+        : variationIds.some((id) => fact.tagIds.includes(id));
+    if (!matches) return false;
   }
   if (toolIds.length > 0) {
-    if (!toolIds.some((id) => fact.toolIds.includes(id))) return false;
+    const matches =
+      identityMatch === 'all'
+        ? toolIds.every((id) => fact.toolIds.includes(id))
+        : toolIds.some((id) => fact.toolIds.includes(id));
+    if (!matches) return false;
   }
   return true;
 }

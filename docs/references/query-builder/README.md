@@ -23,13 +23,12 @@ Archives: [`../archive/query-pre-madlib/`](../archive/query-pre-madlib/) (nest-s
 | `03-locked-preview-p2.jpg` | Preview page 2 if outline paginates |
 | `08-more-query.jpg` | Query More (name/notes) |
 
-## Product notes (Jul 23 dogfood — not yet decided)
+## Product notes (Jul 23)
 
-Nate likes the direction; open for the next discussion pass:
-
-- **Subject / exercise lock** — madlib dropped per-Subject lock; may want it back (optional).
-- **SHOW chips** — `op | field` look is good; prefer **dropdowns** per half, not tap-to-cycle.
-- **SPLIT / “for each variation”** — flat partition (Running vs Weighted vs …) does **not** match the ask. Need WITH-filter + overlap / within-flavor splits (e.g. only Running, or Incline∩Walking) without forcing separate PGs. Schema credit-each stays; UI/engine grouping is the gap. Venn / diagram dashboards = later.
+- **WITH/SPLIT B+C shipped** — any/all match + sibling SPLIT on filtered set
+  (`01` / `06` gold).
+- **Next UI:** SHOW `op | field` halves → **dropdowns** (not tap-cycle); chip
+  truncation; optional `availableFields`. Per-Subject lock parked.
 
 ## Kickoff line
 

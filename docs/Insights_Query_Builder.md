@@ -417,17 +417,18 @@ GROUP BY / compare windows later — don’t redesign authoring around them.
   always shown locked (the outline root hides its own `meta` via
   `hideRootTitle`).
 
+**Decided by WITH any/all + sibling SPLIT (Jul 23) — Options B+C:**
+- **Subject `identityMatch`:** `'any' | 'all'` (default `'any'`). `'all'` =
+  intersection on selected variations/tools (WITH).
+- **SPLIT with non-empty WITH:** sibling co-tags — group keys **exclude** the
+  Subject’s WITH ids for that dimension; locked title `For each … · among
+  <identity>`. Empty WITH → today’s full peer credit-each SPLIT.
+- Credit-each / multi-tag facts unchanged. No schema. Venn dashboards later.
+- **Per-Subject lock:** parked — whole-ask Query lock for v1.
+
 **Still open:**
-- **SPLIT / WITH identity model (Jul 23 dogfood):** Flat `for each variation`
-  peer buckets are the wrong product story. Target behavior (UI/engine — **no
-  schema redesign**): WITH narrows to chosen variations; ask can mean “only
-  Running,” “Incline∩Walking overlap,” and/or split *within* a filtered flavor —
-  without forcing separate PGs per gait flavor. Credit-each multi-tag facts
-  stay. Venn / diagram dashboards = later capability, not v1 chrome.
 - **SHOW chip interaction:** keep `op | field` look; prefer **dropdowns** on
-  each half instead of tap-to-cycle.
-- **Per-Subject lock:** whole-ask Query lock only today — optional Subject /
-  exercise-style lock on madlib clause?
+  each half instead of tap-to-cycle; fix truncation; wire `availableFields`.
 - **Save definition:** confirm nest JSON as canonical (madlib = view) before
   `saved_queries`.
 - **Breakdown dimensions beyond variation/tool:** `date bucket` next capability

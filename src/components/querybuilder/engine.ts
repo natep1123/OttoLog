@@ -6,6 +6,13 @@
  * a totals row (credit-each: a fact with two variations counts in both groups;
  * totals recompute over the Subject's full set, never sum across groups).
  *
+ * WITH / SPLIT (doc §10, Option B + C): a Subject's WITH filter (`identityMatch`
+ * any/all) narrows which facts count at all; when that Subject is also
+ * SPLIT, the per-group partition excludes the WITH ids so groups read as
+ * sibling co-tags on the filtered set (e.g. `WITH Running · SPLIT variation`
+ * → `Weighted`), not a peer list of every tag on the whole Primary Group.
+ * Empty WITH keeps today's full peer partition.
+ *
  * NULL discipline: sum/avg/max/min consider only sets that logged the field
  * (value > 0); an all-empty measure returns `value: null` (empty state, never a
  * fake zero). `count` / `field:'sets'` = COUNT(*) of matching sets.
@@ -135,26 +142,44 @@ export function applyMeasure(facts: Fact[], measure: MeasureNode): MeasureResult
   };
 }
 
-/** Facts credited to a Subject (its PG + soft identity filters). */
+/** Facts credited to a Subject (its PG + soft identity filters, any/all). */
 function subjectFacts(facts: Fact[], subject: SubjectNode): Fact[] {
   if (!subject.pgId) return [];
   const pgId = subject.pgId;
   return facts.filter(
     (f) =>
       f.primaryGroupIds.includes(pgId) &&
-      passesPgIdentity(f, subject.variationIds, subject.toolIds),
+      passesPgIdentity(
+        f,
+        subject.variationIds,
+        subject.toolIds,
+        subject.identityMatch,
+      ),
   );
 }
 
-/** Group a Subject's facts by a Breakdown dimension (credit-each). */
+/**
+ * Group a Subject's (already WITH-filtered) facts by a Breakdown dimension
+ * (credit-each), excluding `excludeIds` from the group keys.
+ *
+ * Option C (doc §10): when the Subject's WITH filter narrowed this dimension
+ * (e.g. `WITH Running`, `SPLIT variation`), callers pass those WITH ids as
+ * `excludeIds` so the groups read as **siblings** co-tagged on the filtered
+ * set (e.g. `Weighted`) instead of the WITH id echoing itself back as its own
+ * group. Empty `excludeIds` (WITH empty, or WITH on the other dimension) =
+ * today's full peer partition — unchanged.
+ */
 function groupByDimension(
   facts: Fact[],
   dimension: 'variation' | 'tool',
+  excludeIds: string[] = [],
 ): Map<string, Fact[]> {
+  const exclude = new Set(excludeIds);
   const groups = new Map<string, Fact[]>();
   for (const fact of facts) {
     const ids = dimension === 'variation' ? fact.tagIds : fact.toolIds;
     for (const id of ids) {
+      if (exclude.has(id)) continue;
       const list = groups.get(id);
       if (list) list.push(fact);
       else groups.set(id, [fact]);
@@ -179,7 +204,9 @@ function evalSubject(
   };
 
   if (breakdownDimension) {
-    const grouped = groupByDimension(own, breakdownDimension);
+    const excludeIds =
+      breakdownDimension === 'variation' ? subject.variationIds : subject.toolIds;
+    const grouped = groupByDimension(own, breakdownDimension, excludeIds);
     const groups: BreakdownGroupResult[] = [...grouped.entries()]
       .map(([groupId, groupFacts]) => ({
         groupId,

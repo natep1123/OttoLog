@@ -8,6 +8,7 @@ import { useExpansionController } from '../forms/ExpansionController';
 import { QbAddChildButton } from './QbAddChildButton';
 import { QbLayer } from './QbLayer';
 import { QbMeasureRow } from './QbMeasureRow';
+import { identityPhrase } from './qbOutline';
 import { qbLayerToken, qbLeafOverride } from './qbTokens';
 import { measureToken, type SubjectResult } from './engine';
 import {
@@ -135,14 +136,16 @@ export function QbMadlibSubjectClause({
 
   const groupOptions = dimension === 'tool' ? tools : variations;
 
-  /** Collapsed WITH chip text — `all` or the soft identity picks, e.g. `Weighted`. */
-  const withSummary = (() => {
-    const parts = [
-      ...subject.variationIds.map((id) => labelFor(variations, id)),
-      ...subject.toolIds.map((id) => labelFor(tools, id)),
-    ];
-    return parts.length ? parts.join(' · ') : 'all';
-  })();
+  const withNames = [
+    ...subject.variationIds.map((id) => labelFor(variations, id)),
+    ...subject.toolIds.map((id) => labelFor(tools, id)),
+  ];
+  /** Collapsed WITH chip text — `all` or the soft identity picks/mode, e.g. `Running or Weighted`. */
+  const withSummary = identityPhrase(withNames, subject.identityMatch) ?? 'all';
+  /** Option B (doc §10): expose any-of/all-of once there's an actual choice between ids. */
+  const showMatchToggle = withNames.length >= 2;
+  const setIdentityMatch = (identityMatch: 'any' | 'all') =>
+    patchSubject({ ...subject, identityMatch });
 
   return (
     <QbLayer
@@ -211,6 +214,30 @@ export function QbMadlibSubjectClause({
               </Pressable>
               {withOpen ? (
                 <View style={styles.withBody}>
+                  {showMatchToggle ? (
+                    <View style={styles.matchRow}>
+                      <Text style={styles.matchLabel}>Match</Text>
+                      <ToggleChip
+                        label="Any"
+                        active={subject.identityMatch !== 'all'}
+                        onPress={() => setIdentityMatch('any')}
+                        size="compact"
+                        accent={subjectAccent}
+                      />
+                      <ToggleChip
+                        label="All"
+                        active={subject.identityMatch === 'all'}
+                        onPress={() => setIdentityMatch('all')}
+                        size="compact"
+                        accent={subjectAccent}
+                      />
+                      <Text style={styles.matchHint} numberOfLines={1}>
+                        {subject.identityMatch === 'all'
+                          ? 'must have every one'
+                          : 'has any one'}
+                      </Text>
+                    </View>
+                  ) : null}
                   <SearchableSelect
                     mode="multi"
                     options={variations}
@@ -316,10 +343,16 @@ export function QbMadlibSubjectClause({
                   </Pressable>
                 </View>
               )}
+              {isSplit && withNames.length > 0 ? (
+                <Text style={styles.splitHint}>
+                  Breaks down inside your WITH filter — siblings on those sets,
+                  not every {dimension} under {pgName ?? 'this'}.
+                </Text>
+              ) : null}
             </View>
           </View>
 
-          {result?.groups && result.groups.length > 0 ? (
+          {isSplit && result?.groups ? (
             <View style={styles.groupsBlock}>
               <Pressable
                 onPress={() => setGroupsOpen((o) => !o)}
@@ -341,6 +374,13 @@ export function QbMadlibSubjectClause({
                 </Text>
               </Pressable>
               {groupsOpen ? (
+                result.groups.length === 0 ? (
+                  <Text style={styles.groupsEmptyText}>
+                    {withNames.length > 0
+                      ? `No other ${dimension}s tagged on these sets.`
+                      : `No ${dimension}s logged on these sets yet.`}
+                  </Text>
+                ) : (
                 <View style={styles.groupsBody}>
                   {result.groups.map((group) => {
                     const tokens = group.measures
@@ -368,6 +408,7 @@ export function QbMadlibSubjectClause({
                     </Text>
                   </View>
                 </View>
+                )
               ) : null}
             </View>
           ) : null}
@@ -433,6 +474,23 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.xs,
   },
+  matchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  matchLabel: {
+    fontFamily: typography.fontMedium,
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  matchHint: {
+    fontFamily: typography.font,
+    fontSize: 12,
+    color: colors.textDim,
+    flexShrink: 1,
+  },
   splitAdd: {
     alignSelf: 'flex-start',
     paddingVertical: 6,
@@ -457,6 +515,18 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontMedium,
     fontSize: 13,
     color: colors.textMuted,
+  },
+  splitHint: {
+    fontFamily: typography.font,
+    fontSize: 12,
+    color: colors.textDim,
+    marginTop: 4,
+  },
+  groupsEmptyText: {
+    fontFamily: typography.font,
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 6,
   },
   removeBtn: {
     paddingVertical: 4,

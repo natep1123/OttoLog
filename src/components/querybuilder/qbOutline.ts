@@ -7,6 +7,7 @@
  * set prescriptions. See `docs/Insights_Query_Builder.md` §4–§5 / §7.
  */
 
+import type { IdentityMatch } from '../../lib/insights';
 import type { TaxonomyOption } from '../../lib/taxonomy';
 import type { OutlineNode } from '../../lib/targetSummaries';
 import {
@@ -49,19 +50,33 @@ function measureLine(result: SubjectResult | null | undefined): string | undefin
   return tokens.join(' · ');
 }
 
-/** Soft identity filter summary (variations / tools any-of). */
+/**
+ * Natural-language join for a Subject's WITH identity labels, e.g. `Running`,
+ * `Running or Weighted` (`identityMatch: 'any'`), `Incline and Walking`
+ * (`identityMatch: 'all'`). Reads as the filter grammar itself — no separate
+ * "(all)" suffix needed. Doc §10, Option B.
+ */
+export function identityPhrase(
+  names: string[],
+  identityMatch: IdentityMatch,
+): string | undefined {
+  if (names.length === 0) return undefined;
+  if (names.length === 1) return names[0];
+  const conj = identityMatch === 'all' ? 'and' : 'or';
+  if (names.length === 2) return `${names[0]} ${conj} ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')}, ${conj} ${names[names.length - 1]}`;
+}
+
+/** Soft identity filter summary (variations / tools, any-of or all-of). */
 function subjectIdentityMeta(
   subject: SubjectNode,
   labels: QbOutlineLabels,
 ): string | undefined {
-  const parts: string[] = [];
-  for (const id of subject.variationIds) {
-    parts.push(labelFor(labels.variations, id));
-  }
-  for (const id of subject.toolIds) {
-    parts.push(labelFor(labels.tools, id));
-  }
-  return parts.length ? parts.join(' · ') : undefined;
+  const names = [
+    ...subject.variationIds.map((id) => labelFor(labels.variations, id)),
+    ...subject.toolIds.map((id) => labelFor(labels.tools, id)),
+  ];
+  return identityPhrase(names, subject.identityMatch);
 }
 
 /**
@@ -106,7 +121,38 @@ export function outlineSubject(
       : null) ?? 'Subject';
   const meta = subjectIdentityMeta(subject, labels);
 
-  if (result?.groups && result.groups.length > 0) {
+  if (result?.groups) {
+    const totalLine = measureLine(result);
+    const totalOverride = totalLine
+      ? [{ summary: `total · ${totalLine}` }]
+      : result.setCount > 0
+        ? [
+            {
+              summary: `total · ${result.setCount} set${
+                result.setCount === 1 ? '' : 's'
+              }`,
+            },
+          ]
+        : undefined;
+
+    if (result.groups.length === 0) {
+      // Sibling SPLIT (Option C) found no co-tags on this filtered set, or a
+      // peer SPLIT found nothing logged at all — empty state, never a blank
+      // "For each …" with no rows.
+      const dim = result.breakdownDimension ?? 'tag';
+      return {
+        title,
+        kind: 'exercise',
+        meta,
+        lines: [
+          meta
+            ? `No other ${dim}s tagged on these sets`
+            : `No ${dim}s logged on these sets yet`,
+        ],
+        overrides: totalOverride,
+      };
+    }
+
     const groupOptions =
       result.breakdownDimension === 'tool' ? labels.tools : labels.variations;
     const lines = result.groups.map((group) => {
@@ -118,23 +164,12 @@ export function outlineSubject(
         : `${group.setCount} set${group.setCount === 1 ? '' : 's'}`;
       return `${labelFor(groupOptions, group.groupId)} · ${value}`;
     });
-    const totalLine = measureLine(result);
     return {
       title,
       kind: 'exercise',
       meta,
-      lines: lines.length ? lines : undefined,
-      overrides: totalLine
-        ? [{ summary: `total · ${totalLine}` }]
-        : result.setCount > 0
-          ? [
-              {
-                summary: `total · ${result.setCount} set${
-                  result.setCount === 1 ? '' : 's'
-                }`,
-              },
-            ]
-          : undefined,
+      lines,
+      overrides: totalOverride,
     };
   }
 
@@ -151,6 +186,19 @@ export function outlineSubject(
   };
 }
 
+/**
+ * Breakdown title grammar: `For each <dim>`, plus `· among <WITH identity>`
+ * when the wrapped Subject has a WITH filter (Option C, doc §10) — e.g.
+ * `For each variation · among Running`. v1 Breakdowns wrap exactly one
+ * Subject (madlib SPLIT), so the first subject's identity carries the phrase.
+ */
+function breakdownTitle(breakdown: BreakdownNode, labels: QbOutlineLabels): string {
+  const base = `For each ${breakdown.dimension}`;
+  const subject = breakdown.subjects[0];
+  const among = subject ? subjectIdentityMeta(subject, labels) : undefined;
+  return among ? `${base} · among ${among}` : base;
+}
+
 /** Breakdown outline (= Sequence): `For each <dim>` + Subject children. */
 export function outlineBreakdown(
   breakdown: BreakdownNode,
@@ -161,7 +209,7 @@ export function outlineBreakdown(
     outlineSubject(subject, results[subject.id], labels),
   );
   return {
-    title: `For each ${breakdown.dimension}`,
+    title: breakdownTitle(breakdown, labels),
     kind: 'cluster',
     children: children.length ? children : undefined,
   };

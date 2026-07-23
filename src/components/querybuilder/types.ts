@@ -8,7 +8,7 @@
  * becomes the `saved_queries` definition — no table yet.
  */
 
-import type { InsightFacetId, SetType } from '../../lib/insights';
+import type { IdentityMatch, InsightFacetId, SetType } from '../../lib/insights';
 import { daysAgoKey } from '../../lib/insights';
 import { todayDateKey } from '../../lib/localTime';
 
@@ -39,6 +39,12 @@ export type SubjectNode = {
   pgId: string | null;
   variationIds: string[];
   toolIds: string[];
+  /**
+   * WITH match mode (Option B, doc §10): `'any'` (default) = has at least
+   * one selected variation/tool; `'all'` = must have every one selected
+   * (intersection). Applies uniformly to the variation set and the tool set.
+   */
+  identityMatch: IdentityMatch;
   measures: MeasureNode[];
 };
 
@@ -118,6 +124,7 @@ export function emptySubject(): SectionChildSubject {
     pgId: null,
     variationIds: [],
     toolIds: [],
+    identityMatch: 'any',
     measures: [emptyMeasure()],
   };
 }
