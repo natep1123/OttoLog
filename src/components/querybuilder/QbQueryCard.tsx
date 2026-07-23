@@ -9,13 +9,17 @@ import {
 import type { TaxonomyOption } from '../../lib/taxonomy';
 import { colors, layer, radii, spacing, typography } from '../../theme/tokens';
 import { IconButton } from '../forms/IconButton';
+import { LockedOutline } from '../forms/LockedOutline';
+import { LockedPreviewModal } from '../forms/LockedPreviewModal';
 import { MorePanel } from '../forms/MorePanel';
 import { NOTES_MAX_LENGTH } from '../forms/formTokens';
 import { SessionDateControl } from '../forms/SessionDateControl';
+import { useExpansionController } from '../forms/ExpansionController';
 import { useNodeLock } from '../forms/LockController';
 import { StatusText } from '../StatusText';
 import { QbLayer } from './QbLayer';
 import { QbSectionCard } from './QbSectionCard';
+import { outlineQuery, type QbOutlineLabels } from './qbOutline';
 import { QB_LOCK_ROOT, QB_SECTION_ID } from './qbLockIds';
 import { qbFormKind } from './qbTokens';
 import type { SectionResult } from './engine';
@@ -48,7 +52,7 @@ const QUERY_KIND = qbFormKind('query');
 /**
  * Query (root · = Session) — the whole report. Label-first header (name or
  * "Query"), date window + Section in the body, name/notes behind the More panel.
- * Opening it feels like opening a Session card.
+ * Locked + expanded → LockedOutline grammar; maximize → LockedPreviewModal.
  */
 export function QbQueryCard({
   draft,
@@ -71,13 +75,32 @@ export function QbQueryCard({
   suggestedByPg,
   onChange,
 }: Props) {
-  const { locked, onToggleLock, lockDisabled } = useQueryLock(draft);
+  const expansion = useExpansionController();
+  const expandAllSignal = expansion?.expandAllSignal ?? 0;
+  const { locked, ownLocked, onToggleLock, lockDisabled } = useQueryLock(draft);
+  const [expanded, setExpanded] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
   const [notesFocused, setNotesFocused] = useState(false);
   const [focusNamePending, setFocusNamePending] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const nameRef = useRef<TextInput>(null);
 
   const setSection = (section: SectionNode) => onChange({ ...draft, section });
+
+  const labels: QbOutlineLabels = {
+    primaryGroups,
+    sessionLabels,
+    blockLabels,
+    sequenceLabels,
+    variations,
+    tools,
+  };
+  const outline = outlineQuery(draft, results, labels);
+
+  useEffect(() => {
+    if (expandAllSignal === 0) return;
+    setExpanded(true);
+  }, [expandAllSignal]);
 
   useEffect(() => {
     if (locked) setMoreOpen(false);
@@ -96,23 +119,51 @@ export function QbQueryCard({
   const title = draft.name?.trim() || 'Query';
 
   return (
-    <QbLayer
-      layer="query"
-      metaChips={[windowChip]}
-      locked={locked}
-      onToggleLock={onToggleLock}
-      lockDisabled={lockDisabled}
-      label={
-        <Text style={styles.title} numberOfLines={1}>
-          {title}
-        </Text>
-      }
-      trailing={
-        locked
-          ? loading
-            ? <ActivityIndicator color={layer[QUERY_KIND].chip.color} size="small" />
-            : null
-          : ({ expand }) => (
+    <>
+      <QbLayer
+        layer="query"
+        expanded={expanded}
+        onExpandedChange={(next) => {
+          const opening = next && !expanded;
+          setExpanded(next);
+          if (!next) setMoreOpen(false);
+          if (opening) expansion?.collapseChildrenOf(QB_LOCK_ROOT);
+        }}
+        metaChips={[windowChip]}
+        locked={locked}
+        onToggleLock={
+          onToggleLock
+            ? () => {
+                const unlocking = ownLocked;
+                onToggleLock();
+                if (unlocking) expansion?.collapseChildrenOf(QB_LOCK_ROOT);
+              }
+            : undefined
+        }
+        lockDisabled={lockDisabled}
+        label={
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
+        }
+        trailing={
+          locked ? (
+            <>
+              {loading ? (
+                <ActivityIndicator
+                  color={layer[QUERY_KIND].chip.color}
+                  size="small"
+                />
+              ) : null}
+              <IconButton
+                kind={QUERY_KIND}
+                icon="maximize-2"
+                accessibilityLabel="Open screenshot view"
+                onPress={() => setPreviewOpen(true)}
+              />
+            </>
+          ) : (
+            ({ expand }) => (
               <>
                 {loading ? (
                   <ActivityIndicator
@@ -141,105 +192,138 @@ export function QbQueryCard({
                 />
               </>
             )
-      }
-    >
-      {locked ? null : (
-        <MorePanel open={moreOpen} kind={QUERY_KIND}>
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Name</Text>
-            <TextInput
-              ref={nameRef}
-              value={draft.name}
-              onChangeText={(name) => onChange({ ...draft, name })}
-              placeholder="Name this query (optional)"
-              placeholderTextColor={colors.textDim}
-              style={styles.nameInput}
-              accessibilityLabel="Query name"
+          )
+        }
+      >
+        {locked ? (
+          <LockedOutline node={outline} layer={QUERY_KIND} hideRootTitle />
+        ) : (
+          <>
+            <MorePanel open={moreOpen} kind={QUERY_KIND}>
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Name</Text>
+                <TextInput
+                  ref={nameRef}
+                  value={draft.name}
+                  onChangeText={(name) => onChange({ ...draft, name })}
+                  placeholder="Name this query (optional)"
+                  placeholderTextColor={colors.textDim}
+                  style={styles.nameInput}
+                  accessibilityLabel="Query name"
+                />
+              </View>
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Notes</Text>
+                <TextInput
+                  value={draft.notes ?? ''}
+                  onChangeText={(notes) =>
+                    onChange({ ...draft, notes: notes || null })
+                  }
+                  onFocus={() => setNotesFocused(true)}
+                  onBlur={() => setNotesFocused(false)}
+                  placeholder="e.g., Weekly weighted-work check…"
+                  placeholderTextColor={colors.textDim}
+                  multiline
+                  maxLength={NOTES_MAX_LENGTH}
+                  style={[
+                    styles.fieldInput,
+                    styles.notes,
+                    notesFocused && styles.notesFocused,
+                  ]}
+                />
+              </View>
+            </MorePanel>
+
+            <View style={styles.dateRow}>
+              <View style={styles.dateField}>
+                <Text style={styles.fieldLabel}>From</Text>
+                <SessionDateControl
+                  value={draft.window.fromDate}
+                  onChange={(fromDate) =>
+                    onChange({
+                      ...draft,
+                      window: { ...draft.window, fromDate },
+                    })
+                  }
+                  eyebrow="From date"
+                  fill
+                />
+              </View>
+              <View style={styles.dateField}>
+                <Text style={styles.fieldLabel}>To</Text>
+                <SessionDateControl
+                  value={draft.window.toDate}
+                  onChange={(toDate) =>
+                    onChange({
+                      ...draft,
+                      window: { ...draft.window, toDate },
+                    })
+                  }
+                  eyebrow="To date"
+                  fill
+                />
+              </View>
+            </View>
+
+            {meta ? (
+              <Text style={styles.meta}>
+                {meta.sessionCount} complete session
+                {meta.sessionCount === 1 ? '' : 's'} · {meta.sessionsPerWeek}
+                /week
+              </Text>
+            ) : null}
+
+            {error ? <StatusText tone="error">{error}</StatusText> : null}
+
+            <QbSectionCard
+              section={draft.section}
+              parentLockId={QB_LOCK_ROOT}
+              results={results}
+              primaryGroups={primaryGroups}
+              onPrimaryGroupsChange={onPrimaryGroupsChange}
+              sessionLabels={sessionLabels}
+              onSessionLabelsChange={onSessionLabelsChange}
+              blockLabels={blockLabels}
+              onBlockLabelsChange={onBlockLabelsChange}
+              sequenceLabels={sequenceLabels}
+              onSequenceLabelsChange={onSequenceLabelsChange}
+              variations={variations}
+              onVariationsChange={onVariationsChange}
+              tools={tools}
+              onToolsChange={onToolsChange}
+              suggestedByPg={suggestedByPg}
+              onChange={setSection}
             />
-          </View>
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Notes</Text>
-            <TextInput
-              value={draft.notes ?? ''}
-              onChangeText={(notes) => onChange({ ...draft, notes: notes || null })}
-              onFocus={() => setNotesFocused(true)}
-              onBlur={() => setNotesFocused(false)}
-              placeholder="e.g., Weekly weighted-work check…"
-              placeholderTextColor={colors.textDim}
-              multiline
-              maxLength={NOTES_MAX_LENGTH}
-              style={[styles.fieldInput, styles.notes, notesFocused && styles.notesFocused]}
-            />
-          </View>
-        </MorePanel>
-      )}
+          </>
+        )}
+      </QbLayer>
 
-      <View style={styles.dateRow}>
-        <View style={styles.dateField}>
-          <Text style={styles.fieldLabel}>From</Text>
-          <SessionDateControl
-            value={draft.window.fromDate}
-            onChange={(fromDate) =>
-              onChange({ ...draft, window: { ...draft.window, fromDate } })
-            }
-            eyebrow="From date"
-            fill
-          />
-        </View>
-        <View style={styles.dateField}>
-          <Text style={styles.fieldLabel}>To</Text>
-          <SessionDateControl
-            value={draft.window.toDate}
-            onChange={(toDate) =>
-              onChange({ ...draft, window: { ...draft.window, toDate } })
-            }
-            eyebrow="To date"
-            fill
-          />
-        </View>
-      </View>
-
-      {meta ? (
-        <Text style={styles.meta}>
-          {meta.sessionCount} complete session
-          {meta.sessionCount === 1 ? '' : 's'} · {meta.sessionsPerWeek}/week
-        </Text>
-      ) : null}
-
-      {error ? <StatusText tone="error">{error}</StatusText> : null}
-
-      <QbSectionCard
-        section={draft.section}
-        parentLockId={QB_LOCK_ROOT}
-        results={results}
-        primaryGroups={primaryGroups}
-        onPrimaryGroupsChange={onPrimaryGroupsChange}
-        sessionLabels={sessionLabels}
-        onSessionLabelsChange={onSessionLabelsChange}
-        blockLabels={blockLabels}
-        onBlockLabelsChange={onBlockLabelsChange}
-        sequenceLabels={sequenceLabels}
-        onSequenceLabelsChange={onSequenceLabelsChange}
-        variations={variations}
-        onVariationsChange={onVariationsChange}
-        tools={tools}
-        onToolsChange={onToolsChange}
-        suggestedByPg={suggestedByPg}
-        onChange={setSection}
+      <LockedPreviewModal
+        visible={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title={title}
+        subtitle={
+          draft.name?.trim()
+            ? `${draft.window.fromDate} → ${draft.window.toDate}`
+            : null
+        }
+        layer={QUERY_KIND}
+        node={outline}
       />
-    </QbLayer>
+    </>
   );
 }
 
 /** Query root lock — owns the single Section id as its child. */
 function useQueryLock(_draft: QueryDraft) {
-  const { locked, forcedByAncestor, canToggle, toggle } = useNodeLock(
+  const { locked, ownLocked, forcedByAncestor, canToggle, toggle } = useNodeLock(
     QB_LOCK_ROOT,
     null,
     () => [QB_SECTION_ID],
   );
   return {
     locked,
+    ownLocked,
     lockDisabled: forcedByAncestor,
     onToggleLock: canToggle || forcedByAncestor ? toggle : undefined,
   };

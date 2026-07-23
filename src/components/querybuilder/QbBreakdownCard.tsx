@@ -1,12 +1,18 @@
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { TaxonomyOption } from '../../lib/taxonomy';
 import { colors, spacing, typography } from '../../theme/tokens';
+import { IconButton } from '../forms/IconButton';
+import { LockedOutline } from '../forms/LockedOutline';
+import { LockedPreviewModal } from '../forms/LockedPreviewModal';
 import { ToggleChip } from '../forms/ToggleChip';
+import { useExpansionController } from '../forms/ExpansionController';
 import { useNodeLock } from '../forms/LockController';
 import { QbAddChildButton } from './QbAddChildButton';
 import { QbLayer } from './QbLayer';
 import { QbSubjectCard } from './QbSubjectCard';
-import { qbLayerToken } from './qbTokens';
+import { outlineBreakdown } from './qbOutline';
+import { qbFormKind, qbLayerToken } from './qbTokens';
 import type { SectionResult } from './engine';
 import {
   emptySubject,
@@ -22,6 +28,8 @@ const breakdownAccent = {
   background: breakdownToken.chip.background,
 };
 
+const BREAKDOWN_KIND = qbFormKind('breakdown');
+
 const DIMENSIONS: { id: BreakdownDimension; label: string }[] = [
   { id: 'variation', label: 'Variation' },
   { id: 'tool', label: 'Tool' },
@@ -34,6 +42,9 @@ type Props = {
   results: SectionResult;
   primaryGroups: TaxonomyOption[];
   onPrimaryGroupsChange: (next: TaxonomyOption[]) => void;
+  sessionLabels: TaxonomyOption[];
+  blockLabels: TaxonomyOption[];
+  sequenceLabels: TaxonomyOption[];
   variations: TaxonomyOption[];
   onVariationsChange: (next: TaxonomyOption[]) => void;
   tools: TaxonomyOption[];
@@ -45,7 +56,8 @@ type Props = {
 
 /**
  * Breakdown (= Sequence) — the loop. `For each <dimension>` wraps 1+ Subjects
- * and fans each into per-group rows + a totals line. No nested Breakdowns (v1).
+ * and fans each into per-group rows + a totals line. Locked + expanded →
+ * outline with grouped sub-rows; maximize → preview.
  */
 export function QbBreakdownCard({
   breakdown,
@@ -53,6 +65,9 @@ export function QbBreakdownCard({
   results,
   primaryGroups,
   onPrimaryGroupsChange,
+  sessionLabels,
+  blockLabels,
+  sequenceLabels,
   variations,
   onVariationsChange,
   tools,
@@ -61,11 +76,48 @@ export function QbBreakdownCard({
   onChange,
   onRemove,
 }: Props) {
-  const { locked, forcedByAncestor, canToggle, toggle } = useNodeLock(
+  const expansion = useExpansionController();
+  const expandAllSignal = expansion?.expandAllSignal ?? 0;
+  const collapseChildrenSignal = expansion?.collapseChildrenSignal ?? 0;
+  const collapseChildrenParentId = expansion?.collapseChildrenParentId ?? null;
+
+  const { locked, ownLocked, forcedByAncestor, canToggle, toggle } = useNodeLock(
     breakdown.id,
     parentLockId,
     () => breakdown.subjects.map((s) => s.id),
   );
+
+  const [expanded, setExpanded] = useState(() =>
+    parentLockId == null ? true : !locked,
+  );
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const outline = outlineBreakdown(breakdown, results, {
+    primaryGroups,
+    sessionLabels,
+    blockLabels,
+    sequenceLabels,
+    variations,
+    tools,
+  });
+
+  const subjectChips = breakdown.subjects.map((s) => {
+    const name = s.pgId
+      ? (primaryGroups.find((p) => p.id === s.pgId)?.label ?? 'Subject')
+      : 'Subject';
+    return { label: name, kind: 'subject' as const };
+  });
+
+  useEffect(() => {
+    if (expandAllSignal === 0) return;
+    setExpanded(true);
+  }, [expandAllSignal]);
+
+  useEffect(() => {
+    if (collapseChildrenSignal === 0) return;
+    if (collapseChildrenParentId !== parentLockId) return;
+    setExpanded(false);
+  }, [collapseChildrenSignal, collapseChildrenParentId, parentLockId]);
 
   const updateSubject = (index: number, next: SubjectNode) => {
     onChange({
@@ -82,79 +134,132 @@ export function QbBreakdownCard({
   };
 
   const addSubject = () => {
-    // SectionChildSubject extends SubjectNode — assignable as a breakdown child.
-    onChange({ ...breakdown, subjects: [...breakdown.subjects, emptySubject()] });
+    onChange({
+      ...breakdown,
+      subjects: [...breakdown.subjects, emptySubject()],
+    });
   };
 
+  const lockedTitle = `For each ${breakdown.dimension}`;
+
   return (
-    <QbLayer
-      layer="breakdown"
-      locked={locked}
-      onToggleLock={canToggle || forcedByAncestor ? toggle : undefined}
-      lockDisabled={forcedByAncestor}
-      label={
-        locked ? (
-          <Text style={styles.lockedLabel} numberOfLines={1}>
-            For each {breakdown.dimension}
-          </Text>
+    <>
+      <QbLayer
+        layer="breakdown"
+        expanded={expanded}
+        onExpandedChange={(next) => {
+          const opening = next && !expanded;
+          setExpanded(next);
+          if (opening) expansion?.collapseChildrenOf(breakdown.id);
+        }}
+        metaChips={
+          locked && expanded
+            ? undefined
+            : subjectChips.length
+              ? subjectChips
+              : undefined
+        }
+        locked={locked}
+        onToggleLock={
+          canToggle || forcedByAncestor
+            ? () => {
+                const unlocking = ownLocked;
+                toggle();
+                if (unlocking) expansion?.collapseChildrenOf(breakdown.id);
+              }
+            : undefined
+        }
+        lockDisabled={forcedByAncestor}
+        label={
+          locked ? (
+            <Text style={styles.lockedLabel} numberOfLines={1}>
+              {lockedTitle}
+            </Text>
+          ) : (
+            <View style={styles.dimRow}>
+              <Text style={styles.forEach}>For each</Text>
+              {DIMENSIONS.map((d) => (
+                <ToggleChip
+                  key={d.id}
+                  label={d.label}
+                  active={breakdown.dimension === d.id}
+                  onPress={() => onChange({ ...breakdown, dimension: d.id })}
+                  size="compact"
+                  accent={breakdownAccent}
+                />
+              ))}
+            </View>
+          )
+        }
+        trailing={
+          locked ? (
+            <IconButton
+              kind={BREAKDOWN_KIND}
+              icon="maximize-2"
+              accessibilityLabel="Open screenshot view"
+              onPress={() => setPreviewOpen(true)}
+            />
+          ) : (
+            <Pressable
+              onPress={onRemove}
+              accessibilityRole="button"
+              accessibilityLabel="Remove breakdown"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={({ pressed }) => [
+                styles.removeBtn,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.removeText}>Remove</Text>
+            </Pressable>
+          )
+        }
+      >
+        {locked ? (
+          <LockedOutline node={outline} layer={BREAKDOWN_KIND} />
         ) : (
-          <View style={styles.dimRow}>
-            <Text style={styles.forEach}>For each</Text>
-            {DIMENSIONS.map((d) => (
-              <ToggleChip
-                key={d.id}
-                label={d.label}
-                active={breakdown.dimension === d.id}
-                onPress={() => onChange({ ...breakdown, dimension: d.id })}
-                size="compact"
-                accent={breakdownAccent}
+          <View style={styles.subjects}>
+            {breakdown.subjects.map((subject, index) => (
+              <QbSubjectCard
+                key={subject.id}
+                subject={subject}
+                parentLockId={breakdown.id}
+                result={results[subject.id] ?? null}
+                primaryGroups={primaryGroups}
+                onPrimaryGroupsChange={onPrimaryGroupsChange}
+                sessionLabels={sessionLabels}
+                blockLabels={blockLabels}
+                sequenceLabels={sequenceLabels}
+                variations={variations}
+                onVariationsChange={onVariationsChange}
+                tools={tools}
+                onToolsChange={onToolsChange}
+                suggestedIds={
+                  subject.pgId ? (suggestedByPg[subject.pgId] ?? []) : []
+                }
+                onChange={(next) => updateSubject(index, next)}
+                onRemove={() => removeSubject(index)}
+                canRemove={breakdown.subjects.length > 1}
               />
             ))}
+            <QbAddChildButton
+              childKind="subject"
+              parentTitle={`For each ${breakdown.dimension}`}
+              onPress={addSubject}
+            />
           </View>
-        )
-      }
-      trailing={
-        locked ? null : (
-          <Pressable
-            onPress={onRemove}
-            accessibilityRole="button"
-            accessibilityLabel="Remove breakdown"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={({ pressed }) => [styles.removeBtn, pressed && styles.pressed]}
-          >
-            <Text style={styles.removeText}>Remove</Text>
-          </Pressable>
-        )
-      }
-    >
-      <View style={styles.subjects}>
-        {breakdown.subjects.map((subject, index) => (
-          <QbSubjectCard
-            key={subject.id}
-            subject={subject}
-            parentLockId={breakdown.id}
-            result={results[subject.id] ?? null}
-            primaryGroups={primaryGroups}
-            onPrimaryGroupsChange={onPrimaryGroupsChange}
-            variations={variations}
-            onVariationsChange={onVariationsChange}
-            tools={tools}
-            onToolsChange={onToolsChange}
-            suggestedIds={subject.pgId ? suggestedByPg[subject.pgId] ?? [] : []}
-            onChange={(next) => updateSubject(index, next)}
-            onRemove={() => removeSubject(index)}
-            canRemove={breakdown.subjects.length > 1}
-          />
-        ))}
-        {locked ? null : (
-          <QbAddChildButton
-            childKind="subject"
-            parentTitle={`For each ${breakdown.dimension}`}
-            onPress={addSubject}
-          />
         )}
-      </View>
-    </QbLayer>
+      </QbLayer>
+
+      <LockedPreviewModal
+        visible={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title={lockedTitle}
+        subtitle={null}
+        layer={BREAKDOWN_KIND}
+        node={outline}
+      />
+    </>
   );
 }
 

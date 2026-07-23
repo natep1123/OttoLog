@@ -25,7 +25,7 @@ type Props = {
   title?: ReactNode;
   metaChips?: Array<string | QbCoordChip>;
   trailing?: ReactNode | ((api: ExpandApi) => ReactNode);
-  /** Ephemeral lock (slice 2) — accepted, unused in slice 1. */
+  /** Ephemeral lock — orthogonal to expand; locked+expanded shows outline. */
   locked?: boolean;
   onToggleLock?: () => void;
   lockDisabled?: boolean;

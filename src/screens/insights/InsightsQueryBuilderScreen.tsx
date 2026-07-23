@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScreenHeader } from '../../components/ScreenHeader';
+import { ExpansionControllerProvider } from '../../components/forms/ExpansionController';
 import { LockControllerProvider } from '../../components/forms/LockController';
+import { QbEditorTools } from '../../components/querybuilder/QbEditorTools';
 import { QbQueryCard } from '../../components/querybuilder/QbQueryCard';
 import { evaluateSection, type SectionResult } from '../../components/querybuilder/engine';
 import {
@@ -41,14 +43,11 @@ function collectPgIds(draft: QueryDraft): string[] {
 }
 
 /**
- * Insights Query builder — v2 slice 1.5 (chrome/feel parity, ephemeral).
+ * Insights Query builder — v2 slice 2 (lock grammar + preview, ephemeral).
  *
- * A full nested builder mirroring the log/template builders: Query → Section →
- * (optional) Breakdown → Subject → Measure, with hidden SQL meaning per layer.
- * `Qb*` chrome reuses the workout nest accents by depth (`layer`/`override`/set
- * chip). Results are computed client-side over `v_log_set_facts`. Lock is a
- * working ephemeral affordance (toggle + ancestor-force); locked grammar /
- * preview and save land in later slices. Draft is lost on reload this slice.
+ * Nested builder: Query → Section → (optional) Breakdown → Subject → Measure.
+ * Lock + expanded → LockedOutline analytics grammar; maximize → paginated
+ * LockedPreviewModal. Still ephemeral — no `saved_queries` yet.
  */
 export function InsightsQueryBuilderScreen({ onBrandPress, onBack }: Props) {
   const [draft, setDraft] = useState<QueryDraft>(() => defaultQueryDraft());
@@ -166,29 +165,35 @@ export function InsightsQueryBuilderScreen({ onBrandPress, onBack }: Props) {
         onBrandPress={onBrandPress}
       />
 
-      <LockControllerProvider>
-        <QbQueryCard
-          draft={draft}
-          results={results}
-          meta={meta}
-          loading={loading}
-          error={error}
-          primaryGroups={primaryGroups}
-          onPrimaryGroupsChange={setPrimaryGroups}
-          sessionLabels={sessionLabels}
-          onSessionLabelsChange={setSessionLabels}
-          blockLabels={blockLabels}
-          onBlockLabelsChange={setBlockLabels}
-          sequenceLabels={sequenceLabels}
-          onSequenceLabelsChange={setSequenceLabels}
-          variations={variations}
-          onVariationsChange={setVariations}
-          tools={tools}
-          onToolsChange={setTools}
-          suggestedByPg={suggestedByPg}
-          onChange={setDraft}
-        />
-      </LockControllerProvider>
+      <ExpansionControllerProvider>
+        <LockControllerProvider>
+          <View style={styles.toolbar}>
+            <View style={styles.toolbarLeading} />
+            <QbEditorTools />
+          </View>
+          <QbQueryCard
+            draft={draft}
+            results={results}
+            meta={meta}
+            loading={loading}
+            error={error}
+            primaryGroups={primaryGroups}
+            onPrimaryGroupsChange={setPrimaryGroups}
+            sessionLabels={sessionLabels}
+            onSessionLabelsChange={setSessionLabels}
+            blockLabels={blockLabels}
+            onBlockLabelsChange={setBlockLabels}
+            sequenceLabels={sequenceLabels}
+            onSequenceLabelsChange={setSequenceLabels}
+            variations={variations}
+            onVariationsChange={setVariations}
+            tools={tools}
+            onToolsChange={setTools}
+            suggestedByPg={suggestedByPg}
+            onChange={setDraft}
+          />
+        </LockControllerProvider>
+      </ExpansionControllerProvider>
 
       <Pressable
         onPress={() => setDraft(defaultQueryDraft())}
@@ -208,6 +213,16 @@ const styles = StyleSheet.create({
   content: {
     gap: spacing.lg,
     paddingBottom: spacing.xxl,
+  },
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  toolbarLeading: {
+    flex: 1,
+    minWidth: 0,
   },
   resetBtn: {
     paddingVertical: 6,

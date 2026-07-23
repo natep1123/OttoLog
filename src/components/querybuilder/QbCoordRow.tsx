@@ -32,7 +32,7 @@ type Props = {
   trailing?: ReactNode;
   expanded?: boolean;
   onToggleExpand?: () => void;
-  /** Ephemeral locked / view mode — accepted for slice 2, unused in slice 1. */
+  /** Ephemeral locked / view mode — wired in slice 2. */
   locked?: boolean;
   onToggleLock?: () => void;
   lockDisabled?: boolean;
