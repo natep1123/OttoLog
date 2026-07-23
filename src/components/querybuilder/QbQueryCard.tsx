@@ -158,7 +158,7 @@ export function QbQueryCard({
           if (!next) setMoreOpen(false);
           if (opening) expansion?.collapseChildrenOf(QB_LOCK_ROOT);
         }}
-        metaChips={[windowChip]}
+        metaChips={locked || !expanded ? [windowChip] : undefined}
         locked={locked}
         onToggleLock={
           onToggleLock

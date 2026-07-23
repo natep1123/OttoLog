@@ -61,7 +61,7 @@ export function LockedOutline({
         depth > 0 && [styles.nested, { borderLeftColor: tint }],
       ]}
     >
-      {showTitle ? (
+      {showTitle && node.title ? (
         <Text
           style={[
             styles.title,

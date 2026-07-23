@@ -146,7 +146,7 @@ export function outlineSubject(
     lines: line
       ? [line]
       : subject.measures.some((m) => m.field == null)
-        ? ['Pick op × field']
+        ? ['Pick a measure']
         : ['No sets logged this in-window'],
   };
 }
@@ -167,7 +167,12 @@ export function outlineBreakdown(
   };
 }
 
-/** Section outline (= Block): scope meta + ordered Subjects / Breakdowns. */
+/**
+ * Section outline (= Block): scope meta + ordered Subjects / Breakdowns.
+ * **Soft-hides the "Section" word** — v1 AST is always exactly one Section,
+ * so the label is dead weight on the read surface; the scope grammar (e.g.
+ * `Working`) carries the meaning on its own (doc §10, decided this slice).
+ */
 export function outlineSection(
   section: SectionNode,
   results: SectionResult,
@@ -182,7 +187,7 @@ export function outlineSection(
     }
   }
   return {
-    title: 'Section',
+    title: '',
     kind: 'block',
     meta: sectionScopeGrammar(section, labels),
     children: children.length ? children : undefined,

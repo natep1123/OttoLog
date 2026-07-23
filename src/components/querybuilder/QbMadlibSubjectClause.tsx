@@ -79,6 +79,8 @@ export function QbMadlibSubjectClause({
   const expansion = useExpansionController();
   const expandAllSignal = expansion?.expandAllSignal ?? 0;
   const [expanded, setExpanded] = useState(true);
+  const [withOpen, setWithOpen] = useState(false);
+  const [groupsOpen, setGroupsOpen] = useState(false);
 
   useEffect(() => {
     if (expandAllSignal === 0) return;
@@ -88,6 +90,8 @@ export function QbMadlibSubjectClause({
   const isSplit = isBreakdown(child);
   const subject: SubjectNode = isSplit ? child.subjects[0] : child;
   const dimension: BreakdownDimension = isSplit ? child.dimension : 'variation';
+  /** Progressive disclosure (doc §6): FOR only until a Primary Group is picked. */
+  const hasPg = Boolean(subject.pgId);
 
   const patchSubject = (next: SubjectNode) => {
     onChange(isSplit ? { ...child, subjects: [next] } : { ...next, kind: 'subject' });
@@ -130,6 +134,15 @@ export function QbMadlibSubjectClause({
   };
 
   const groupOptions = dimension === 'tool' ? tools : variations;
+
+  /** Collapsed WITH chip text — `all` or the soft identity picks, e.g. `Weighted`. */
+  const withSummary = (() => {
+    const parts = [
+      ...subject.variationIds.map((id) => labelFor(variations, id)),
+      ...subject.toolIds.map((id) => labelFor(tools, id)),
+    ];
+    return parts.length ? parts.join(' · ') : 'all';
+  })();
 
   return (
     <QbLayer
@@ -174,141 +187,191 @@ export function QbMadlibSubjectClause({
         ) : null
       }
     >
-      <View style={styles.clauseRow}>
-        <Text style={styles.word}>WITH</Text>
-        <View style={styles.clauseContent}>
-          <SearchableSelect
-            mode="multi"
-            options={variations}
-            onOptionsChange={onVariationsChange}
-            value={subject.variationIds}
-            onChange={(variationIds) => patchSubject({ ...subject, variationIds })}
-            suggestedIds={suggestedIds}
-            accent={subjectAccent}
-            onCreate={async () => ({
-              data: null,
-              error: 'Create variations under Account → Taxonomy.',
-            })}
-            placeholder="All variations…"
-            emptyLabel="All variations"
-            fill
-            accessibilityLabel="Subject variations"
-          />
-          <SearchableSelect
-            mode="multi"
-            options={tools}
-            onOptionsChange={onToolsChange}
-            value={subject.toolIds}
-            onChange={(toolIds) => patchSubject({ ...subject, toolIds })}
-            accent={subjectAccent}
-            onCreate={async () => ({
-              data: null,
-              error: 'Create tools under Account → Taxonomy.',
-            })}
-            placeholder="All tools…"
-            emptyLabel="All tools"
-            fill
-            accessibilityLabel="Subject tools"
-          />
-        </View>
-      </View>
-
-      <View style={styles.clauseRow}>
-        <Text style={styles.word}>SHOW</Text>
-        <View style={styles.clauseContent}>
-          {subject.measures.map((measure, index) => (
-            <QbMeasureRow
-              key={measure.id}
-              measure={measure}
-              result={
-                result?.measures.find((m) => m.measureId === measure.id) ?? null
-              }
-              onChange={(next) => updateMeasure(index, next)}
-              onRemove={() => removeMeasure(index)}
-              canRemove={subject.measures.length > 1}
-            />
-          ))}
-          <QbAddChildButton
-            childKind="measure"
-            parentTitle={pgName ?? 'this clause'}
-            onPress={addMeasure}
-          />
-        </View>
-      </View>
-
-      <View style={styles.clauseRow}>
-        <Text style={styles.word}>SPLIT</Text>
-        <View style={styles.clauseContent}>
-          {!isSplit ? (
-            <Pressable
-              onPress={() => setSplit('variation')}
-              accessibilityRole="button"
-              accessibilityLabel="Split this clause for each variation or tool"
-              style={({ pressed }) => [
-                styles.splitAdd,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={styles.splitAddText}>+ Split for each…</Text>
-            </Pressable>
-          ) : (
-            <View style={styles.splitOnRow}>
-              <Text style={styles.splitForEach}>For each</Text>
-              {SPLIT_DIMENSIONS.map((d) => (
-                <ToggleChip
-                  key={d.id}
-                  label={d.label}
-                  active={dimension === d.id}
-                  onPress={() => setSplit(d.id)}
-                  size="compact"
-                />
-              ))}
+      {hasPg ? (
+        <>
+          <View style={styles.clauseRow}>
+            <Text style={styles.word}>WITH</Text>
+            <View style={styles.clauseContent}>
               <Pressable
-                onPress={() => setSplit(null)}
+                onPress={() => setWithOpen((o) => !o)}
                 accessibilityRole="button"
-                accessibilityLabel="Remove split"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityState={{ expanded: withOpen }}
+                accessibilityLabel={`${
+                  withOpen ? 'Hide' : 'Show'
+                } variation and tool filters`}
                 style={({ pressed }) => [
-                  styles.removeBtn,
+                  styles.withChip,
                   pressed && styles.pressed,
                 ]}
               >
-                <Text style={styles.removeText}>Clear</Text>
+                <Text style={styles.chevronSmall}>{withOpen ? '▾' : '▸'}</Text>
+                <Text style={styles.withChipText} numberOfLines={1}>
+                  {withSummary}
+                </Text>
               </Pressable>
+              {withOpen ? (
+                <View style={styles.withBody}>
+                  <SearchableSelect
+                    mode="multi"
+                    options={variations}
+                    onOptionsChange={onVariationsChange}
+                    value={subject.variationIds}
+                    onChange={(variationIds) =>
+                      patchSubject({ ...subject, variationIds })
+                    }
+                    suggestedIds={suggestedIds}
+                    accent={subjectAccent}
+                    onCreate={async () => ({
+                      data: null,
+                      error: 'Create variations under Account → Taxonomy.',
+                    })}
+                    placeholder="All variations…"
+                    emptyLabel="All variations"
+                    fill
+                    accessibilityLabel="Subject variations"
+                  />
+                  <SearchableSelect
+                    mode="multi"
+                    options={tools}
+                    onOptionsChange={onToolsChange}
+                    value={subject.toolIds}
+                    onChange={(toolIds) => patchSubject({ ...subject, toolIds })}
+                    accent={subjectAccent}
+                    onCreate={async () => ({
+                      data: null,
+                      error: 'Create tools under Account → Taxonomy.',
+                    })}
+                    placeholder="All tools…"
+                    emptyLabel="All tools"
+                    fill
+                    accessibilityLabel="Subject tools"
+                  />
+                </View>
+              ) : null}
             </View>
-          )}
-        </View>
-      </View>
-
-      {result?.groups && result.groups.length > 0 ? (
-        <View style={styles.groupsBlock}>
-          <Text style={styles.forEachLabel}>For each {dimension}</Text>
-          {result.groups.map((group) => {
-            const tokens = group.measures
-              .map((m) => measureToken(m))
-              .filter((t): t is string => Boolean(t));
-            return (
-              <View key={group.groupId} style={styles.groupRow}>
-                <Text style={styles.groupName} numberOfLines={1}>
-                  {labelFor(groupOptions, group.groupId)}
-                </Text>
-                <Text style={styles.groupValue} numberOfLines={1}>
-                  {tokens.length
-                    ? tokens.join(' · ')
-                    : `${group.setCount} sets`}
-                </Text>
-              </View>
-            );
-          })}
-          <View style={[styles.groupRow, styles.totalsRow]}>
-            <Text style={styles.totalsName}>total</Text>
-            <Text style={styles.totalsValue} numberOfLines={1}>
-              {grammarChips.length
-                ? grammarChips.join(' · ')
-                : `${result.setCount} sets`}
-            </Text>
           </View>
-        </View>
+
+          <View style={styles.clauseRow}>
+            <Text style={styles.word}>SHOW</Text>
+            <View style={styles.clauseContent}>
+              {subject.measures.map((measure, index) => (
+                <QbMeasureRow
+                  key={measure.id}
+                  measure={measure}
+                  result={
+                    result?.measures.find((m) => m.measureId === measure.id) ??
+                    null
+                  }
+                  onChange={(next) => updateMeasure(index, next)}
+                  onRemove={() => removeMeasure(index)}
+                  canRemove={subject.measures.length > 1}
+                />
+              ))}
+              <QbAddChildButton
+                childKind="measure"
+                parentTitle={pgName ?? 'this clause'}
+                onPress={addMeasure}
+              />
+            </View>
+          </View>
+
+          <View style={styles.clauseRow}>
+            <Text style={styles.word}>SPLIT</Text>
+            <View style={styles.clauseContent}>
+              {!isSplit ? (
+                <Pressable
+                  onPress={() => setSplit('variation')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Split this clause for each variation or tool"
+                  style={({ pressed }) => [
+                    styles.splitAdd,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.splitAddText}>+ Split for each…</Text>
+                </Pressable>
+              ) : (
+                <View style={styles.splitOnRow}>
+                  <Text style={styles.splitForEach}>For each</Text>
+                  {SPLIT_DIMENSIONS.map((d) => (
+                    <ToggleChip
+                      key={d.id}
+                      label={d.label}
+                      active={dimension === d.id}
+                      onPress={() => setSplit(d.id)}
+                      size="compact"
+                    />
+                  ))}
+                  <Pressable
+                    onPress={() => setSplit(null)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove split"
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={({ pressed }) => [
+                      styles.removeBtn,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={styles.removeText}>Clear</Text>
+                  </Pressable>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {result?.groups && result.groups.length > 0 ? (
+            <View style={styles.groupsBlock}>
+              <Pressable
+                onPress={() => setGroupsOpen((o) => !o)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: groupsOpen }}
+                accessibilityLabel={`${
+                  groupsOpen ? 'Hide' : 'Show'
+                } live split preview`}
+                style={({ pressed }) => [
+                  styles.groupsToggle,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.chevronSmall}>
+                  {groupsOpen ? '▾' : '▸'}
+                </Text>
+                <Text style={styles.forEachLabel}>
+                  Live preview · for each {dimension}
+                </Text>
+              </Pressable>
+              {groupsOpen ? (
+                <View style={styles.groupsBody}>
+                  {result.groups.map((group) => {
+                    const tokens = group.measures
+                      .map((m) => measureToken(m))
+                      .filter((t): t is string => Boolean(t));
+                    return (
+                      <View key={group.groupId} style={styles.groupRow}>
+                        <Text style={styles.groupName} numberOfLines={1}>
+                          {labelFor(groupOptions, group.groupId)}
+                        </Text>
+                        <Text style={styles.groupValue} numberOfLines={1}>
+                          {tokens.length
+                            ? tokens.join(' · ')
+                            : `${group.setCount} sets`}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                  <View style={[styles.groupRow, styles.totalsRow]}>
+                    <Text style={styles.totalsName}>total</Text>
+                    <Text style={styles.totalsValue} numberOfLines={1}>
+                      {grammarChips.length
+                        ? grammarChips.join(' · ')
+                        : `${result.setCount} sets`}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+        </>
       ) : null}
     </QbLayer>
   );
@@ -342,6 +405,33 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     gap: spacing.xs,
+  },
+  chevronSmall: {
+    fontFamily: typography.fontMedium,
+    fontSize: 13,
+    width: 12,
+    textAlign: 'center',
+    color: subjectToken.chip.color,
+  },
+  withChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: subjectToken.border,
+    borderRadius: 6,
+  },
+  withChipText: {
+    fontFamily: typography.fontMedium,
+    fontSize: 13,
+    color: colors.text,
+  },
+  withBody: {
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
   splitAdd: {
     alignSelf: 'flex-start',
@@ -388,11 +478,19 @@ const styles = StyleSheet.create({
     color: qbLeafOverride.color,
   },
   groupsBlock: {
-    gap: 6,
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: qbLeafOverride.borderSoft,
+  },
+  groupsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  groupsBody: {
+    gap: 6,
+    marginTop: 6,
   },
   groupRow: {
     flexDirection: 'row',

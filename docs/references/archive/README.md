@@ -10,3 +10,4 @@ Not kickoff primary. Historical / optional frames. Prefer:
 | [`workout-optionals/`](./workout-optionals/) | Extra Murph frames (exercise More, Circuit overrides, override editor) |
 | [`query-open-history/`](./query-open-history/) | QB open before→after: cool palette (slice 1) → warm rails (slice 1.5) |
 | [`query-pre-madlib/`](./query-pre-madlib/) | Pre–slice 2.5: nest-shell Subject author + older locked outline |
+| [`query-madlib-2.5-early/`](./query-madlib-2.5-early/) | First madlib gold (all-rows empty / early SPLIT) before polish dogfood |

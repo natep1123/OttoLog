@@ -386,15 +386,55 @@ GROUP BY / compare windows later — don’t redesign authoring around them.
 
 **Decided by slice 2.5 madlib spike (Jul 23):**
 - **Madlib chrome density:** single Query card with **clause rows** (`FOR` / `WITH` / `SHOW` / `SPLIT` as leading words) — not chip-sentence rails.
-- **Empty Subject block:** always show FOR / WITH / SHOW / SPLIT rows (not hide until PG picked).
 - **SPLIT + one Subject:** locked outline **always** purple “For each…” — no flatten-when-trivial.
 - **IN presets:** Last 7 / Last 28 / This week / Custom as UI over `{fromDate, toDate}` — no new AST field.
 
+**Decided by madlib author UX polish (Jul 23, post-2.5) — supersedes the two
+2.5 picks below:**
+- **Empty Subject block:** **progressive disclosure.** Show `FOR` only until a
+  Primary Group is picked; `WITH` / `SHOW` (and the `SPLIT` affordance) reveal
+  once `pgId` is set. *(Supersedes the 2.5 pick of always-showing all four
+  rows — that read as a full empty form, not a short ask.)*
+- **Empty Measure display:** a dashed **`+ Pick a measure`** chip (seeds the
+  first available field + its smart-default op). *(Resolves the “still open”
+  item from the 2.5 spike.)*
+- **SHOW grammar:** one Measure = one **chip sentence** (`sum reps`), not a
+  Field/Op grid. Tap the op word to cycle op, the field word to cycle field;
+  `count` ⇄ `field:'sets'` stay one state (`count · sets`). `+ Add Measure`
+  still adds another chip.
+- **WITH:** collapses to a summary chip (`all` / `Weighted` / …) that expands
+  to the existing variations/tools pickers on tap — not two always-open
+  `SearchableSelect` rows.
+- **Live SPLIT groups while authoring:** hidden by default under a small
+  “Live preview · for each …” disclosure on the Subject clause (tap to
+  expand); the locked outline / preview stay the canonical readout.
+- **Locked outline “Section” label:** soft-hidden — the outline shows scope
+  meta only (e.g. `Working`) since v1 AST is always exactly one Section. Same
+  `LockedOutline` component; renders the title line only when `node.title` is
+  non-empty (`qbOutline.outlineSection` now emits `title: ''`).
+- **Query header date pill:** hidden while unlocked **and** expanded (the `IN`
+  row already shows it there); still shown unlocked+collapsed (summary) and
+  always shown locked (the outline root hides its own `meta` via
+  `hideRootTitle`).
+
 **Still open:**
+- **SPLIT / WITH identity model (Jul 23 dogfood):** Flat `for each variation`
+  peer buckets are the wrong product story. Target behavior (UI/engine — **no
+  schema redesign**): WITH narrows to chosen variations; ask can mean “only
+  Running,” “Incline∩Walking overlap,” and/or split *within* a filtered flavor —
+  without forcing separate PGs per gait flavor. Credit-each multi-tag facts
+  stay. Venn / diagram dashboards = later capability, not v1 chrome.
+- **SHOW chip interaction:** keep `op | field` look; prefer **dropdowns** on
+  each half instead of tap-to-cycle.
+- **Per-Subject lock:** whole-ask Query lock only today — optional Subject /
+  exercise-style lock on madlib clause?
 - **Save definition:** confirm nest JSON as canonical (madlib = view) before
   `saved_queries`.
 - **Breakdown dimensions beyond variation/tool:** `date bucket` next capability
   gap (slice 5 or sooner once authoring lands).
 - **Multi-key GROUP BY / compare windows:** deferred — don’t block madlib.
-- **Empty Measure display** on author SHOW chips before op×field chosen.
+- **Measure field availability:** `QbMeasureRow`’s `availableFields` prop
+  (shape-driven fields the Subject actually logged) is still unwired from the
+  Subject clause — cycling currently walks the full 5-field set regardless of
+  what's logged in-window.
 

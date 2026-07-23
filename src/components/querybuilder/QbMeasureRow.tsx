@@ -1,8 +1,7 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors, radii, spacing, typography } from '../../theme/tokens';
-import { ToggleChip } from '../forms/ToggleChip';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { colors, radii, typography } from '../../theme/tokens';
 import { qbMeasureChip } from './qbTokens';
-import { measureToken, type MeasureResult } from './engine';
+import { type MeasureResult } from './engine';
 import {
   defaultOpForField,
   type MeasureField,
@@ -13,26 +12,20 @@ import {
 const OPS: MeasureOp[] = ['sum', 'avg', 'max', 'min', 'count'];
 const FIELDS: MeasureField[] = ['reps', 'time', 'distance', 'load', 'sets'];
 
-const FIELD_LABEL: Record<MeasureField, string> = {
-  reps: 'Reps',
-  time: 'Time',
-  distance: 'Distance',
-  load: 'Load',
-  sets: 'Sets',
+const OP_WORD: Record<MeasureOp, string> = {
+  sum: 'sum',
+  avg: 'avg',
+  max: 'max',
+  min: 'min',
+  count: 'count',
 };
 
-const OP_LABEL: Record<MeasureOp, string> = {
-  sum: 'Sum',
-  avg: 'Avg',
-  max: 'Max',
-  min: 'Min',
-  count: 'Count',
-};
-
-const measureAccent = {
-  color: qbMeasureChip.color,
-  border: qbMeasureChip.border,
-  background: qbMeasureChip.background,
+const FIELD_WORD: Record<MeasureField, string> = {
+  reps: 'reps',
+  time: 'time',
+  distance: 'distance',
+  load: 'load',
+  sets: 'sets',
 };
 
 type Props = {
@@ -46,9 +39,12 @@ type Props = {
 };
 
 /**
- * Measure leaf — op × field. The home of operations. Renders a set-chip value
- * token once a field is chosen and data exists; a placeholder before that.
- * NULL discipline: no fake zero — shows an empty note instead.
+ * Measure leaf — op × field, as one **chip sentence** (`sum reps`), not a
+ * Field/Op grid. Tap the left word to cycle the operation, the right word to
+ * cycle the field. `count` and `field:'sets'` are the same state (field
+ * selector moot) — shown as `count · sets`. No field yet → a dashed
+ * "+ Pick a measure" chip that seeds the first available field. NULL
+ * discipline: a muted note, never a fake zero.
  */
 export function QbMeasureRow({
   measure,
@@ -59,33 +55,90 @@ export function QbMeasureRow({
   canRemove,
 }: Props) {
   const fields = availableFields && availableFields.length ? availableFields : FIELDS;
-  const token = result ? measureToken(result) : null;
-  const isCount = measure.op === 'count' || measure.field === 'sets';
+  const hasField = measure.field != null;
+  const isCount = measure.field === 'sets' || measure.op === 'count';
+  const noData = hasField && result != null && result.value == null;
 
-  const pickField = (field: MeasureField) => {
-    // Smart-default op on first field pick (or when switching to/from sets).
+  const initMeasure = () => {
+    const first = fields[0];
+    onChange({ ...measure, field: first, op: defaultOpForField(first) });
+  };
+
+  const cycleField = () => {
+    if (!hasField) {
+      initMeasure();
+      return;
+    }
+    const idx = fields.indexOf(measure.field as MeasureField);
+    const nextField = fields[(idx + 1) % fields.length];
     const nextOp =
-      measure.field == null || field === 'sets' || measure.field === 'sets'
-        ? defaultOpForField(field)
-        : measure.op;
-    onChange({ ...measure, field, op: nextOp });
+      nextField === 'sets'
+        ? 'count'
+        : measure.field === 'sets'
+          ? defaultOpForField(nextField)
+          : measure.op;
+    onChange({ ...measure, field: nextField, op: nextOp });
+  };
+
+  const cycleOp = () => {
+    if (!hasField || isCount) return;
+    const idx = OPS.indexOf(measure.op);
+    const nextOp = OPS[(idx + 1) % OPS.length];
+    const nextField = nextOp === 'count' ? 'sets' : measure.field;
+    onChange({ ...measure, op: nextOp, field: nextField });
   };
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.headerRow}>
+      <View style={styles.row}>
         <Text style={styles.leafBullet}>◦</Text>
-        {token ? (
-          <View style={styles.token}>
-            <Text style={styles.tokenText} numberOfLines={1}>
-              {token}
-            </Text>
-          </View>
-        ) : measure.field == null ? (
-          <Text style={styles.placeholder}>Pick op × field</Text>
+
+        {!hasField ? (
+          <Pressable
+            onPress={initMeasure}
+            accessibilityRole="button"
+            accessibilityLabel="Pick a measure"
+            style={({ pressed }) => [styles.addChip, pressed && styles.pressed]}
+          >
+            <Text style={styles.addChipText}>+ Pick a measure</Text>
+          </Pressable>
         ) : (
-          <Text style={styles.placeholder}>No sets logged this in-window</Text>
+          <View style={styles.chip}>
+            <Pressable
+              onPress={cycleOp}
+              disabled={isCount}
+              accessibilityRole="button"
+              accessibilityLabel={`Change operation — currently ${
+                isCount ? 'count' : OP_WORD[measure.op]
+              }`}
+              style={({ pressed }) => [
+                styles.chipSegment,
+                pressed && !isCount && styles.chipSegmentPressed,
+              ]}
+            >
+              <Text style={[styles.chipText, isCount && styles.chipTextDim]}>
+                {isCount ? 'count' : OP_WORD[measure.op]}
+              </Text>
+            </Pressable>
+            <View style={styles.chipDivider} />
+            <Pressable
+              onPress={cycleField}
+              accessibilityRole="button"
+              accessibilityLabel={`Change field — currently ${
+                isCount ? 'sets' : FIELD_WORD[measure.field as MeasureField]
+              }`}
+              style={({ pressed }) => [
+                styles.chipSegment,
+                pressed && styles.chipSegmentPressed,
+              ]}
+            >
+              <Text style={styles.chipText}>
+                {isCount ? 'sets' : FIELD_WORD[measure.field as MeasureField]}
+              </Text>
+            </Pressable>
+          </View>
         )}
+
         {canRemove ? (
           <Pressable
             onPress={onRemove}
@@ -99,50 +152,8 @@ export function QbMeasureRow({
         ) : null}
       </View>
 
-      <View style={styles.pickerBlock}>
-        <Text style={styles.fieldLabel}>Field</Text>
-        <ScrollView
-          horizontal
-          nestedScrollEnabled
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipRow}
-          keyboardShouldPersistTaps="handled"
-        >
-          {fields.map((f) => (
-            <ToggleChip
-              key={f}
-              label={FIELD_LABEL[f]}
-              active={measure.field === f}
-              onPress={() => pickField(f)}
-              size="compact"
-              accent={measureAccent}
-            />
-          ))}
-        </ScrollView>
-      </View>
-
-      {measure.field != null && measure.field !== 'sets' ? (
-        <View style={styles.pickerBlock}>
-          <Text style={styles.fieldLabel}>Operation</Text>
-          <ScrollView
-            horizontal
-            nestedScrollEnabled
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}
-            keyboardShouldPersistTaps="handled"
-          >
-            {OPS.map((op) => (
-              <ToggleChip
-                key={op}
-                label={OP_LABEL[op]}
-                active={isCount ? op === 'count' : measure.op === op}
-                onPress={() => onChange({ ...measure, op })}
-                size="compact"
-                accent={measureAccent}
-              />
-            ))}
-          </ScrollView>
-        </View>
+      {noData ? (
+        <Text style={styles.noData}>No sets logged this in-window</Text>
       ) : null}
     </View>
   );
@@ -150,10 +161,10 @@ export function QbMeasureRow({
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: spacing.xs,
-    paddingVertical: 6,
+    gap: 4,
+    paddingVertical: 4,
   },
-  headerRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -165,26 +176,56 @@ const styles = StyleSheet.create({
     width: 14,
     textAlign: 'center',
   },
-  token: {
-    flexShrink: 1,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
     borderWidth: 1,
     borderRadius: radii.sm,
     borderColor: qbMeasureChip.border,
     backgroundColor: qbMeasureChip.background,
+    overflow: 'hidden',
   },
-  tokenText: {
+  chipSegment: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  chipSegmentPressed: {
+    opacity: 0.7,
+  },
+  chipDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: qbMeasureChip.border,
+  },
+  chipText: {
     fontFamily: typography.fontSemiBold,
-    fontSize: 12,
-    letterSpacing: 0.3,
+    fontSize: 13,
+    letterSpacing: 0.2,
     color: qbMeasureChip.color,
   },
-  placeholder: {
-    flex: 1,
-    fontFamily: typography.font,
+  chipTextDim: {
+    opacity: 0.55,
+  },
+  addChip: {
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: qbMeasureChip.border,
+    borderRadius: radii.sm,
+  },
+  addChipText: {
+    fontFamily: typography.fontMedium,
     fontSize: 13,
+    color: qbMeasureChip.color,
+  },
+  noData: {
+    fontFamily: typography.font,
+    fontSize: 12,
     color: colors.textDim,
+    marginLeft: 22,
   },
   removeBtn: {
     marginLeft: 'auto',
@@ -198,21 +239,5 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
-  },
-  pickerBlock: {
-    gap: 6,
-  },
-  fieldLabel: {
-    fontFamily: typography.fontSemiBold,
-    fontSize: 11,
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
-    color: colors.textDim,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: 2,
   },
 });
